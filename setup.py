@@ -8,5 +8,5 @@ setup(name='AcraNetwork',
       author='Diarmuid Collins',
       author_email='dcollins@curtisswright.com',
       url='https://github.com/diarmuidcwc/AcraNetwork',
-      packages=['IENA', 'iNetX','SimpleEthernet','Pcap','ParserAligned'],
+      py_modules=['IENA', 'iNetX','SimpleEthernet','Pcap','ParserAligned'],
      )

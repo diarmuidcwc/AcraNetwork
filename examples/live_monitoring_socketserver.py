@@ -15,9 +15,9 @@ import datetime, time
 import SocketServer
 
 # Add the directory above to the search path
-sys.path.append("..")
+sys.path.append("../..")
 
-from AcraNetwork.multicastserver import MulticastServer
+
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.IENA as iena
 import AcraNetwork.ColouredOutput as ColouredOutput
