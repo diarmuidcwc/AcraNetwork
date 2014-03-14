@@ -16,7 +16,7 @@ import argparse
 import datetime, time
 
 # Add the directory above to the search path
-sys.path.append("..")
+sys.path.append("../..")
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.Pcap as pcap
 from AcraNetwork.SimpleEthernet import mactoreadable
@@ -27,7 +27,12 @@ import AcraNetwork.ParserAligned as ParserAligned
 
 def main():
 
-    pcapfile = pcap.Pcap("SSR_ABM_102_capture_example1.pcap")
+    try:
+        pcapfile = pcap.Pcap("SSR_ABM_102_capture_example1.pcap")
+    except IOError:
+        print "ERROR: Could not find input file SSR_ABM_102_capture_example1.pcap"
+        exit()
+
     # Keep a running count of the packets
     packet_count = 1
     # Keep a count of previous sequence number to detect a dropped packets
