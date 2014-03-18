@@ -13,9 +13,6 @@ import socket,os,sys
 import argparse
 import datetime, time
 
-# Add the directory above to the search path
-sys.path.append("../..")
-
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.IENA as iena
 import AcraNetwork.ColouredOutput as ColouredOutput

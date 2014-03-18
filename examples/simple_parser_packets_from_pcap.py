@@ -15,8 +15,7 @@ import socket,os,struct,sys
 import argparse
 import datetime, time
 
-# Add the directory above to the search path
-sys.path.append("../..")
+
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.Pcap as pcap
 from AcraNetwork.SimpleEthernet import mactoreadable
