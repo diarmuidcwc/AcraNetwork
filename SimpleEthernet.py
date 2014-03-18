@@ -5,9 +5,23 @@
 # Author:      DCollins
 #
 # Created:     19/12/2013
-# Copyright:   (c) DCollins 2013
-# Licence:     <your licence>
+#
+# Copyright 2014 Diarmuid Collins
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #-------------------------------------------------------------------------------
+
+
 import struct
 import socket
 import array
@@ -119,12 +133,12 @@ class UDP():
         (self.srcport,self.dstport,self.len,checksum) = struct.unpack_from(self.format,buf)
         self.payload = buf[UDP.HEADERLEN:]
 
-    def testisinetx(self):
+    def testisinetx(self,controlword=0x11000000):
         """Just a simple test to see if the first 4 bytes of the payload are the control word"""
         if len(self.payload) < 4:
             return
         (control_word,) = struct.unpack_from('>I',self.payload)
-        if control_word == 0x11000000:
+        if control_word == controlword:
             self.isinetx = True
 
     def pack(self):

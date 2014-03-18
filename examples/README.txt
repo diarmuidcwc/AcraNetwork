@@ -54,5 +54,13 @@ It will visually highligh any dropped packets and it's quite easy to see what's 
 big picture view.
 It's not recommende to us the ReadNextPacket method that is described here. Better to use the methods from parser_aligned_pcap_example
 
+------------- ########################## --------------------
+pcap_to_ascii.py
+
+Run:
+$ python  pcap_to_ascii.py --pcap Internal_Test_Packets_From_Test_Before_and_After_DAU_Fail.pcap  --hex --out test2
+
+Dump out ascii represenations of iNetX payloads
+
 
 

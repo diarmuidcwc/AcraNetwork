@@ -1,14 +1,24 @@
 #-------------------------------------------------------------------------------
-# Name:        pcap.py
-# Purpose:
+# Name:        pcap
+# Purpose:     Class to pack and unpack pcap files
 #
-# Author:      Diarmuid
+# Author:      DCollins
 #
-# Created:     16/12/2013
-# Copyright:   (c) SPACE 2013
-# Licence:     <your licence>
-# About:       Some classes that will allow me to unpack pcap files and the most
-#              common packets inside them
+# Created:     19/12/2013
+#
+# Copyright 2014 Diarmuid Collins
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #-------------------------------------------------------------------------------
 
 import struct
