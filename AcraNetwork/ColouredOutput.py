@@ -6,8 +6,20 @@
 #
 # Created:     19/12/2013
 # Copyright:   (c) DCollins 2013
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+#
+#    This program is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License
+#    as published by the Free Software Foundation; either version 2
+#    of the License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import colorama
 from colorama import Fore, Back, Style
@@ -119,3 +131,10 @@ class ColouredOutput():
 
     def PrintExitInfo(self,string):
         print( pos(self.y_location-1, self.x_location+30) + colorama.Fore.WHITE+colorama.Back.BLACK + string)
+
+
+    def PrintMissingContinuity(self,streamid,mpegts):
+        """Print out a warning if we have missed some sequence numbers"""
+        # Check if we have dropped packets
+        print( pos(self.YPosition[streamid], self.x_location+72) + colorama.Fore.MAGENTA+colorama.Back.CYAN+ "Missed Continutiy")
+

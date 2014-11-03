@@ -8,18 +8,19 @@
 #
 # Copyright 2014 Diarmuid Collins
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#    This program is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License
+#    as published by the Free Software Foundation; either version 2
+#    of the License, or (at your option) any later version.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#-------------------------------------------------------------------------------
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 import struct
@@ -57,12 +58,11 @@ def calc_checksum(pkt):
 class Ethernet():
     '''This class will  unpack an Ethernet packet'''
     HEADERLEN = 14
-    def __init__(self,buf):
+    def __init__(self,buf=None):
         self.type =None
         self.srcmac = None
         self.dstmac = None
         self.payload = None
-        self.unpack(buf)
 
     def unpack(self,buf):
         self.dstmac = unpack48(buf[:6])
@@ -71,6 +71,9 @@ class Ethernet():
         self.payload = buf[Ethernet.HEADERLEN:]
 
 
+    def pack(self):
+        header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff),0x0800)
+        return header + self.payload
 
 
 
@@ -133,12 +136,12 @@ class UDP():
         (self.srcport,self.dstport,self.len,checksum) = struct.unpack_from(self.format,buf)
         self.payload = buf[UDP.HEADERLEN:]
 
-    def testisinetx(self,controlword=0x11000000):
+    def testisinetx(self):
         """Just a simple test to see if the first 4 bytes of the payload are the control word"""
         if len(self.payload) < 4:
             return
         (control_word,) = struct.unpack_from('>I',self.payload)
-        if control_word == controlword:
+        if control_word == 0x11000000:
             self.isinetx = True
 
     def pack(self):
@@ -173,15 +176,15 @@ class AFDX():
 
     def unpacksrcmac(self,mac):
         srcconstantf = mac >> 24
-        if srcconstantf != AFDX.SRCMAC_CONST:
-            raise ValueError('Expected constant field of {:#x} in SrcMac Address'.format(AFDX.SRCMAC_CONST))
-        (self.networkID,self.equipmentID,self.interfaceID) = struct.unpack_from('BBB',mac[:3])
-        self.interfaceID = self.interfaceID >> 5
+        #if srcconstantf != AFDX.SRCMAC_CONST:
+        #    raise ValueError('Expected constant field of {:#x} in SrcMac Address'.format(AFDX.SRCMAC_CONST))
+        #(self.networkID,self.equipmentID,self.interfaceID) = struct.unpack_from('BBB',mac[:3])
+        #self.interfaceID = self.interfaceID >> 5
 
     def set_dstmac(self,mac):
         (dstconstantf,vlink) = struct.unpack_from('>IH',mac)
-        if dstconstantf != AFDX.DSTMAC_CONST:
-            raise ValueError('Expected constant field of {:#x} in DestMac Address'.format(AFDX.DSTMAC_CONST))
+        #if dstconstantf != AFDX.DSTMAC_CONST:
+        #    raise ValueError('Expected constant field of {:#x} in DestMac Address'.format(AFDX.DSTMAC_CONST))
         self.vlink = vlink
 
     def pack(self):
