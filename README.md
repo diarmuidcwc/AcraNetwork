@@ -13,13 +13,18 @@ A collection of classes for use in de-com of iNetX packets. Applies to both pcap
 * Pcap : Class and helper methods for reading pcap files
 * McastSocket : Class to bind to ports to capture multicast packets
 
-#INSTALL
+#Install
 Install using the standard setuptools install method
 ```
 python setup.py install
 ```
 
-USAGE
-~~~~~~~~~
+#Usage
 The examples show some basic usage of the Classes.
 pcap_to_ascii.py will read in pcap files and dump out ascii representations of the module
+
+
+#To Make a Distribution
+```
+python setup.py sdist bdist_wininst upload
+```
