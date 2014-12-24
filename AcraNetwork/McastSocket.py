@@ -27,7 +27,8 @@
 import socket
 
 class McastSocket(socket.socket):
-    def __init__(self, local_port, reuse=False):
+    '''Create a multicast udp socket'''
+    def __init__(self, local_port=0, reuse=False):
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         if(reuse):
             self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -35,7 +36,11 @@ class McastSocket(socket.socket):
                 self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.bind(('', local_port))
 
-    def mcast_add(self, addr, iface):
+    def mcast_add(self, addr, iface="0.0.0.0"):
+        '''Add a multicast address to an interface
+        :type addr: str
+        :type iface: str
+        '''
         self.setsockopt(
             socket.IPPROTO_IP,
             socket.IP_ADD_MEMBERSHIP,

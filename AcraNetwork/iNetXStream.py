@@ -90,9 +90,9 @@ class iNetXStream(socket.socket):
             # fill the payload
             if self.parserblocks > 0:
                 # we want to create a parser aligned payload
-                packet.parserpayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
+                packet.parserPayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
             else:
-                packet.randompayload(self.payloadsize)
+                packet.randomPayload(self.payloadsize)
 
             # build it
             packet.buildpacket()
@@ -171,9 +171,9 @@ class iNetXStream(socket.socket):
             # fill the payload
             if self.parserblocks > 0:
                 # we want to create a parser aligned payload
-                packet.parserpayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
+                packet.parserPayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
             else:
-                packet.randompayload(self.payloadsize)
+                packet.randomPayload(self.payloadsize)
 
             # build it
             packet.pack()

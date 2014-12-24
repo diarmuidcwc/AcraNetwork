@@ -22,7 +22,6 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import struct
-import socket
 import iNetX
 import os
 import SimpleEthernet
@@ -31,15 +30,19 @@ import time
 
 
 class Pcap():
-
+    GLOBAL_HEADER_FORMAT = '<IhhiIII'
+    RECORD_HEADER_FORMAT = '<IIII'
 
     def __init__(self,filename,forreading=True):
-        """Class for parsing pcap file.
+        '''Class for parsing pcap file.
         Create a new pcap object passing in the pcapfilename.
-        Then call the other methods to parse the file """
+        Then call the other methods to parse the file
+
+        :type filename: str
+        :type forreading: bool
+        '''
+
         self.filename = filename
-        self.glbhdrformat = '<IhhiIII'
-        self.recordheader = '<IIII'
         self.bytesread=0
 
         if forreading:
@@ -64,20 +67,20 @@ class Pcap():
 
     def ReadGlbHeader(self):
         """This method will read the pcap global header and unpack it. This should be the first method to call"""
-        headersize=struct.calcsize(self.glbhdrformat)
+        headersize=struct.calcsize(Pcap.GLOBAL_HEADER_FORMAT)
         header = self.fopen.read(headersize)
         self.bytesread += headersize
-        (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(self.glbhdrformat,header)
+        (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(Pcap.GLOBAL_HEADER_FORMAT,header)
 
     def WriteGlbHeader(self):
-        header = struct.pack(self.glbhdrformat,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
+        header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
         self.fopen.write(header)
 
     def WriteAPacket(self,packet):
         currenttime = time.time()
         usec = int((currenttime%1)*1e6)
         pkt_len = len(packet)
-        header = struct.pack(self.recordheader,int(currenttime),usec,pkt_len,pkt_len)
+        header = struct.pack(Pcap.RECORD_HEADER_FORMAT,int(currenttime),usec,pkt_len,pkt_len)
         self.fopen.write(header+packet)
 
     def Close(self):
@@ -92,9 +95,9 @@ class Pcap():
             raise IOError
 
         # otherwise pull our the PCAP header size. Should really push headersize to the object self
-        headersize=struct.calcsize(self.recordheader)
+        headersize=struct.calcsize(Pcap.RECORD_HEADER_FORMAT)
         pcapheader = self.fopen.read(headersize)
-        (sec,usec,incl_len,orig_len) = struct.unpack(self.recordheader,pcapheader)
+        (sec,usec,incl_len,orig_len) = struct.unpack(Pcap.RECORD_HEADER_FORMAT,pcapheader)
 
         # now we have a packet then lets deconstruct it. first read in the ethernet header and unpack it
         eth_header = SimpleEthernet.Ethernet(self.fopen.read(SimpleEthernet.Ethernet.HEADERLEN))
@@ -152,10 +155,10 @@ class Pcap():
             raise IOError
 
         # otherwise pull our the PCAP header size. Should really push headersize to the object self
-        headersize=struct.calcsize(self.recordheader)
+        headersize=struct.calcsize(Pcap.RECORD_HEADER_FORMAT)
         pcapheader = self.fopen.read(headersize)
         self.bytesread +=headersize
-        (sec,usec,incl_len,orig_len) = struct.unpack(self.recordheader,pcapheader)
+        (sec,usec,incl_len,orig_len) = struct.unpack(Pcap.RECORD_HEADER_FORMAT,pcapheader)
 
         # now we have a packet then lets deconstruct it. first read in the packet
         eth_pkt = SimpleEthernet.Ethernet(self.fopen.read(orig_len))

@@ -58,13 +58,22 @@ def calc_checksum(pkt):
 class Ethernet():
     '''This class will  unpack an Ethernet packet'''
     HEADERLEN = 14
+
     def __init__(self,buf=None):
-        self.type =None
+        '''Constructor for and Ethernet packet'''
+        self.type = None
+        """:type : int"""
         self.srcmac = None
+        """:type : int"""
         self.dstmac = None
+        """:type : int"""
         self.payload = None
+        """:type : str"""
 
     def unpack(self,buf):
+        '''Unpack a buffer into an Ethernet object
+        :type buf: str
+        '''
         self.dstmac = unpack48(buf[:6])
         self.srcmac = unpack48(buf[6:12])
         (self.type,) = struct.unpack_from('>H',buf,12)
@@ -81,6 +90,7 @@ class IP():
     '''This class will  unpack an IP packet '''
     HEADERLEN = 20
     PROTOCOLS = {"ICMP":0x01,"TCP":0x6,"UDP":0x11}
+
     def __init__(self,buf=None):
         self.format = '>BBHHBBBBHII'
         self.srcip = None

@@ -22,72 +22,79 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import socket
 import struct
-import os
-from ParserAligned import ParserAlignedPacket as iNetXParser
+
 
 class iNetX ():
-    CONTROLWORD = 0x11000000
-    HEADER_LEN = 28
+    '''Class to pack and unpack iNetX payloads. iNet-X is an open payload format for use
+    in FTI networks. It is usually transmitted in a UDP packet containing parameter data
+    acquired from sensors and buses'''
+    DEF_CONTROL_WORD = 0x11000000
+    FORMAT = '>LLLLLLL'
+    HEADER_LENGTH = struct.calcsize(FORMAT)
+
+
     def __init__(self):
-        """Class for generating an iNetX packet. """
-        self.inetxcontrol = iNetX.CONTROLWORD
+        '''Creator method for an iNetX class'''
+        self.inetxcontrol = iNetX.DEF_CONTROL_WORD
+        """:type : int"""
         self.streamid = None
+        """:type : int"""
         self.sequence = None
+        """:type : int"""
         self.packetlen = None
+        """:type : int"""
         self.ptptimeseconds = None
+        """:type : int"""
         self.ptptimenanoseconds = None
+        """:type : int"""
         self.pif = None
-        self.payload = None #string containing payload
-        self.bytes = None
-        self.packetstrut = struct.Struct('>LLLLLLL')
+        """:type : int"""
+        self.payload = None
+        """:type : str"""
 
-        self.s = None
-
+        self._packetStrut = struct.Struct(iNetX.FORMAT)
 
 
 
     def pack(self):
-        '''Pack the packet into a byte  format'''
-        self.packetlen =  len(self.payload)  + iNetX.HEADER_LEN
+        '''Pack the packet into a binary format and return as a string
+        :rtype: str
+        '''
+        for required_field in (self.inetxcontrol,self.streamid,self.sequence,self.ptptimeseconds,self.ptptimenanoseconds,self.pif,self.payload):
+            if required_field == None:
+                raise ValueError("A required field in the iNet-X packet is not defined")
+
+        self.packetlen =  len(self.payload)  + iNetX.HEADER_LENGTH
         packetvalues = (self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif )
-        self.packet = self.packetstrut.pack(*packetvalues) + self.payload
-        self._calcsize()
+        packet = self._packetStrut.pack(*packetvalues) + self.payload
+        return packet
+
 
     def unpack(self,buf,checkcontrol=False):
-        '''Unpack a raw byte stream to an iNetX object'''
-        self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif  = self.packetstrut.unpack_from(buf)
+        '''
+        Unpack a raw byte stream to an iNetX object.
+        Accepts a buffer to unpack as the required argument
+        :type buf: str
+        :type checkcontrol: bool
+        '''
+        if len(buf) < iNetX.HEADER_LENGTH:
+            raise ValueError ("Buffer is too short to be an iNetX packet")
+        self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif  = self._packetStrut.unpack_from(buf)
         self.packetlen = len(buf)
-        self.payload = buf[iNetX.HEADER_LEN:]
+        self.payload = buf[iNetX.HEADER_LENGTH:]
         if checkcontrol == True:
-            if self.inetxcontrol != iNetX.CONTROLWORD:
-                raise ValueError
+            if self.inetxcontrol != iNetX.DEF_CONTROL_WORD:
+                raise ValueError("iNetX control word is not the default word")
 
+    def setPacketTime(self,utctimestamp,nanoseconds=0):
+        ''''Set the packet timestamp
+        :type timestamp: int
+        :type nanoseconds: int
+        '''
+        self.ptptimeseconds = utctimestamp
+        self.ptptimenanoseconds = nanoseconds
 
-
-    def randompayload(self,size):
-        '''Generate a payload of 0x05'''
-        self.payload = ''.join(['\x05' for num in xrange(size)])
-
-
-    def parserpayload(self,parserblocks=1,quadbytes=1,count=0):
-        '''Method will generate a parser aligned data payload. If you use this the performance of the data generation
-        will decrease'''
-        payload_list = []
-        for i in range(parserblocks):
-            parserblock = iNetXParser()
-            parserblock.quadbytes = quadbytes
-            parserblock.messagecount = count+i
-            parserblock.randompayload()
-            parserblock.buildpacket()
-            payload_list.append(parserblock.packet)
-
-        self.payload = "".join(payload_list)
-
-    def _calcsize(self):
-        udp_header_size = 50 # 8 + 14 + 20 + 8
-        self.bytes = len(self.packet) + udp_header_size
 
 
 

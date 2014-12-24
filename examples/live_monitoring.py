@@ -93,7 +93,7 @@ def main():
             avionics_packet = iena.IENA()
             try:
                 avionics_packet.unpack(data,True)
-                avionics_packet.CalcTimeStamp()
+                avionics_packet._calcTimeStamp()
             except ValueError:
                 # We got a length error. Should really handle this better. We could bail on this?
                 packet_count += 1
