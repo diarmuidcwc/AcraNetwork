@@ -58,6 +58,7 @@ def calc_checksum(pkt):
 class Ethernet():
     '''This class will  unpack an Ethernet packet'''
     HEADERLEN = 14
+    TYPE_IP = 0x800
 
     def __init__(self,buf=None):
         '''Constructor for and Ethernet packet'''
@@ -69,6 +70,9 @@ class Ethernet():
         """:type : int"""
         self.payload = None
         """:type : str"""
+
+        if buf != None:
+            self.unpack(buf)
 
     def unpack(self,buf):
         '''Unpack a buffer into an Ethernet object
@@ -103,7 +107,7 @@ class IP():
         self.ihl = 5 # Header len in 32 bit words
         self.dscp = 0
         self.id = 0
-        self.ttl = 0
+        self.ttl = 20
         if buf != None:
             self.unpack(buf)
 

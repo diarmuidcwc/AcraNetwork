@@ -74,7 +74,7 @@ def main():
 
                 # So we loop through the file one packet at a time. This will eventually return an
                 # exception at the end of file so handle that when it occurs
-                (inetx_packet,ip_packet,udp_packet,packetseconds,bcutemp) = pcapfile.ReadNextPacket()
+                (inetx_packet,ip_packet,udp_packet,packetseconds,bcutemp) = pcapfile.readNextiNetXPacket()
 
                 # What string do we want outputted to the screen. The output format is defined in the coloredop class
                 outstring =colouredop.output_format.format(inetx_packet.streamid,ip_packet.srcip,inetx_packet.sequence,datetime.datetime.fromtimestamp(packetseconds).strftime('%H:%M:%S'))
