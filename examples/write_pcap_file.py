@@ -1,4 +1,8 @@
 
+import sys
+sys.path.append("..")
+
+
 import time
 import struct
 import AcraNetwork.IENA as iena
@@ -10,7 +14,7 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 
 # constants
 PCAP_FNAME = "output_test.pcap"
-PACKETS_TO_WRITE = 100
+PACKETS_TO_WRITE = 500000
 
 # Write out a pcapfile with each inetx and iena packet generated
 mypcap = pcap.Pcap(PCAP_FNAME,forreading=False)
@@ -26,8 +30,7 @@ udp_packet.dstport = 4422
 
 
 # Fixed payload for both
-payload = struct.pack(">L",5)
-
+payload = (struct.pack(">B",5) * 1300)
 
 # Create an inetx packet
 myinetx = inetx.iNetX()
@@ -54,13 +57,16 @@ while packets_written < PACKETS_TO_WRITE:
 
     currenttime = int(time.time())
 
-    myiena.sequence += 1
+    myiena.sequence = (myiena.sequence +1) % 65536
     myiena.setPacketTime(currenttime)
     udp_packet.payload = myiena.pack()
     udp_packet.srcport = 5000
     ip_packet.payload = udp_packet.pack()
     ethernet_packet.payload = ip_packet.pack()
-    mypcap.writeAPacket(ethernet_packet.pack())
+    record = pcap.PcapRecord()
+    record.setCurrentTime()
+    record.packet = ethernet_packet.pack()
+    mypcap.writeARecord(record)
 
 
     myinetx.sequence += 1
@@ -69,7 +75,9 @@ while packets_written < PACKETS_TO_WRITE:
     udp_packet.srcport = 5001
     ip_packet.payload = udp_packet.pack()
     ethernet_packet.payload = ip_packet.pack()
-    mypcap.writeAPacket(ethernet_packet.pack())
+    record.setCurrentTime()
+    record.packet = ethernet_packet.pack()
+    mypcap.writeARecord(record)
 
     packets_written += 2
 

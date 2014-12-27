@@ -71,7 +71,7 @@ def main():
                 # So we loop through the file one packet at a time. This will eventually return an
                 # exception at the end of file so handle that when it occurs
 
-                (eth_packet,ip_packet,udp_packet) = pcapfile.ReadNextUDPPacket()
+                (eth_packet,ip_packet,udp_packet) = pcapfile._readNextUDPPacket()
                 if udp_packet.isinetx:  # This is a rough guess assuming the control word is 0x11000000.
                                         # If it's not then you can pass an argument to isinetx
                     inetx_packet = inetx.iNetX()
