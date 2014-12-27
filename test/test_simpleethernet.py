@@ -5,6 +5,7 @@ import os
 
 import unittest
 import AcraNetwork.SimpleEthernet as SimpleEthernet
+import AcraNetwork.Pcap as pcap
 import struct
 
 class SimpleEthernetTest(unittest.TestCase):
@@ -86,6 +87,29 @@ class SimpleEthernetTest(unittest.TestCase):
         u = SimpleEthernet.UDP()
         dymmypayload =  struct.pack('H',0xa5)
         self.assertRaises(ValueError,lambda : u.unpack(dymmypayload))
+
+    ######################
+    # Read a complete pcap file
+    ######################
+    def test_readUDP(self):
+        p = pcap.Pcap("test_input.pcap")
+        p.readGlobalHeader()
+        mypcaprecord = p.readAPacket()
+        e = SimpleEthernet.Ethernet()
+        e.unpack(mypcaprecord.packet)
+        self.assertEqual(e.srcmac,0x0018f8b84454)
+        self.assertEqual(e.dstmac,0xe0f847259336)
+        self.assertEqual(e.type,0x0800)
+
+        i = SimpleEthernet.IP()
+        i.unpack(e.payload)
+        self.assertEqual(i.dstip,"192.168.1.110")
+        self.assertEqual(i.srcip,"213.199.179.165")
+        self.assertEqual(i.protocol,0x6)
+        self.assertEqual(i.ttl,48)
+        self.assertEqual(i.flags,0x2)
+        self.assertEqual(i.id,0x4795)
+        self.assertEqual(i.len,56)
 
 if __name__ == '__main__':
     unittest.main()

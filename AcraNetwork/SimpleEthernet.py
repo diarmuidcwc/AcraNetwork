@@ -132,6 +132,7 @@ class IP():
         if len(buf) < IP.IP_HEADER_SIZE:
             raise ValueError("Buffer too short for to be an IP packet")
         (na1,self.dscp, self.len,self.id,self.flags,na3, self.ttl, self.protocol, checksum, self.srcip,self.dstip) = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
+        self.flags = self.flags >> 5
         #self.version = na1 >>4
         #self.ihl = na1 & 0xf
         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
