@@ -4,6 +4,8 @@ sys.path.append("..")
 
 import unittest
 import AcraNetwork.iNetX as inetx
+import AcraNetwork.SimpleEthernet as SimpleEthernet
+import AcraNetwork.Pcap as pcap
 
 import struct
 
@@ -41,6 +43,28 @@ class iNetXTest(unittest.TestCase):
         self.assertEqual(i.packetlen,30)
         self.assertEqual(i.pif,0)
         self.assertEqual(i.payload,struct.pack('H',0x5))
+
+    def test_unpackiNetFromPcap(self):
+        p = pcap.Pcap("inetx_test.pcap")
+        p.readGlobalHeader()
+        mypcaprecord = p.readAPacket()
+        e = SimpleEthernet.Ethernet()
+        e.unpack(mypcaprecord.packet)
+        ip =  SimpleEthernet.IP()
+        ip.unpack(e.payload)
+        u = SimpleEthernet.UDP()
+        u.unpack(ip.payload)
+        # Now I have a payload that will be an inetx packet
+        i = inetx.iNetX()
+        i.unpack(u.payload)
+        self.assertEquals(i.inetxcontrol,0x11000000)
+        self.assertEquals(i.streamid,0xca)
+        self.assertEquals(i.sequence,1011)
+        self.assertEquals(i.packetlen,72)
+        self.assertEquals(i.ptptimeseconds,0x2f3)
+        self.assertEquals(i.ptptimenanoseconds,0x2cb4158c)
+        self.assertEquals(i.pif,0)
+
 
 
 

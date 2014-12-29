@@ -84,7 +84,7 @@ class iNetX ():
         self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif  = self._packetStrut.unpack_from(buf)
 
         if self.packetlen != len(buf):
-            raise ValueError("Length of buffer {} does not match length field {}".format(len(buf),self.packetlen))
+            raise ValueError("Length of buffer 0x{:X} does not match length field 0x{:X}".format(len(buf),self.packetlen))
 
         self.payload = buf[iNetX.INETX_HEADER_LENGTH:]
 

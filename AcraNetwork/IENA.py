@@ -34,8 +34,8 @@ class IENA ():
     '''Class to pack and unpack IENA(tm) payloads. IENA(tm) is an proprietary payload format
     developed by Airbus for use in FTI networks. It is usually transmitted in a UDP packet
      containing parameter data acquired from sensors and buses'''
-    FORMAT = '>HHHIBBH'
-    HEADER_LENGTH = struct.calcsize(FORMAT)
+    IENA_HEADER_FORMAT = '>HHHIBBH'
+    IENA_HEADER_LENGTH = struct.calcsize(IENA_HEADER_FORMAT)
     TRAILER_LENGTH = 2
 
 
@@ -60,7 +60,7 @@ class IENA ():
         self.payload = None #string containing payload
         """:type : str"""
 
-        self._packetStrut = struct.Struct(IENA.FORMAT)
+        self._packetStrut = struct.Struct(IENA.IENA_HEADER_FORMAT)
         # only calculate this once
         self._startOfYear = datetime.datetime(datetime.datetime.today().year, 1, 1, 0, 0, 0,0)
         self.lengthError = False # Flag to verify the buffer length
@@ -76,7 +76,7 @@ class IENA ():
         :type ExceptionOnLengthError: bool
         '''
         # Some checking
-        if len(buf) < IENA.HEADER_LENGTH:
+        if len(buf) < IENA.IENA_HEADER_LENGTH:
             raise ValueError("Buffer passed to unpack is too small to be an IENA packet")
 
         (self.key, self.size, timehi, timelo, self.keystatus, self.status, self.sequence)  = self._packetStrut.unpack_from(buf)
@@ -87,7 +87,7 @@ class IENA ():
             if ExceptionOnLengthError:
                 raise ValueError
 
-        self.payload = buf[IENA.HEADER_LENGTH:-2]
+        self.payload = buf[IENA.IENA_HEADER_LENGTH:-2]
         self.endfield = buf[-2:] # last two bytes are the trailer
 
 
@@ -101,7 +101,7 @@ class IENA ():
             if required_field == None:
                 raise ValueError("A required field in the IENA packet is not defined")
 
-        self.size =  (len(self.payload)  + IENA.HEADER_LENGTH + IENA.TRAILER_LENGTH) /2 # size is in words
+        self.size =  (len(self.payload)  + IENA.IENA_HEADER_LENGTH + IENA.TRAILER_LENGTH) /2 # size is in words
 
         packetvalues = (self.key,self.size,timehi,timelo,self.keystatus,self.status,self.sequence)
         packet = self._packetStrut.pack(*packetvalues) + self.payload + struct.pack('>H',self.endfield)
