@@ -14,12 +14,12 @@ sufficient for the network systems used in the KAM500 networks
 
 #Install
 Install using the standard setuptools install method
-```
-python setup.py install
 ```shell
+python setup.py install
+```
 or clone this repository to your local directory
 
-```
+```shell
 git clone https://github.com/diarmuidcwc/AcraNetwork.git
 ```
 
