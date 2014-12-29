@@ -24,6 +24,8 @@
 #               Finds all iNetX packets and dumps the ASCII representation of the
 #               data to the output
 #-------------------------------------------------------------------------------
+import sys
+sys.path.append("..")
 
 import socket,os,struct,sys
 import argparse
@@ -32,7 +34,7 @@ import datetime, time
 
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.Pcap as pcap
-from AcraNetwork.SimpleEthernet import mactoreadable
+import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.ParserAligned as ParserAligned
 
 def main():
@@ -65,15 +67,23 @@ def main():
         if not os.path.exists(args.outdir):
             os.mkdir(args.outdir)
 
+        pcapfile.readGlobalHeader()
         while True:
             try:
 
                 # So we loop through the file one packet at a time. This will eventually return an
                 # exception at the end of file so handle that when it occurs
 
-                (eth_packet,ip_packet,udp_packet) = pcapfile._readNextUDPPacket()
-                if udp_packet.isinetx:  # This is a rough guess assuming the control word is 0x11000000.
-                                        # If it's not then you can pass an argument to isinetx
+
+                pcaprecord = pcapfile.readAPacket()
+                eth = SimpleEthernet.Ethernet()
+                eth.unpack(pcaprecord.packet)
+                ip = SimpleEthernet.IP()
+                ip.unpack(eth.payload)
+                udp_packet = SimpleEthernet.UDP()
+                udp_packet.unpack(ip.payload)
+                (ctrl_word,) = struct.unpack('>I',udp_packet.payload[:4])
+                if ctrl_word == 0x11000000:
                     inetx_packet = inetx.iNetX()
                     # Unpack the udp payload as an iNetx packet
                     inetx_packet.unpack(udp_packet.payload)

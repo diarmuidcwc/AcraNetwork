@@ -65,19 +65,36 @@ class IENATest(unittest.TestCase):
         pass
 
     def test_unpackIEANFromPcap(self):
+        '''Read all the IENA packets in a pcap file and check each field'''
         p = pcap.Pcap("iena_test.pcap")
         p.readGlobalHeader()
-        mypcaprecord = p.readAPacket()
-        e = SimpleEthernet.Ethernet()
-        e.unpack(mypcaprecord.packet)
-        ip =  SimpleEthernet.IP()
-        ip.unpack(e.payload)
-        u = SimpleEthernet.UDP()
-        u.unpack(ip.payload)
-        # Now I have a payload that will be an inetx packet
-        i = iena.IENA()
-        i.unpack(u.payload)
-        pass
+        sequencenum = 195
+        exptime = 0x1d102f800
+        while True:
+            # Loop through the pcap file reading one packet at a time
+            try:
+                mypcaprecord = p.readAPacket()
+            except IOError:
+                # End of file reached
+                break
+            e = SimpleEthernet.Ethernet()
+            e.unpack(mypcaprecord.packet)
+            ip =  SimpleEthernet.IP()
+            ip.unpack(e.payload)
+            u = SimpleEthernet.UDP()
+            u.unpack(ip.payload)
+            # Now I have a payload that will be an iena packet
+            i = iena.IENA()
+            i.unpack(u.payload)
+            self.assertEquals(i.key,0x1a)
+            self.assertEquals(i.size,24)
+            self.assertEquals(i.status,0)
+            self.assertEquals(i.keystatus,0)
+            self.assertEquals(i.sequence,sequencenum)
+            sequencenum += 1
+            self.assertEqual(i.timeusec,exptime)
+            exptime += 0x186a0 # The timestamp increments by a fixed number of microseconds
+            self.assertEquals(i.endfield,0xdead)
 
 
 

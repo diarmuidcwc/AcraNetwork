@@ -1,4 +1,5 @@
-
+import sys
+sys.path.append("..")
 import time
 import struct
 import AcraNetwork.IENA as iena
@@ -8,7 +9,7 @@ import AcraNetwork.McastSocket as mcast
 
 # simple application that tests building and sending of iena and inetx packets
 
-UDP_IP = "235.0.0.2"
+UDP_IP = "235.0.0.1"
 UDP_PORT = 5005
 
 print "UDP target IP:", UDP_IP

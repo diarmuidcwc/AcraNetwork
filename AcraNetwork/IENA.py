@@ -88,7 +88,7 @@ class IENA ():
                 raise ValueError
 
         self.payload = buf[IENA.IENA_HEADER_LENGTH:-2]
-        self.endfield = buf[-2:] # last two bytes are the trailer
+        (self.endfield,) = struct.unpack(">H",buf[-2:]) # last two bytes are the trailer
 
 
     def pack(self):

@@ -8,6 +8,8 @@
 # Copyright:   (c) SPACE 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
+import sys
+sys.path.append("..")
 
 import socket,os,sys
 import argparse
@@ -83,8 +85,10 @@ def main():
         # and unpack the received data into these objects
         if is_inetx:
             avionics_packet = inetx.iNetX()
+            data_len = len(data)
+            avionics_packet.unpack(data)
             try:
-                avionics_packet.unpack(data,True)
+                avionics_packet.unpack(data)
             except ValueError:
                 # This isn't an inetx packet
                 packet_count += 1
@@ -92,8 +96,7 @@ def main():
         else:
             avionics_packet = iena.IENA()
             try:
-                avionics_packet.unpack(data,True)
-                avionics_packet._calcTimeStamp()
+                avionics_packet.unpack(data)
             except ValueError:
                 # We got a length error. Should really handle this better. We could bail on this?
                 packet_count += 1
@@ -107,7 +110,7 @@ def main():
             colouredop.PrintALine(outstring,avionics_packet.sequence,avionics_packet.streamid)
             colouredop.PrintDroppedPacket(avionics_packet.sequence,avionics_packet.streamid,packet_count,udp_port)
         else:
-            outstring =colouredop.output_format.format(avionics_packet.key,udpsrcport,avionics_packet.sequence,datetime.datetime.fromtimestamp(avionics_packet.timestamp).strftime('%H:%M:%S'))
+            outstring =colouredop.output_format.format(avionics_packet.key,udpsrcport,avionics_packet.sequence,datetime.datetime.fromtimestamp(avionics_packet._getPacketTime()).strftime('%H:%M:%S'))
             colouredop.PrintALine(outstring,avionics_packet.sequence,avionics_packet.key)
 
         packet_count += 1
