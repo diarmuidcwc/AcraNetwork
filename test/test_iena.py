@@ -65,7 +65,7 @@ class IENATest(unittest.TestCase):
         pass
 
     def test_unpackIEANFromPcap(self):
-        p = pcap.Pcap("inetx_test.pcap")
+        p = pcap.Pcap("iena_test.pcap")
         p.readGlobalHeader()
         mypcaprecord = p.readAPacket()
         e = SimpleEthernet.Ethernet()
