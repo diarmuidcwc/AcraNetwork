@@ -153,7 +153,7 @@ class Pcap(object):
         pcaprecord = PcapRecord()
         pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
         pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
-        self.bytesread += pcaprecord.incl_len
+        self.bytesread += pcaprecord.incl_len+Pcap.RECORD_HEADER_SIZE
 
         return pcaprecord
 
