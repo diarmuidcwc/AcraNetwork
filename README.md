@@ -16,7 +16,7 @@ sufficient for the network systems used in the KAM500 networks
 Install using the standard setuptools install method
 ```
 python setup.py install
-```
+```shell
 or clone this repository to your local directory
 
 ```
@@ -101,7 +101,7 @@ file is not read or written in one operation but in pieces. This keeps the memor
 
 To create a new pcap object you need to supply a filename and a flag to indicate if you want to read or write to this
 file. eg
-```
+```python
 pcap_for_reading = pcap.Pcap("input.pcap") 						# Create a new Pcap object based on reading from the file
 pcap_for_writing = pcap.Pcap("output.pcap",forreading=False)	# Create a new Pcap object that will be writting to a file
 ```
@@ -140,7 +140,7 @@ directory or in the unittest folder
 
 To read in a pcap file with multiple ethernet packets all containing an iNetX packet wrapped in UDP
 
-```
+```python
 import sys
 sys.path.append("..")
 
