@@ -30,8 +30,8 @@ class iNetX ():
     in FTI networks. It is usually transmitted in a UDP packet containing parameter data
     acquired from sensors and buses'''
     DEF_CONTROL_WORD = 0x11000000
-    FORMAT = '>LLLLLLL'
-    HEADER_LENGTH = struct.calcsize(FORMAT)
+    INETX_HEADER_FORMAT = '>LLLLLLL'
+    INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
 
 
     def __init__(self):
@@ -53,7 +53,7 @@ class iNetX ():
         self.payload = None
         """:type : str"""
 
-        self._packetStrut = struct.Struct(iNetX.FORMAT)
+        self._packetStrut = struct.Struct(iNetX.INETX_HEADER_FORMAT)
 
 
 
@@ -65,27 +65,29 @@ class iNetX ():
             if required_field == None:
                 raise ValueError("A required field in the iNet-X packet is not defined")
 
-        self.packetlen =  len(self.payload)  + iNetX.HEADER_LENGTH
+        self.packetlen =  len(self.payload)  + iNetX.INETX_HEADER_LENGTH
         packetvalues = (self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif )
         packet = self._packetStrut.pack(*packetvalues) + self.payload
         return packet
 
 
-    def unpack(self,buf,checkcontrol=False):
+    def unpack(self,buf):
         '''
         Unpack a raw byte stream to an iNetX object.
         Accepts a buffer to unpack as the required argument
         :type buf: str
         :type checkcontrol: bool
         '''
-        if len(buf) < iNetX.HEADER_LENGTH:
+        if len(buf) < iNetX.INETX_HEADER_LENGTH:
             raise ValueError ("Buffer is too short to be an iNetX packet")
+
         self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif  = self._packetStrut.unpack_from(buf)
-        self.packetlen = len(buf)
-        self.payload = buf[iNetX.HEADER_LENGTH:]
-        if checkcontrol == True:
-            if self.inetxcontrol != iNetX.DEF_CONTROL_WORD:
-                raise ValueError("iNetX control word is not the default word")
+
+        if self.packetlen != len(buf):
+            raise ValueError("Length of buffer 0x{:X} does not match length field 0x{:X}".format(len(buf),self.packetlen))
+
+        self.payload = buf[iNetX.INETX_HEADER_LENGTH:]
+
 
     def setPacketTime(self,utctimestamp,nanoseconds=0):
         ''''Set the packet timestamp

@@ -28,16 +28,14 @@ import socket
 import array
 
 def unpack48(x):
+    '''Convert a 48 bit buffer into an integer'''
     x2, x3 = struct.unpack('>HI', x)
     return x3 | (x2 << 32)
 
-def pack24(x):
-    x1 = x >> 16
-    x2 = x & 0xffff
-    return struct.pack('BH',x1,x2)
 
 
 def mactoreadable(macaddress):
+    '''Convert a macaddress into the readable form'''
     mac_string = ""
     for i in range(5,0,-1):
         eachbyte = 0xff & int(macaddress >> (i*8))
@@ -46,6 +44,7 @@ def mactoreadable(macaddress):
 
 
 def calc_checksum(pkt):
+    '''Calculate the checksum of a packet'''
     if len(pkt) % 2 == 1:
         pkt += "\0"
     s = sum(array.array("H", pkt))
@@ -55,9 +54,10 @@ def calc_checksum(pkt):
     return s & 0xffff
 
 
-class Ethernet():
-    '''This class will  unpack an Ethernet packet'''
+class Ethernet(object):
+    '''This is simple class to build or deconstruct an Ethernet packet'''
     HEADERLEN = 14
+    TYPE_IP = 0x800
 
     def __init__(self,buf=None):
         '''Constructor for and Ethernet packet'''
@@ -70,6 +70,9 @@ class Ethernet():
         self.payload = None
         """:type : str"""
 
+        if buf != None:
+            self.unpack(buf)
+
     def unpack(self,buf):
         '''Unpack a buffer into an Ethernet object
         :type buf: str
@@ -81,53 +84,82 @@ class Ethernet():
 
 
     def pack(self):
+        '''Pack the Ethernet object into a bufferr
+        :rtype : str
+        '''
+        if self.dstmac == None or self.srcmac == None or self.type == None or self.payload == None:
+            raise ValueError("All thre required Ethernet fields are not complete")
         header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff),0x0800)
         return header + self.payload
 
 
 
 class IP():
-    '''This class will  unpack an IP packet '''
-    HEADERLEN = 20
-    PROTOCOLS = {"ICMP":0x01,"TCP":0x6,"UDP":0x11}
+    '''Create or unpack an IP packet'''
+    PROTOCOLS = {"ICMP":0x01,"IGMP" : 0X02, "TCP":0x6,"UDP":0x11}
+    IP_HEADER_FORMAT = '>BBHHBBBBHII'
+    IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
 
     def __init__(self,buf=None):
-        self.format = '>BBHHBBBBHII'
         self.srcip = None
+        """:type str"""
         self.dstip = None
+        """:type str"""
         self.len = None
+        """:type int"""
         self.flags = 0x0
+        """:type int"""
         self.protocol = IP.PROTOCOLS['UDP'] # default to udp
+        """:type int"""
         self.payload = None
+        """:type str"""
         self.version = 4 # IPV4
+        """:type int"""
         self.ihl = 5 # Header len in 32 bit words
+        """:type int"""
         self.dscp = 0
+        """:type int"""
         self.id = 0
-        self.ttl = 0
+        """:type int"""
+        self.ttl = 20
+        """:type int"""
         if buf != None:
             self.unpack(buf)
 
     def unpack(self,buf):
-        (na1,self.dscp, self.len,self.id,self.flags,na3, self.ttl, self.protocol, checksum, self.srcip,self.dstip) = struct.unpack_from(self.format,buf)
+        '''Unpack a buffer into an ethernet object'''
+
+        if len(buf) < IP.IP_HEADER_SIZE:
+            raise ValueError("Buffer too short for to be an IP packet")
+        (na1,self.dscp, self.len,self.id,self.flags,na3, self.ttl, self.protocol, checksum, self.srcip,self.dstip) = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
+        self.flags = self.flags >> 5
         #self.version = na1 >>4
         #self.ihl = na1 & 0xf
         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
-        self.payload = buf[IP.HEADERLEN:]
+        self.payload = buf[IP.IP_HEADER_SIZE:]
 
     def pack(self):
+        '''Pack the IP object into a string buffer
+        :rtype :str
+        '''
+        for word in [self.dscp,self.id,self.flags,self.ttl,self.protocol,self.srcip,self.dstip]:
+            if word == None:
+                raise ValueError("All required IP payloads not defined")
+
         (srcip_as_int,) = struct.unpack('!I',socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
-        self.len = 20+len(self.payload)
-        header = struct.pack(self.format,0x45,self.dscp,self.len,self.id,self.flags,0,self.ttl,self.protocol,0,srcip_as_int,dstip_as_int)
+        self.len = IP.IP_HEADER_SIZE+len(self.payload)
+        header = struct.pack(IP.IP_HEADER_FORMAT,0x45,self.dscp,self.len,self.id,self.flags,0,self.ttl,self.protocol,0,srcip_as_int,dstip_as_int)
         checksum = calc_checksum(header)
         header = header[:10] + struct.pack('H',checksum) + header[12:]
         return header + self.payload
 
 
 class UDP():
-    '''This class will  unpack a UDP packet just pulling out the ports'''
-    HEADERLEN = 8
+    '''Class to build and unpack a UDP packet'''
+    UDP_HEADER_FORMAT = '>HHHH'
+    UDP_HEADER_SIZE = struct.calcsize(UDP_HEADER_FORMAT)
     def __init__(self,buf=None):
 
         self.srcport = None
@@ -135,28 +167,27 @@ class UDP():
         self.len = None
         self.payload = None
 
-        self.isinetx = False
-
-        self.format = '>HHHH'
         if buf != None:
             self.unpack(buf)
-            self.testisinetx()
 
     def unpack(self,buf):
-        (self.srcport,self.dstport,self.len,checksum) = struct.unpack_from(self.format,buf)
-        self.payload = buf[UDP.HEADERLEN:]
+        '''Unpack a buffer into a UDP object'''
 
-    def testisinetx(self):
-        """Just a simple test to see if the first 4 bytes of the payload are the control word"""
-        if len(self.payload) < 4:
-            return
-        (control_word,) = struct.unpack_from('>I',self.payload)
-        if control_word == 0x11000000:
-            self.isinetx = True
+        if len(buf) < UDP.UDP_HEADER_SIZE:
+            raise ValueError("Buffer too short to be a UDP packet")
+        (self.srcport,self.dstport,self.len,checksum) = struct.unpack_from(UDP.UDP_HEADER_FORMAT,buf)
+        self.payload = buf[UDP.UDP_HEADER_SIZE:]
 
     def pack(self):
-        self.len = len(self.payload) + 8
-        return struct.pack(self.format,self.srcport,self.dstport,self.len,0) + self.payload
+        '''Pack a UDP object into a buffer
+        :rtype :str
+        '''
+        if self.srcport == None or self.dstport == None or self.payload == None:
+            raise ValueError("All UDP fields need to be defined to pack the payload")
+
+        self.len = len(self.payload) + UDP.UDP_HEADER_SIZE
+        return struct.pack(UDP.UDP_HEADER_FORMAT,self.srcport,self.dstport,self.len,0) + self.payload
+
 
 class AFDX():
     '''This class will  unpack an AFDX packet'''

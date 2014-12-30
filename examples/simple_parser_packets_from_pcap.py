@@ -18,7 +18,7 @@ import datetime, time
 
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.Pcap as pcap
-from AcraNetwork.SimpleEthernet import mactoreadable
+import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.ParserAligned as ParserAligned
 
 
@@ -41,10 +41,15 @@ def main():
         try:
             # So we loop through the file one packet at a time. This will eventually return an
             # exception at the end of file so handle that when it occurs
-            (eth_packet,ip_packet,udp_packet) = pcapfile.ReadNextUDPPacket()
-
-
-            if udp_packet.isinetx: # This is a rough guess assuming the control word is 0x11000000
+            pcaprecord = pcapfile.readAPacket()
+            eth = SimpleEthernet.Ethernet()
+            eth.unpack(pcaprecord.packet)
+            ip = SimpleEthernet.IP()
+            ip.unpack(eth.payload)
+            udp_packet = SimpleEthernet.UDP()
+            udp_packet.unpack(ip.payload)
+            (ctrl_word,) = struct.unpack('>I',udp_packet.payload[:4])
+            if ctrl_word == 0x11000000: # This is a rough guess assuming the control word is 0x11000000
                 inetx_packet = inetx.iNetX()
                 inetx_packet.unpack(udp_packet.payload)
 

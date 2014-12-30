@@ -30,7 +30,10 @@ def pos(y,x):
 
 #pos = lambda y, x: '\x1b[%d;%dH' % (y, x)
 def clear():
-    os.system('cls')
+    if os.name == "nt":
+        os.system('cls')
+    else:
+        os.system('reset')
     return
 #clear = lambda: os.system('cls')
 

@@ -28,10 +28,62 @@ import SimpleEthernet
 import CustomiNetXPackets
 import time
 
+class PcapRecord(object):
+    '''Class that can be used to store one pcap record'''
+    def __init__(self):
+        self.sec = None
+        """:type : int"""
+        self.usec = None
+        """:type : int"""
+        self.incl_len = None
+        """:type : int"""
+        self.orig_len = None
+        """:type : int"""
+        self._packet = None
+        """:type : str"""
 
-class Pcap():
+    # Use a property on packet so that the length is triggered on it changing
+    @property
+    def packet(self):
+        return self._packet
+
+    @packet.setter
+    def packet(self,p):
+        self._packet = p
+        self.incl_len = len(p)
+        self.orig_len = self.incl_len
+
+    def unpack(self,buf):
+        '''Unpack the pcap header. Pass in a buffer containing the header
+        :type buf: str
+        '''
+        if struct.calcsize(Pcap.RECORD_HEADER_FORMAT) > len(buf):
+            raise ValueError("Header buffer too big to be a Pcap record header")
+        (self.sec,self.usec,self.incl_len,self.orig_len) = struct.unpack(Pcap.RECORD_HEADER_FORMAT,buf)
+
+
+    def pack(self):
+        '''Pack a PcapRecord into a buffer'''
+        if self.sec == None or self.usec == None or self.incl_len == None or self.orig_len == None or self.packet == None:
+            raise ValueError("Cannot build record with undefined fields in the payload")
+        return struct.pack(Pcap.RECORD_HEADER_FORMAT,self.sec,self.usec,self.incl_len,self.orig_len) + self.packet
+
+
+    def setCurrentTime(self):
+        currenttime = time.time()
+        self.usec = int((currenttime%1)*1e6)
+        self.sec = int(currenttime)
+
+
+class Pcap(object):
+
+    '''Pcap handling class. Supports basic handling of pcap files. Read and write.
+    Assumption: Ethernet packets only supported'''
+
     GLOBAL_HEADER_FORMAT = '<IhhiIII'
     RECORD_HEADER_FORMAT = '<IIII'
+    RECORD_HEADER_SIZE =  struct.calcsize(RECORD_HEADER_FORMAT)
+    GLOBAL_HEADER_SIZE = struct.calcsize(GLOBAL_HEADER_FORMAT)
 
     def __init__(self,filename,forreading=True):
         '''Class for parsing pcap file.
@@ -49,7 +101,6 @@ class Pcap():
             try:
                 self.fopen = file(filename,'rb')
                 self.filesize = os.path.getsize(filename)
-                self.ReadGlbHeader()
             except:
                 raise IOError
         else:
@@ -65,28 +116,56 @@ class Pcap():
         self.network  = 1 # Ethernet
 
 
-    def ReadGlbHeader(self):
-        """This method will read the pcap global header and unpack it. This should be the first method to call"""
-        headersize=struct.calcsize(Pcap.GLOBAL_HEADER_FORMAT)
-        header = self.fopen.read(headersize)
-        self.bytesread += headersize
+    def readGlobalHeader(self):
+        '''This method will read the pcap global header and unpack it.
+        This should be the first method to call on reading a PCAP file
+        '''
+
+        header = self.fopen.read(Pcap.GLOBAL_HEADER_SIZE)
+        self.bytesread += Pcap.GLOBAL_HEADER_SIZE
         (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(Pcap.GLOBAL_HEADER_FORMAT,header)
 
-    def WriteGlbHeader(self):
+    def writeGlobalHeader(self):
+        '''Write the global header to a new pcap file'''
+
         header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
         self.fopen.write(header)
 
-    def WriteAPacket(self,packet):
-        currenttime = time.time()
-        usec = int((currenttime%1)*1e6)
-        pkt_len = len(packet)
-        header = struct.pack(Pcap.RECORD_HEADER_FORMAT,int(currenttime),usec,pkt_len,pkt_len)
-        self.fopen.write(header+packet)
+    def writeARecord(self,pcaprecord):
+        '''Write the supplied pcaprecord to the pcap file
+        :type pcaprecord: PcapRecord
+        '''
 
-    def Close(self):
+        self.fopen.write(pcaprecord.pack())
+
+    def close(self):
+        '''Close the current pcap file'''
         self.fopen.close()
 
-    def ReadNextPacket(self):
+    def readAPacket(self):
+        '''Method to read the next Packet in the pcap file
+        :rtype: PcapRecord
+        '''
+        if self.bytesread >= self.filesize:
+            raise IOError("Reached the end of the packet")
+
+        # read the pcap header to a new object
+        pcaprecord = PcapRecord()
+        pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
+        pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
+        self.bytesread += pcaprecord.incl_len+Pcap.RECORD_HEADER_SIZE
+
+        return pcaprecord
+
+
+
+
+
+    #-------------------------------------------------
+    # Old, deprecated methods that should not be used
+    # and I'm not going to test for them
+    #-------------------------------------------------
+    def _readNextiNetXPacket(self):
         """This method will read the next iNetX packet one by one. It will raise an IOError when it hits
         the end of the file and n NoImplementedError when it hits packets that are not iNetx. It returns
         the ip, udp and inetx packets"""
@@ -95,8 +174,7 @@ class Pcap():
             raise IOError
 
         # otherwise pull our the PCAP header size. Should really push headersize to the object self
-        headersize=struct.calcsize(Pcap.RECORD_HEADER_FORMAT)
-        pcapheader = self.fopen.read(headersize)
+        pcapheader = self.fopen.read(Pcap.RECORD_HEADER_SIZE)
         (sec,usec,incl_len,orig_len) = struct.unpack(Pcap.RECORD_HEADER_FORMAT,pcapheader)
 
         # now we have a packet then lets deconstruct it. first read in the ethernet header and unpack it
@@ -106,7 +184,7 @@ class Pcap():
         # to ignore smoe packets. All non-IP packets for starter
         if eth_header.type != 2048:
             throwaway=self.fopen.read(orig_len-SimpleEthernet.Ethernet.HEADERLEN)
-            self.bytesread += (orig_len+headersize)
+            self.bytesread += (orig_len+Pcap.RECORD_HEADER_SIZE)
             raise NotImplementedError
 
         # pull apart the other headers. Again I'm assuming all the IP packets
@@ -131,24 +209,13 @@ class Pcap():
         # So we have an inetx packet, read in the rest of the pcap packet and unpack it as an inetX packet
         inetx_packet.packet += self.fopen.read(orig_len-SimpleEthernet.Ethernet.HEADERLEN-SimpleEthernet.IP.HEADERLEN-SimpleEthernet.UDP.HEADERLEN-CONTROLWORD_LEN)
         inetx_packet.unpack(inetx_packet.packet)
-        # I'm interested in one particular packet which has the bcu temperature in it
-        # so lets pull out the temperature
-        bcu_temperature = None
-        if udp_header.dstport==8184:
-            try:
-                # Probably overkill but I created a class for the BCUpacket
-                bcutemp_pkt = CustomiNetXPackets.BCUTemperature(inetx_packet.payload)
-                bcu_temperature = bcutemp_pkt.temperature
-                #print bcu_temperature
-            except:
-                pass
 
         self.bytesread += (headersize + orig_len)
         # return the interesting packet headers, the packet time and the temperature if it exists
         return (inetx_packet,ip_header,udp_header,sec,bcu_temperature)
 
 
-    def ReadNextUDPPacket(self):
+    def _readNextUDPPacket(self):
         """This method will read the next UDP packet in the pcap file one by one and returns the udp,eth and ip packets"""
         # already at the end of the file
         if self.bytesread >= self.filesize:
