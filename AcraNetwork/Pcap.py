@@ -25,7 +25,6 @@ import struct
 import iNetX
 import os
 import SimpleEthernet
-import CustomiNetXPackets
 import time
 
 class PcapRecord(object):

@@ -36,7 +36,7 @@ class McastSocket(socket.socket):
                 self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.bind(('', local_port))
 
-    def mcast_add(self, addr, iface="0.0.0.0"):
+    def mcast_add(self, addr, iface="192.168.28.110"):
         '''Add a multicast address to an interface
         :type addr: str
         :type iface: str

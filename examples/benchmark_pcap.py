@@ -31,7 +31,6 @@ import time
 import struct
 import AcraNetwork.IENA as iena
 import AcraNetwork.iNetX as inetx
-import AcraNetwork.McastSocket as mcast
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import argparse

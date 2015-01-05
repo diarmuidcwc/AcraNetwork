@@ -1,12 +1,21 @@
 Examples
 ===========
+#benchmark_pcap.py
 
-#simple_parser_packets_from_pcap.py
+Benchmark the generation of various types of packets and writing to a pcap file
 
-Run:
-$ python ./simple_parser_packets_from_pcap.py
 
-Simpler version of parser_aligned_pcap_example/py
+#benchmark_udp_generation.py
+
+Benchmark the generation of various packet types and the transmission to a desination multicast address
+
+
+#benchmark_mcast_reception.py
+
+Benchmark the reception of inetx or iena packets from a multicast address.
+If you are having issues with this example and it is timing out on reception, change the permissions on the python.exe
+to run as administrator
+
 
 #parser_aligned_pcap_example.py
 
@@ -34,20 +43,6 @@ discover all the stream ids and print them out to the screen. Any backplane rese
 This could easily be modified to not use the coloured output or to analyse the packets more thoroughly
 
 
-
-#pcap_monitor.py
-
-Run:
-$ python ./pcap_monitor.py  --pcap dump.pcap
-
-This example requires colorama. 
-https://pypi.python.org/pypi/colorama Install using easy_install or download the zip file, unzip it, and install it (python ./setup.py install)
-
-
-This script loops through a pcap file pulling out any inetx packets it finds and then reporting that to the screen
-It will visually highligh any dropped packets and it's quite easy to see what's happening in the pcap file from a 
-big picture view.
-It's not recommende to us the ReadNextPacket method that is described here. Better to use the methods from parser_aligned_pcap_example
 
 #pcap_to_ascii.py
 
