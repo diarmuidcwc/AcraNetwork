@@ -22,10 +22,10 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import struct
-import iNetX
 import os
-import SimpleEthernet
 import time
+import AcraNetwork.iNetX
+import AcraNetwork.SimpleEthernet
 
 class PcapRecord(object):
     '''Class that can be used to store one pcap record'''
@@ -98,12 +98,12 @@ class Pcap(object):
 
         if forreading:
             try:
-                self.fopen = file(filename,'rb')
+                self.fopen = open(filename,'rb')
                 self.filesize = os.path.getsize(filename)
             except:
                 raise IOError
         else:
-            self.fopen = file(filename,'wb')
+            self.fopen = open(filename,'wb')
 
         # Global header fields
         self.magic = 0xa1b2c3d4
