@@ -101,7 +101,7 @@ class IENA ():
             if required_field == None:
                 raise ValueError("A required field in the IENA packet is not defined")
 
-        self.size =  (len(self.payload)  + IENA.IENA_HEADER_LENGTH + IENA.TRAILER_LENGTH) /2 # size is in words
+        self.size = int((len(self.payload) + IENA.IENA_HEADER_LENGTH + IENA.TRAILER_LENGTH)/2) # size is in words
 
         packetvalues = (self.key,self.size,timehi,timelo,self.keystatus,self.status,self.sequence)
         packet = self._packetStrut.pack(*packetvalues) + self.payload + struct.pack('>H',self.endfield)
