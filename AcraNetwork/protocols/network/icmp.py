@@ -22,4 +22,4 @@ class ICMP(BasePacket):
     
     def unpack_local(self, buf):
         if not self.HEADER_FORMAT.startswith('>BBHHHQ'):
-            raise ValueError("Incorrect format generated {}".format(HEADER_FORMAT))
+            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))

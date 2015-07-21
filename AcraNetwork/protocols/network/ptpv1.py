@@ -67,7 +67,7 @@ class PTPv1(BasePacket):
     def unpack_local(self, buf):
         #print(self.HEADER_FORMAT)
         if not '>HH16sBBHIHHBsH' == self.HEADER_FORMAT:
-            raise ValueError("Incorrect format generated {}".format(HEADER_FORMAT))
+            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
         
         if 0x0 == self.control:
             self.unpack(buf, self.SYNC_HEADER)

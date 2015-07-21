@@ -58,7 +58,7 @@ class PTPv2(BasePacket):
     def unpack_local(self, buf):
         if not '>BBHBsHQ4sQHHBB' == self.HEADER_FORMAT:
             print(self.HEADER_FORMAT)
-            raise ValueError("Incorrect format generated {}".format(HEADER_FORMAT))
+            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
         
         if 0x0 == self.messageId:
             print('Sync Message')

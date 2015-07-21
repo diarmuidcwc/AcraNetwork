@@ -19,6 +19,6 @@ class IPv6(BasePacket):
         #print("0x{:016x}".format(self.src))
         #print("0x{:016x}".format(self.dst))
         if not '>IHBBQQQQ' == self.HEADER_FORMAT:
-            raise ValueError("Incorrect format generated {}".format(HEADER_FORMAT))
+            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
         self.version       = (self.version_traffic >> 28) & 0xf
         #print(self.version)
