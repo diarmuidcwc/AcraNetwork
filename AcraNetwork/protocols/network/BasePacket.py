@@ -27,12 +27,14 @@ class BasePacket(object):
     def calcHeaderFormat(self, header=None):
         if not None == header:
             self.HEADER = header
-        self.HEADER_FORMAT = '>'
+        
+        s = []
         for i in self.HEADER:
             # This is required for non-power of 2 chunks
             # of data, e.g. MAC address = 6 bytes
             for j in i['w']:
-                self.HEADER_FORMAT += j
+                s.append(j)
+        self.HEADER_FORMAT = ">" + "".join(s)
         self.HEADER_SIZE = struct.calcsize(self.HEADER_FORMAT)
         if not None == self.CALC_HEADER:
             if not self.CALC_HEADER == self.HEADER_FORMAT:
@@ -135,6 +137,7 @@ class BasePacket(object):
                     raise ValueError("Unpopulated values")
             except:
                 raise ValueError("A required field, {:s}, in the packet is not defined".format(i['n']))
+            
             if not isinstance(i['w'], list):
                packetvalues.append(r)
             else:
@@ -151,17 +154,16 @@ class BasePacket(object):
                     a.append(o)
                 packetvalues.extend(a[::-1])
 
-        
-        payload = None
+        # Construct payload here, sometimes there will
+        # be no payload required
+        payload = bytearray()
         if self.PAYLOAD_REQUIRED:
             if None == self.payload:
                 raise ValueError("Unpopulated payload")
             payload = self.payload
-            if not None == extra:
-                payload = payload + extra
         
-        if None == payload:
-            packet = self._packetStrut.pack(*packetvalues)
-        else:
-            packet = self._packetStrut.pack(*packetvalues) + payload
+        if not None == extra:
+            payload = payload + extra
+        
+        packet = self._packetStrut.pack(*packetvalues) + payload
         return packet
