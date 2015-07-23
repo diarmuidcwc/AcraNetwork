@@ -1,8 +1,21 @@
 import struct
 import importlib
 
+STRUCT_ARRAY = {
+#     'Z' : 1,
+#     'V' : 2,
+#     'N' : 4,
+    'B' : 8,
+    'H' : 16,
+    'I' : 32,
+    'Q' : 64,
+    }
+
+
 class BasePacket(object):
-    '''Class to build and unpack a Base packet'''
+    '''
+    Class to build and unpack a Base packet
+    '''
     
     CALC_HEADER = None
     BASETYPE_MAPPING = None
@@ -44,8 +57,6 @@ class BasePacket(object):
 
         if not hasattr(self, 'payload'):
             self.payload = None
-#         for i in self.HEADER:
-#             print('a', i['n'], getattr(self, i['n']))
         if buf != None:
             self.unpack(buf)
            
@@ -68,17 +79,11 @@ class BasePacket(object):
                 # 2 chunks of data
                 r = 0
                 for k in i['w']:
-                    if 'B' == k.upper():
-                        o = 8
-                    elif 'H' == k.upper():
-                        o = 16
-                    elif 'I' == k.upper():
-                        o = 32
-                    elif 'Q' == k.upper():
-                        o = 64
+                    if k.upper() in STRUCT_ARRAY:
+                        s = STRUCT_ARRAY[k.upper()]
                     else:
                         raise ValueError("Unknown field, {:s}".format(k))
-                    r = (r << o) + fields[j]
+                    r = (r << s) + fields[j]
                     j += 1
             
             setattr(self, i['n'], r)
@@ -138,20 +143,12 @@ class BasePacket(object):
                 # 2 chunks of data
                 a = []
                 for k in reversed(i['w']):
-                    if 'B' == k.upper():
-                        o = r & 0xff
-                        r >>= 8
-                    elif 'H' == k.upper():
-                        o = r & 0xffff
-                        r >>= 16
-                    elif 'I' == k.upper():
-                        o = r & 0xffffffff
-                        r >>= 32
-                    elif 'Q' == k.upper():
-                        o = r & 0xffffffffffffffff
-                        r >>= 64
+                    if k.upper() in STRUCT_ARRAY:
+                        s = STRUCT_ARRAY[k.upper()]
                     else:
                         raise ValueError("Unknown field, {:s}".format(k))
+                    o = r & ((2**s)-1)
+                    r >>= s
                     a.append(o)
                 packetvalues.extend(a[::-1])
 
