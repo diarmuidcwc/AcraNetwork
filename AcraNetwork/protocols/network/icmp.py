@@ -19,7 +19,3 @@ class ICMP(BasePacket):
             data_width = payload_length-36
             self.HEADER.append({'n': 'data', 'w': '{:d}s'.format(data_width)})
         super(ICMP, self).__init__(buf)
-    
-    def unpack_local(self, buf):
-        if not self.HEADER_FORMAT.startswith('>BBHHHQ'):
-            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))

@@ -2,6 +2,13 @@ from AcraNetwork.protocols.network.BasePacket import BasePacket
 
 class PTPv1(BasePacket):
     '''Class to build and unpack a PTPv1 packet'''
+    BASETYPE_MAPPING = 'control'
+    
+    TYPE = {
+        0x0: {'from': None, 'import': 'SYNC'},
+        0x2: {'from': None, 'import': 'FOLLOW_UP'},
+        }
+
     HEADER = [
         {'n': 'versionPTP', 'w': 'H'},
         {'n': 'versionNetwork', 'w': 'H'},
@@ -15,7 +22,7 @@ class PTPv1(BasePacket):
         {'n': 'reserved0', 'w': 's'},
         {'n': 'flags', 'w': 'H'},
         ]
-     
+
     SYNC_HEADER = [
         {'n': 'reserved1', 'w': '4s'},
         {'n': 'originTimestamp_s', 'w': 'I'},
@@ -65,7 +72,7 @@ class PTPv1(BasePacket):
         ]
    
     def unpack_local(self, buf):
-        #print(self.HEADER_FORMAT)
+        super(self.__class__, self).unpack_local(buf)
         if not '>HH16sBBHIHHBsH' == self.HEADER_FORMAT:
             raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
         

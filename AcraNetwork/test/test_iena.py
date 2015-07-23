@@ -32,10 +32,9 @@ import datetime
 import time
 import struct
 
-import AcraNetwork.IENA as iena
+import AcraNetwork.protocols.network.iena as iena
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
-
 
 class IENATest(unittest.TestCase):
 
@@ -45,6 +44,7 @@ class IENATest(unittest.TestCase):
         self.assertEqual(i.key,None)
         self.assertEqual(i.size,None)
         self.assertEqual(i.keystatus,None)
+        self.assertEqual(i.timeusec,0)
         self.assertEqual(i.status,None)
         self.assertEqual(i.sequence,None)
         self.assertEqual(i.endfield,0xdead)
@@ -60,8 +60,8 @@ class IENATest(unittest.TestCase):
         i.setPacketTime(time.mktime(datetime.datetime(datetime.datetime.today().year, 1, 2, 0, 0, 0,0).timetuple()),0)
         i.payload = struct.pack('H',0x5)
         # size = 9. Time = midnight Jan 02 = 86400s 0us = 0x14dd760000
-        expected_payload = struct.pack(iena.IENA.IENA_HEADER_FORMAT,1,9,0x14,0x1dd76000,2,3,10) + struct.pack('H',0x5) + struct.pack('>H',0xdead)
-        self.assertEqual(i.pack(),expected_payload)
+        expected_payload = struct.pack(iena.IENA().HEADER_FORMAT,1,9,0x14,0x1dd76000,2,3,10) + struct.pack('H',0x5) + struct.pack('>H',0xdead)
+        self.assertEqual(i.pack(), expected_payload)
 
     def test_unpackIENA(self):
         pass
@@ -99,7 +99,6 @@ class IENATest(unittest.TestCase):
             exptime += 0x186a0 # The timestamp increments by a fixed number of microseconds
             self.assertEqual(i.endfield,0xdead)
         p.close()
-
 
 if __name__ == '__main__':
     unittest.main()

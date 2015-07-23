@@ -18,14 +18,17 @@ class PcapBasicTest(unittest.TestCase):
     def test_defaultMagicNumber(self):
         p = pcap.Pcap("_tmp.pcap",forreading=False)
         self.assertEqual(p.magic,0xa1b2c3d4)
+        p.close()
 
     def test_defaultVersionMaj(self):
         p = pcap.Pcap("_tmp.pcap",forreading=False)
         self.assertEqual(p.versionmaj,2)
+        p.close()
 
     def test_defaultVersionMin(self):
         p = pcap.Pcap("_tmp.pcap",forreading=False)
         self.assertEqual(p.versionmin,4)
+        p.close()
 
     def test_readTestFile(self):
         TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'test_input.pcap')
@@ -52,6 +55,7 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(mypcaprecord.usec,811463)
         self.assertEqual(mypcaprecord.orig_len,70)
         self.assertEqual(mypcaprecord.incl_len,70)
+        p.close()
 
     def test_writeARecord(self):
         p = pcap.Pcap("_tmp.pcap",forreading=False)
@@ -71,6 +75,7 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(p.versionmin,4)
         self.assertEqual(p.zone,0)
         self.assertEqual(p.filesize,42)
+        p.close()
         os.remove("_tmp.pcap")
 
 

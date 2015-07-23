@@ -1,52 +1,55 @@
 import struct
 import socket
-from AcraNetwork.protocols.network.icmp import ICMP
-from AcraNetwork.protocols.network.udp import UDP
+import importlib
 from AcraNetwork.protocols.network.BasePacket import BasePacket
 
 class IP(BasePacket):
     '''Create or unpack an IP packet'''
     PROTOCOLS = {"ICMP":0x01,"IGMP" : 0X02, "TCP":0x6,"UDP":0x11}
-    #IP_HEADER_FORMAT = '>BBHHBBBBHII'
-    #IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
+    
+    CALC_HEADER = '>BBHHBBBBHII'
+    BASETYPE_MAPPING = 'protocol'
+    
+    TYPE = {
+        0x01: {'from': 'AcraNetwork.protocols.network.icmp', 'import': 'ICMP'},
+        0x02: {'from': None, 'import': 'IGMP'},
+        0x06: {'from': None, 'import': 'TCP'},
+        0x11: {'from': 'AcraNetwork.protocols.network.udp', 'import': 'UDP'},
+        }
     
     HEADER = [
-        {'n': 'reserved0', 'w': 'B'},
-        {'n': 'dscp', 'w': 'B'},
-        {'n': 'len', 'w': 'H'},
-        {'n': 'id', 'w': 'H'},
-        {'n': 'flags', 'w': 'B'},
-        {'n': 'reserved1', 'w': 'B'},
-        {'n': 'ttl', 'w': 'B'},
+        {'n': 'reserved0', 'w': 'B', 'd': 0},
+        {'n': 'dscp', 'w': 'B', 'd': 0},
+        {'n': 'len', 'w': 'H', 'd': 0},
+        {'n': 'id', 'w': 'H', 'd': 0},
+        {'n': 'flags', 'w': 'B', 'd': 0},
+        {'n': 'reserved1', 'w': 'B', 'd': 0},
+        {'n': 'ttl', 'w': 'B', 'd': 0},
         {'n': 'protocol', 'w': 'B', 'd': PROTOCOLS['UDP']},
-        {'n': 'checksum', 'w': 'H'},
-        {'n': 'srcip', 'w': 'I'},
-        {'n': 'dstip', 'w': 'I'},
+        {'n': 'checksum', 'w': 'H', 'd': 0},
+        {'n': 'srcip', 'w': 'I', 'd': 0},
+        {'n': 'dstip', 'w': 'I', 'd': 0},
         ]
     
     def unpack_local(self, buf):
-        print(self.HEADER_FORMAT)
-        if not '>BBHHBBBBHII' == self.HEADER_FORMAT:
-            raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
-
+        super(self.__class__, self).unpack_local(buf)
         self.flags = self.flags >> 5
         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
-
-        if   0x01 == self.protocol:
-            print("ICMP")
-            self.icmp = ICMP(self.payload, self.len)
-            #exit()
-        elif 0x02 == self.protocol:
-            print("IGMP")
-        elif 0x06 == self.protocol:
-            print("TCP")
-        elif 0x11 == self.protocol:
-            print("UDP")
-            self.udp = UDP(self.payload)
-        else:
-            raise ValueError("Unsupported IP Protocol, 0x{0:02x}".format(self.protocol))
-    
+        
+    def pack(self):
+        if isinstance(self.srcip, str):
+            (srcip_as_int,) = struct.unpack('!I',socket.inet_aton(self.srcip))
+            self.srcip = srcip_as_int
+        if isinstance(self.dstip, str):
+            (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
+            self.dstip = dstip_as_int
+        #return super(self.__class__, self, self).pack()
+        pack = super(IP, self).pack()
+        self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
+        self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
+        return pack
+   
 #     def __init__(self,buf=None):
 #         self.srcip = None
 #         """:type str"""

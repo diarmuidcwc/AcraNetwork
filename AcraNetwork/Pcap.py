@@ -91,7 +91,8 @@ class Pcap(object):
     GLOBAL_HEADER_SIZE = struct.calcsize(GLOBAL_HEADER_FORMAT)
 
     def __init__(self,filename,forreading=True):
-        '''Class for parsing pcap file.
+        '''
+        Class for parsing pcap file.
         Create a new pcap object passing in the pcapfilename.
         Then call the other methods to parse the file
 
@@ -107,7 +108,7 @@ class Pcap(object):
             try:
                 self.fopen = open(filename,'rb')
                 self.filesize = os.path.getsize(filename)
-                self.readGlobalHeader()
+                #self.readGlobalHeader()
             except:
                 raise IOError
         else:
@@ -123,20 +124,21 @@ class Pcap(object):
         self.network  = 1 # Ethernet
 
     def readGlobalHeader(self):
-        '''This method will read the pcap global header and unpack it.
+        '''
+        This method will read the pcap global header and unpack it.
         This should be the first method to call on reading a PCAP file
         '''
 
         if not self.readGlobal:
-            header = self.fopen.read(Pcap.GLOBAL_HEADER_SIZE)
-            self.bytesread += Pcap.GLOBAL_HEADER_SIZE
-            (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(Pcap.GLOBAL_HEADER_FORMAT,header)
+            header = self.fopen.read(self.GLOBAL_HEADER_SIZE)
+            self.bytesread += self.GLOBAL_HEADER_SIZE
+            (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(self.GLOBAL_HEADER_FORMAT,header)
             self.readGlobal = True
 
     def writeGlobalHeader(self):
         '''Write the global header to a new pcap file'''
 
-        header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
+        header = struct.pack(self.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
         self.fopen.write(header)
 
     def writeARecord(self,pcaprecord):
@@ -159,9 +161,9 @@ class Pcap(object):
 
         # read the pcap header to a new object
         pcaprecord = PcapRecord()
-        pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
+        pcaprecord.unpack(self.fopen.read(self.RECORD_HEADER_SIZE))
         pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
-        self.bytesread += pcaprecord.incl_len+Pcap.RECORD_HEADER_SIZE
+        self.bytesread += pcaprecord.incl_len+self.RECORD_HEADER_SIZE
 
         return pcaprecord
     
@@ -170,6 +172,7 @@ class Pcap(object):
 
     
     def parse(self):
+        self.readGlobalHeader()
         packets = []
         while True: # while we are not at the end of the file
             try:

@@ -2,6 +2,16 @@ from AcraNetwork.protocols.network.BasePacket import BasePacket
 
 class PTPv2(BasePacket):
     '''Class to build and unpack a PTPv2 packet'''
+    BASETYPE_MAPPING = 'messageId'
+    
+    TYPE = {
+        0x0: {'from': None, 'import': 'SYNC'},
+        0x1: {'from': None, 'import': 'DELAY_REQ'},
+        0x8: {'from': None, 'import': 'FOLLOW_UP'},
+        0x9: {'from': None, 'import': 'DELAY_RESP'},
+        0xb: {'from': None, 'import': 'ANNOUNCE'},
+        }
+
     HEADER = [
         {'n': 'messageId', 'w': 'B'},
         {'n': 'versionPTP', 'w': 'B'},
@@ -17,7 +27,7 @@ class PTPv2(BasePacket):
         {'n': 'control', 'w': 'B'},
         {'n': 'logMessagePeriod', 'w': 'B'},
         ]
-
+    
     SYNC_HEADER = [
         {'n': 'originTimestamp_s', 'w': ['H', 'I']},
         {'n': 'originTimestamp_ns', 'w': 'I'},
@@ -56,26 +66,19 @@ class PTPv2(BasePacket):
         ]
    
     def unpack_local(self, buf):
+        super(self.__class__, self).unpack_local(buf)
         if not '>BBHBsHQ4sQHHBB' == self.HEADER_FORMAT:
-            print(self.HEADER_FORMAT)
             raise ValueError("Incorrect format generated {}".format(self.HEADER_FORMAT))
         
         if 0x0 == self.messageId:
-            print('Sync Message')
             self.unpack(buf, self.SYNC_HEADER)
-            #print(self.HEADER_FORMAT)
         elif 0x1 == self.messageId:
-            print('Delay_Req Message')
             self.unpack(buf, self.DELAY_REQ_HEADER)
-            print(self.HEADER_FORMAT)
         elif 0x8 == self.messageId:
-            print('Follow_up Message')
             self.unpack(buf, self.FOLLOW_UP_HEADER)
         elif 0x9 == self.messageId:
-            print('Delay_Resp Message')
             self.unpack(buf, self.DELAY_RESP_HEADER)
         elif 0xb == self.messageId:
-            print('Announce Message')
             self.unpack(buf, self.ANNOUNCE_HEADER)
         else:
             raise ValueError("Unsupported PTP mesage, 0x{0:02x}".format(self.control))
