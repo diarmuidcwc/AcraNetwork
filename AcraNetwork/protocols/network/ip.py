@@ -13,7 +13,7 @@ class IP(BasePacket):
     TYPE = {
         0x01: {'from': 'AcraNetwork.protocols.network.icmp', 'import': 'ICMP'},
         0x02: {'from': None, 'import': 'IGMP'},
-        0x06: {'from': None, 'import': 'TCP'},
+        0x06: {'from': 'AcraNetwork.protocols.network.tcp', 'import': 'TCP'},
         0x11: {'from': 'AcraNetwork.protocols.network.udp', 'import': 'UDP'},
         }
     

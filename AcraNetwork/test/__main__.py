@@ -10,10 +10,11 @@ from AcraNetwork.test.test_pcap import PcapBasicTest as PcapBasicTest
 from AcraNetwork.test.test_ethernet import EthernetTest as EthernetTest
 from AcraNetwork.test.test_iena import IENATest as IENATest
 from AcraNetwork.test.test_inetx import iNetXTest as iNetXTest
+from AcraNetwork.test.test_tcp import TCPTest as TCPTest
 #from AcraNetwork.test.test_mpegts import MPEGTSBasicTest as MPEGTSBasicTest
 
 if __name__ == '__main__':
-    TEST_CLASSES = [PcapBasicTest, EthernetTest, IENATest, iNetXTest,]
+    TEST_CLASSES = [PcapBasicTest, EthernetTest, IENATest, iNetXTest, TCPTest,]
     SUITE = unittest.TestSuite()
     LOADER = unittest.TestLoader()
     for test_class in TEST_CLASSES:

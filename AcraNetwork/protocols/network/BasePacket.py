@@ -22,6 +22,7 @@ class BasePacket(object):
     TRAILER_LENGTH = 0
     TYPE   = []
     HEADER = []
+    PAYLOAD_REQUIRED = True
    
     def calcHeaderFormat(self, header=None):
         if not None == header:
@@ -127,8 +128,6 @@ class BasePacket(object):
         :rtype: str
         '''
         packetvalues = []
-        if None == self.payload:
-            raise ValueError("Unpopulated payload")
         for i in self.HEADER:
             try:
                 r = getattr(self, i['n'])
@@ -152,8 +151,17 @@ class BasePacket(object):
                     a.append(o)
                 packetvalues.extend(a[::-1])
 
-        if None == extra:
-            packet = self._packetStrut.pack(*packetvalues) + self.payload
+        
+        payload = None
+        if self.PAYLOAD_REQUIRED:
+            if None == self.payload:
+                raise ValueError("Unpopulated payload")
+            payload = self.payload
+            if not None == extra:
+                payload = payload + extra
+        
+        if None == payload:
+            packet = self._packetStrut.pack(*packetvalues)
         else:
-            packet = self._packetStrut.pack(*packetvalues) + self.payload + extra
+            packet = self._packetStrut.pack(*packetvalues) + payload
         return packet
