@@ -6,7 +6,7 @@
 #
 # Created:     
 #
-# Copyright 2014 Diarmuid Collins
+# Copyright 2015 Dave Keeshan
 #
 #    This program is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU General Public License
@@ -33,7 +33,10 @@ import time
 import struct
 
 import AcraNetwork.protocols.network.iena as iena
-import AcraNetwork.SimpleEthernet as SimpleEthernet
+import AcraNetwork.protocols.network.ip as ip
+import AcraNetwork.protocols.network.udp as udp
+#import AcraNetwork.SimpleEthernet as SimpleEthernet
+import AcraNetwork.Ethernet as Ethernet
 import AcraNetwork.Pcap as pcap
 
 class IENATest(unittest.TestCase):
@@ -80,24 +83,24 @@ class IENATest(unittest.TestCase):
             except IOError:
                 # End of file reached
                 break
-            e = SimpleEthernet.Ethernet()
+            e = Ethernet.Ethernet()
             e.unpack(mypcaprecord.packet)
-            ip =  SimpleEthernet.IP()
-            ip.unpack(e.payload)
-            u = SimpleEthernet.UDP()
-            u.unpack(ip.payload)
+            i = ip.IP()
+            i.unpack(e.payload)
+            u = udp.UDP()
+            u.unpack(i.payload)
             # Now I have a payload that will be an iena packet
-            i = iena.IENA()
-            i.unpack(u.payload)
-            self.assertEqual(i.key,0x1a)
-            self.assertEqual(i.size,24)
-            self.assertEqual(i.status,0)
-            self.assertEqual(i.keystatus,0)
-            self.assertEqual(i.sequence,sequencenum)
+            ie = iena.IENA()
+            ie.unpack(u.payload)
+            self.assertEqual(ie.key,0x1a)
+            self.assertEqual(ie.size,24)
+            self.assertEqual(ie.status,0)
+            self.assertEqual(ie.keystatus,0)
+            self.assertEqual(ie.sequence,sequencenum)
             sequencenum += 1
-            self.assertEqual(i.timeusec,exptime)
+            self.assertEqual(ie.timeusec,exptime)
             exptime += 0x186a0 # The timestamp increments by a fixed number of microseconds
-            self.assertEqual(i.endfield,0xdead)
+            self.assertEqual(ie.endfield,0xdead)
         p.close()
 
 if __name__ == '__main__':
