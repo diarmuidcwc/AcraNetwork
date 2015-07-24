@@ -41,7 +41,7 @@ class TTE(BasePacket):
             'TTEthernet',
             '  Destination: {}'.format(self.parent.dstmac),
             '  Source: {}'.format(self.parent.srcmac),
-            '  Type: TTEthernet Protocol Control Frame (0x891d)',
+            '  Type: TTEthernet Protocol Control Frame (0x{0:04x})'.format(self.parent.type),
             'TTEthernet Protocol Control Frame',
             '  Integration Cycle: 0x{:08x}'.format(self.integration_cycle),
             '  Membership New: 0x{:08x}'.format(self.membership_new),
