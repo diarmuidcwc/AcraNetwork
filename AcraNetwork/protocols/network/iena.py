@@ -39,8 +39,8 @@ class IENA(BasePacket):
         {'n': 'sequence', 'w': 'H', 'd': None},
         ]
 
-    def __init__(self, buf=None, payload_length=None):
-        super(self.__class__, self).__init__(buf)
+    def __init__(self, buf=None, payload_length=None, parent=None):
+        super(self.__class__, self).__init__(buf, parent=parent)
         self.endfield = 0xdead
         # only calculate this once
         self._startOfYear = datetime.datetime(datetime.datetime.today().year, 1, 1, 0, 0, 0,0)
