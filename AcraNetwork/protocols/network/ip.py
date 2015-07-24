@@ -35,22 +35,7 @@ class IP(BasePacket):
     def unpack_local(self, buf):
         super(self.__class__, self).unpack_local(buf)
         self.flags = self.flags >> 5
-#         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
-#         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
-#         
-#     def pack(self):
-# #         if isinstance(self.srcip, str):
-# #             (srcip_as_int,) = struct.unpack('!I',socket.inet_aton(self.srcip))
-# #             self.srcip = srcip_as_int
-# #         if isinstance(self.dstip, str):
-# #             (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
-# #             self.dstip = dstip_as_int
-#         #return super(self.__class__, self, self).pack()
-#         pack = super(IP, self).pack()
-# #         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
-# #         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
-#         return pack
-#    
+
 #     def __init__(self,buf=None):
 #         self.srcip = None
 #         """:type str"""
