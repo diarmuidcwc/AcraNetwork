@@ -110,6 +110,15 @@ class TCPTest(unittest.TestCase):
         self.assertEqual(e.ip.tcp.checksum, 18928)
         self.assertEqual(e.ip.tcp.urgentptr, 0)
         
+        self.assertEqual(e.isPacket('ip'), True)
+        self.assertEqual(e.isPacket('tcp'), True)
+        self.assertEqual(e.isPacket('udp'), False)
+        self.assertEqual(e.isPacket('IP'), True)
+        self.assertEqual(e.isPacket('TCP'), True)
+        self.assertEqual(e.isPacket('UDP'), False)
+        self.assertEqual(e.packetpath, ['Ethernet', 'ip', 'tcp'])
+        self.assertEqual(e.ip.packetpath, ['ip', 'tcp'])
+        
         p.close()
 
 if __name__ == '__main__':

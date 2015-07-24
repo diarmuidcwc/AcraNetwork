@@ -60,7 +60,11 @@ class BasePacket(object):
             self.parent = None
         else:
             self.parent = parent
-            self.parent.packetpath.extend(self.packetpath)
+            x = self
+            while hasattr(x, 'parent'):
+                if hasattr(x.parent, 'packetpath'):
+                    x.parent.packetpath.extend(self.packetpath)
+                x = x.parent
 
         for i in self.HEADER:
             if not hasattr(self, i['n']):
