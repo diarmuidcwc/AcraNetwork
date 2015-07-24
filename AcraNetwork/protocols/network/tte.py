@@ -1,5 +1,5 @@
 import struct
-from AcraNetwork.protocols.network.BasePacket import BasePacket, MACAddress
+from AcraNetwork.protocols.network.BasePacket import BasePacket
 
 class TTE(BasePacket):
     '''Create or unpack an TTE packet'''
@@ -27,6 +27,7 @@ class TTE(BasePacket):
         if not self.type in self.PROTOCOLS.keys():
             raise ValueError("Unknown frame type {}".format(self.type))
         self.type_text = self.PROTOCOLS[self.type]
+        
 
     def __str__(self):
         s = 'TTE PCF\tSync Domain: 0x{:02x} Sync Priority 0x{:02x}'.format(
@@ -36,12 +37,10 @@ class TTE(BasePacket):
         return s
     
     def sprint(self):
-        dst = self.parent.dstmac
-        src = self.parent.srcmac
         s = [
             'TTEthernet',
-            '  Destination: {}'.format(dst),
-            '  Source: {}'.format(src),
+            '  Destination: {}'.format(self.parent.dstmac),
+            '  Source: {}'.format(self.parent.srcmac),
             '  Type: TTEthernet Protocol Control Frame (0x891d)',
             'TTEthernet Protocol Control Frame',
             '  Integration Cycle: 0x{:08x}'.format(self.integration_cycle),
