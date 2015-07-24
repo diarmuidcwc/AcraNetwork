@@ -10,6 +10,8 @@ import AcraNetwork.Ethernet as Ethernet
 import AcraNetwork.Pcap as pcap
 from AcraNetwork.protocols.network.ip import IP
 from AcraNetwork.protocols.network.udp import UDP
+from AcraNetwork.protocols.network.udp import UDP
+from AcraNetwork.protocols.network.MacAddress import MacAddress
 
 class EthernetTest(unittest.TestCase):
 
@@ -38,8 +40,44 @@ class EthernetTest(unittest.TestCase):
 
         self.assertEqual(e2.dstmac, 0x998877665544)
         self.assertEqual(e2.type, Ethernet.Ethernet().TYPE_IP)
-        self.assertEqual(e2.srcmac, 0x001122334455)
+        #self.assertEqual(e2.srcmac, 0x001122334455)
 
+    def test_basicMacAddress(self):
+        '''
+        Test Basic MacAddress class
+        '''
+        e = Ethernet.Ethernet()
+        e.srcmac = MacAddress(0x001122334455)
+        e.dstmac = MacAddress(0x998877665544)
+        e.type = Ethernet.Ethernet().TYPE_IP
+        e.payload = struct.pack("H",0xa)
+        ethbuf = e.pack()
+
+        e2  = Ethernet.Ethernet()
+        e2.regress = False
+        e2.unpack(ethbuf)
+
+        self.assertEqual(e2.dstmac, 0x998877665544)
+        self.assertEqual(e2.dstmac, '99:88:77:66:55:44')
+        self.assertEqual(e2.type, Ethernet.Ethernet().TYPE_IP)
+        #self.assertEqual(e2.srcmac, 0x001122334455)
+        
+        e2.dstmac += 1
+        self.assertEqual(e2.dstmac, 0x998877665545)
+        self.assertEqual(e2.dstmac, '99:88:77:66:55:45')
+        e2.dstmac -= 2
+        self.assertEqual(e2.dstmac, 0x998877665543)
+        self.assertEqual(e2.dstmac, '99:88:77:66:55:43')
+        
+        e2.dstmac.set(0x998812665544)
+        self.assertEqual(e2.dstmac, 0x998812665544)
+        self.assertEqual(e2.dstmac, '99:88:12:66:55:44')
+
+        e3 = Ethernet.Ethernet()
+        #print(e3.dstmac.str)
+        self.assertEqual(e3.dstmac, None)
+        #self.assertEqual(e3.dstmac.int, None)
+    
     def test_buildEmptyEthernet(self):
         '''Try and create an empty ethernet frame'''
         e = Ethernet.Ethernet()

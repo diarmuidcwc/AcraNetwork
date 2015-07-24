@@ -11,7 +11,6 @@ STRUCT_ARRAY = {
     'Q' : 64,
     }
 
-
 class BasePacket(object):
     '''
     Class to build and unpack a Base packet
@@ -40,21 +39,32 @@ class BasePacket(object):
             if not self.CALC_HEADER == self.HEADER_FORMAT:
                 raise ValueError("Incorrect format generated {}".format(HEADER_FORMAT))
     
-    def __init__(self, buf=None, debug=False):
+    def __init__(self, buf=None, debug=False, parent=None):
+           
         self.offset = 0
         self.basetype = None
         self.debug = debug
         self.regress = True
         self.calcHeaderFormat()
         self._packetStrut = struct.Struct(self.HEADER_FORMAT)
+
+        if None == parent:
+            self.parent = None
+        else:
+            self.parent = parent
+
         for i in self.HEADER:
             if not hasattr(self, i['n']):
                 # If a default value is present populate
                 # it other wise set to 0.
                 if 'd' in i.keys():
-                    setattr(self, i['n'], i['d'])
+                    r = i['d']
                 else:
-                    setattr(self, i['n'], 0)
+                    r = 0
+#                 if 'c' in i.keys():
+#                     setattr(i['c'], 'int', r)
+#                     r = i['c']
+                setattr(self, i['n'], r)
             else:
                 raise ValueError("Attribute {} already exists!".format(i['n']))
 
@@ -89,6 +99,10 @@ class BasePacket(object):
                     r = (r << s) + fields[j]
                     j += 1
             
+            if 'c' in i.keys():
+                setattr(i['c'], 'int', r)
+                r = i['c']
+            
             setattr(self, i['n'], r)
         
         if not None == self.BASETYPE_MAPPING:
@@ -115,7 +129,7 @@ class BasePacket(object):
             if not None == e['from'] and not None == e['import']:
                 i = importlib.import_module(e['from'])
                 p = e['from'].split('.')[-1]
-                m = getattr(i, e['import'])(self.payload)
+                m = getattr(i, e['import'])(self.payload, parent=self)
                 setattr(self, p, m)
             else:
                 a = ''
@@ -126,13 +140,17 @@ class BasePacket(object):
             raise ValueError("Unsupported Type, 0x{0:04x}".format(self.basetype))
 
     def pack(self, extra=None):
-        '''Pack the IENA payload into a binary format
+        '''Pack the payload into a binary format
         :rtype: str
         '''
         packetvalues = []
         for i in self.HEADER:
             try:
-                r = getattr(self, i['n'])
+                x = getattr(self, i['n'])
+                if hasattr(x, 'int'):
+                   r = x.int
+                else:
+                   r = x
                 if None == r:
                     raise ValueError("Unpopulated values")
             except:
