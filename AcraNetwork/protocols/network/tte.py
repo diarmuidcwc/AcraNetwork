@@ -1,4 +1,4 @@
-import struct
+# import struct
 from AcraNetwork.protocols.network.BasePacket import BasePacket
 
 class TTE(BasePacket):
@@ -21,13 +21,13 @@ class TTE(BasePacket):
         {'n': 'transparent_clock', 'w': 'Q'},
         {'n': 'reserved2', 'w': '18s'},
         ]
-    
-    def unpack_local(self, buf):
-        super(self.__class__, self).unpack_local(buf)
+     
+    _type_text = ''
+    @property
+    def type_text(self):
         if not self.type in self.PROTOCOLS.keys():
             raise ValueError("Unknown frame type {}".format(self.type))
-        self.type_text = self.PROTOCOLS[self.type]
-        
+        return self.PROTOCOLS[self.type]
 
     def __str__(self):
         s = 'TTE PCF\tSync Domain: 0x{:02x} Sync Priority 0x{:02x}'.format(
