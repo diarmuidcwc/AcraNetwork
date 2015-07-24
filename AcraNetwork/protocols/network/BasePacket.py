@@ -23,6 +23,12 @@ class BasePacket(object):
     HEADER = []
     PAYLOAD_REQUIRED = True
    
+    def isPacket(self, packettype):
+        for p in self.packetpath:
+            if p.upper().startswith(packettype.upper()):
+                return True
+        return False
+    
     def calcHeaderFormat(self, header=None):
         if not None == header:
             self.HEADER = header
@@ -45,6 +51,8 @@ class BasePacket(object):
         self.basetype = None
         self.debug = debug
         self.regress = True
+        self.packettype = str(type(self)).split('.')[-2]
+        self.packetpath = [self.packettype]
         self.calcHeaderFormat()
         self._packetStrut = struct.Struct(self.HEADER_FORMAT)
 
@@ -52,6 +60,7 @@ class BasePacket(object):
             self.parent = None
         else:
             self.parent = parent
+            self.parent.packetpath.extend(self.packetpath)
 
         for i in self.HEADER:
             if not hasattr(self, i['n']):
