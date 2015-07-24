@@ -48,11 +48,17 @@ class Ethernet(BasePacket):
         ]
 
 #     def unpack_local(self, buf):
+#         super(self.__class__, self).unpack_local(buf)
+#     def unpack_local(self, buf):
 #         self.assign_packet()
 #     def __init__(self, buf=None, payload_length=None, parent=None):
 #         super(self.__class__, self).__init__(buf, parent=parent)
     
-    def unpack_local(self, buf):
-        super(self.__class__, self).unpack_local(buf)
-#         self.dstmac = MacAddress(self.dstmac)
-#         self.srcmac = MacAddress(self.srcmac)
+    def __str__(self):
+        s = 'ETHER\tSRC: {} DST {} TYPE {} (0x{:04x})'.format(
+            self.srcmac,
+            self.dstmac,
+            self.TYPE[self.type]['import'],
+            self.type,
+            )
+        return s
