@@ -100,7 +100,7 @@ class BasePacket(object):
                     j += 1
             
             if 'c' in i.keys():
-                setattr(i['c'], 'int', r)
+                i['c'].set(r)
                 r = i['c']
             
             setattr(self, i['n'], r)
@@ -147,6 +147,14 @@ class BasePacket(object):
         for i in self.HEADER:
             try:
                 x = getattr(self, i['n'])
+                #  If attribute has been cast back to a string
+                #  When it should be a class, we fetch the class and 
+                #  update the string value
+                if 'c' in i.keys():
+                    if not isinstance(x, type(i['c'])):
+                        i['c'].set(x)
+                        x = i['c']
+                    
                 if hasattr(x, 'int'):
                    r = x.int
                 else:

@@ -60,7 +60,7 @@ class EthernetTest(unittest.TestCase):
         self.assertEqual(e2.dstmac, 0x998877665544)
         self.assertEqual(e2.dstmac, '99:88:77:66:55:44')
         self.assertEqual(e2.type, Ethernet.Ethernet().TYPE_IP)
-        #self.assertEqual(e2.srcmac, 0x001122334455)
+        self.assertEqual(e2.srcmac, 0x001122334455)
         
         e2.dstmac += 1
         self.assertEqual(e2.dstmac, 0x998877665545)
@@ -156,6 +156,10 @@ class EthernetTest(unittest.TestCase):
         self.assertEqual(i.flags,0x2)
         self.assertEqual(i.id,0x4795)
         self.assertEqual(i.len,56)
+        
+        self.assertEqual(i.dstip,3232235886)
+        self.assertEqual(i.srcip,3586634661)
+        
         p.close()
 
 if __name__ == '__main__':
