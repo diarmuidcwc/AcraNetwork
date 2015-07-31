@@ -1,2 +1,2 @@
 recursive-include examples p*.py s*.py
-recursive-include test
+recursive-include AcraNetwork/test
