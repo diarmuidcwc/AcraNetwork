@@ -6,6 +6,7 @@ class TTE(BasePacket):
     CALC_HEADER = '>II4sBBB5sQ18s'
     
     PROTOCOLS = {
+        0x0: 'Unknown',
         0x2: 'integration frame',
         0x4: 'coldstart frame',
         0x8: 'coldstart ack frame',
@@ -22,12 +23,25 @@ class TTE(BasePacket):
         {'n': 'reserved2', 'w': '18s'},
         ]
      
-    _type_text = ''
     @property
     def type_text(self):
         if not self.type in self.PROTOCOLS.keys():
             raise ValueError("Unknown frame type {}".format(self.type))
         return self.PROTOCOLS[self.type]
+
+    @property
+    def macdest(self):
+        if hasattr(self.parent, 'dstmac'):
+            return (self.parent.dstmac.int >> 16 )& 0xffffffff
+        else:
+            return 0
+
+    @property
+    def ctid(self):
+        if hasattr(self.parent, 'dstmac'):
+            return self.parent.dstmac.int & 0xffff
+        else:
+            return 0
 
     def __str__(self):
         s = 'TTE PCF\tSync Domain: 0x{:02x} Sync Priority 0x{:02x}'.format(
@@ -40,6 +54,8 @@ class TTE(BasePacket):
         s = [
             'TTEthernet',
             '  Destination: {}'.format(self.parent.dstmac),
+            '    Constant Field: 0x{:08x}'.format(self.macdest),
+            '    Critical Traffic Identifer: 0x{:04x}'.format(self.ctid),
             '  Source: {}'.format(self.parent.srcmac),
             '  Type: TTEthernet Protocol Control Frame (0x{0:04x})'.format(self.parent.type),
             'TTEthernet Protocol Control Frame',
