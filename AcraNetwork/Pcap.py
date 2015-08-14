@@ -24,6 +24,7 @@
 import struct
 import os
 import time
+from copy import deepcopy
 import AcraNetwork.iNetX
 import AcraNetwork.SimpleEthernet
 from AcraNetwork.Ethernet import Ethernet
@@ -178,7 +179,8 @@ class Pcap(object):
             try:
                 p = self.pop()
                 p.eth = Ethernet(p.packet)
-                packets.append(p)
+                x = deepcopy(p)
+                packets.append(x)
             except IOError:
                 # We are at the end of the file so lets jump to the next file
                 print("[+] Finished parsing pcap file")
