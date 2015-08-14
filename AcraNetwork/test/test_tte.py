@@ -28,7 +28,6 @@ import os
 import unittest
 import struct
 
-import AcraNetwork.Ethernet as Ethernet
 import AcraNetwork.protocols.network.tte as tte
 import AcraNetwork.Pcap as pcap
 
