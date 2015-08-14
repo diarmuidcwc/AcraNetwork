@@ -76,8 +76,8 @@ class TTETest(unittest.TestCase):
         self.assertEqual(len(packets), 4)
         self.assertEqual(packets[0].eth.isPacket('TTE'), True)
         self.assertEqual(packets[0].eth.isPacket('TCP'), False)
-        t = packets[0].eth.tte
         
+        t = packets[0].eth.tte
         self.assertEqual(t.integration_cycle, 0)
         self.assertEqual(t.membership_new, 1)
         self.assertEqual(t.sync_priority, 128)
