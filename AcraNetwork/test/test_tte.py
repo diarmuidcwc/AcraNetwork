@@ -58,10 +58,11 @@ class TTETest(unittest.TestCase):
         i.type = 5
         i.transparent_clock = 6
         x = bytearray(0)
-        y = bytearray(0)
-        z = bytearray(0)
+        i.reserved0 = x
+        i.reserved1 = x
+        i.reserved2 = x
         expected_payload = struct.pack(tte.TTE().HEADER_FORMAT,1,2,x,3,4,5,x,6,x)
-        #self.assertEqual(i.pack(), expected_payload)
+        self.assertEqual(i.pack(), expected_payload)
 
     def test_unpackTTEFromPcap(self):
         '''

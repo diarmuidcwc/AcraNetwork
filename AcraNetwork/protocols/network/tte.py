@@ -4,6 +4,7 @@ from AcraNetwork.protocols.network.BasePacket import BasePacket
 class TTE(BasePacket):
     '''Create or unpack an TTE packet'''
     CALC_HEADER = '>II4sBBB5sQ18s'
+    PAYLOAD_REQUIRED = False    
     
     PROTOCOLS = {
         0x0: 'Unknown',
