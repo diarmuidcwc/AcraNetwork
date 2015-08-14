@@ -78,6 +78,23 @@ class PcapBasicTest(unittest.TestCase):
         p.close()
         os.remove("_tmp.pcap")
 
+    ######################
+    # Read a complete pcap file and check two different mac addresses
+    ######################
+    def test_readMultiplePackets(self):
+        TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'test_input.pcap')
+        p = pcap.Pcap(TESTDATA_FILENAME)
+        packets = p.parse()
+        
+        self.assertEqual(packets[0].eth.srcmac,0x0018f8b84454)
+        self.assertEqual(packets[0].eth.dstmac,0xe0f847259336)
+        self.assertEqual(packets[0].eth.type,0x0800)
+
+        self.assertEqual(packets[1].eth.srcmac,0xe0f847259336)
+        self.assertEqual(packets[1].eth.dstmac,0x0018f8b84454)
+        self.assertEqual(packets[1].eth.type,0x0800)
+
+        p.close()
 
 
 if __name__ == '__main__':
