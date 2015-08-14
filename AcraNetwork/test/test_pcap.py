@@ -84,6 +84,7 @@ class PcapBasicTest(unittest.TestCase):
     def test_readMultiplePackets(self):
         TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'test_input.pcap')
         p = pcap.Pcap(TESTDATA_FILENAME)
+        p.silent = True
         packets = p.parse()
         
         self.assertEqual(packets[0].eth.srcmac,0x0018f8b84454)

@@ -123,6 +123,7 @@ class Pcap(object):
         self.sigfigs = 0
         self.snaplen = 65535
         self.network  = 1 # Ethernet
+        self.silent = False
 
     def readGlobalHeader(self):
         '''
@@ -183,7 +184,8 @@ class Pcap(object):
                 packets.append(x)
             except IOError:
                 # We are at the end of the file so lets jump to the next file
-                print("[+] Finished parsing pcap file")
+                if not self.silent:
+                    print("[+] Finished parsing pcap file")
                 break
         return packets
 
