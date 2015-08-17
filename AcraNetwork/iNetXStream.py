@@ -282,7 +282,7 @@ class iNetXStream(socket.socket):
         try:
             open(filename)
         except IOError:
-            print 'Cannot read pcap file '
+            print('Cannot read pcap file ')
 
         pcapfile = pcap.pcap(filename)
         count = 0
@@ -381,7 +381,7 @@ class iNetXStream(socket.socket):
                 packet_data = gpspacketstruct.unpack_from(packet.payload)
                 gpslockint = int(math.floor(packet_data[10]/(2**15)))
                 if gpslockint != previous_gpslock:
-                    print "Packet Count = {} GPS Lock = {}".format(pktcount,gpslockint)
+                    print("Packet Count = {} GPS Lock = {}".format(pktcount,gpslockint))
                     previous_gpslock = gpslockint
 
 
@@ -390,9 +390,9 @@ class iNetXStream(socket.socket):
 
                 pkttime = time.gmtime(packet.ptptimeseconds)
                 if packet.ptptimeseconds != previouspackettime:
-                    print "Packet PTP Time = {} sequence={} on streamid={} packet count={}".format(time.strftime("%H:%M:%S %d %b %Y",pkttime),packet.sequence,packet.streamid,pktcount)
+                    print("Packet PTP Time = {} sequence={} on streamid={} packet count={}".format(time.strftime("%H:%M:%S %d %b %Y",pkttime),packet.sequence,packet.streamid,pktcount))
                     if packet.ptptimeseconds - previouspackettime > 1:
-                        print " -- ERROR -- Time jump of over 1 second"
+                        print(" -- ERROR -- Time jump of over 1 second")
 
                 previouspackettime = packet.ptptimeseconds
 

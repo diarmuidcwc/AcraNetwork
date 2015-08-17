@@ -22,10 +22,12 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import struct
-import iNetX
 import os
-import SimpleEthernet
 import time
+from copy import deepcopy
+import AcraNetwork.iNetX
+import AcraNetwork.SimpleEthernet
+from AcraNetwork.Ethernet import Ethernet
 
 class PcapRecord(object):
     '''Class that can be used to store one pcap record'''
@@ -40,6 +42,11 @@ class PcapRecord(object):
         """:type : int"""
         self._packet = None
         """:type : str"""
+        self.eth = None
+
+    def __str__(self):
+        packet = 'PcapRecord @ {}.{}'.format(self.sec,self.usec)
+        return packet
 
     # Use a property on packet so that the length is triggered on it changing
     @property
@@ -85,7 +92,8 @@ class Pcap(object):
     GLOBAL_HEADER_SIZE = struct.calcsize(GLOBAL_HEADER_FORMAT)
 
     def __init__(self,filename,forreading=True):
-        '''Class for parsing pcap file.
+        '''
+        Class for parsing pcap file.
         Create a new pcap object passing in the pcapfilename.
         Then call the other methods to parse the file
 
@@ -95,15 +103,17 @@ class Pcap(object):
 
         self.filename = filename
         self.bytesread=0
+        self.readGlobal = False
 
         if forreading:
             try:
-                self.fopen = file(filename,'rb')
+                self.fopen = open(filename,'rb')
                 self.filesize = os.path.getsize(filename)
+                #self.readGlobalHeader()
             except:
                 raise IOError
         else:
-            self.fopen = file(filename,'wb')
+            self.fopen = open(filename,'wb')
 
         # Global header fields
         self.magic = 0xa1b2c3d4
@@ -113,21 +123,24 @@ class Pcap(object):
         self.sigfigs = 0
         self.snaplen = 65535
         self.network  = 1 # Ethernet
-
+        self.silent = False
 
     def readGlobalHeader(self):
-        '''This method will read the pcap global header and unpack it.
+        '''
+        This method will read the pcap global header and unpack it.
         This should be the first method to call on reading a PCAP file
         '''
 
-        header = self.fopen.read(Pcap.GLOBAL_HEADER_SIZE)
-        self.bytesread += Pcap.GLOBAL_HEADER_SIZE
-        (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(Pcap.GLOBAL_HEADER_FORMAT,header)
+        if not self.readGlobal:
+            header = self.fopen.read(self.GLOBAL_HEADER_SIZE)
+            self.bytesread += self.GLOBAL_HEADER_SIZE
+            (self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network) = struct.unpack(self.GLOBAL_HEADER_FORMAT,header)
+            self.readGlobal = True
 
     def writeGlobalHeader(self):
         '''Write the global header to a new pcap file'''
 
-        header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
+        header = struct.pack(self.GLOBAL_HEADER_FORMAT,self.magic,self.versionmaj,self.versionmin,self.zone,self.sigfigs,self.snaplen,self.network)
         self.fopen.write(header)
 
     def writeARecord(self,pcaprecord):
@@ -150,14 +163,31 @@ class Pcap(object):
 
         # read the pcap header to a new object
         pcaprecord = PcapRecord()
-        pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
+        pcaprecord.unpack(self.fopen.read(self.RECORD_HEADER_SIZE))
         pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
-        self.bytesread += pcaprecord.incl_len+Pcap.RECORD_HEADER_SIZE
+        self.bytesread += pcaprecord.incl_len+self.RECORD_HEADER_SIZE
 
         return pcaprecord
+    
+    def pop(self):
+        return self.readAPacket()
 
-
-
+    
+    def parse(self):
+        self.readGlobalHeader()
+        packets = []
+        while True: # while we are not at the end of the file
+            try:
+                p = self.pop()
+                p.eth = Ethernet(p.packet)
+                x = deepcopy(p)
+                packets.append(x)
+            except IOError:
+                # We are at the end of the file so lets jump to the next file
+                if not self.silent:
+                    print("[+] Finished parsing pcap file")
+                break
+        return packets
 
 
     #-------------------------------------------------

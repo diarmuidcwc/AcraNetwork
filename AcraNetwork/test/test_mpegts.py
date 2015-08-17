@@ -26,7 +26,8 @@ class MPEGTSBasicTest(unittest.TestCase):
         Takes the first packet in there and decoms the mpegts blocks
         Verifies each block in that first packet
         '''
-        p = pcap.Pcap("mpegts_input.pcap")
+        TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'mpegts_input.pcap')
+        p = pcap.Pcap(TESTDATA_FILENAME)
         p.readGlobalHeader()
         mypcaprecord = p.readAPacket()
 
@@ -62,7 +63,8 @@ class MPEGTSBasicTest(unittest.TestCase):
         in the file and checks for any continuity errors
         :return:
         '''
-        p = pcap.Pcap("mpegts_input.pcap")
+        TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'mpegts_input.pcap')
+        p = pcap.Pcap(TESTDATA_FILENAME)
         p.readGlobalHeader()
         while True:
             # Loop through the pcap file reading one packet at a time

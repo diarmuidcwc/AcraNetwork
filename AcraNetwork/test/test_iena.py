@@ -6,7 +6,7 @@
 #
 # Created:     
 #
-# Copyright 2014 Diarmuid Collins
+# Copyright 2015 Dave Keeshan
 #
 #    This program is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU General Public License
@@ -23,17 +23,21 @@
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 __author__ = '$USER'
 
+import os
 import sys
 sys.path.append("..")
 
 import unittest
 import datetime
 import time
-import AcraNetwork.IENA as iena
-import AcraNetwork.SimpleEthernet as SimpleEthernet
-import AcraNetwork.Pcap as pcap
-
 import struct
+
+import AcraNetwork.protocols.network.iena as iena
+import AcraNetwork.protocols.network.ip as ip
+import AcraNetwork.protocols.network.udp as udp
+#import AcraNetwork.SimpleEthernet as SimpleEthernet
+import AcraNetwork.Ethernet as Ethernet
+import AcraNetwork.Pcap as pcap
 
 class IENATest(unittest.TestCase):
 
@@ -43,6 +47,7 @@ class IENATest(unittest.TestCase):
         self.assertEqual(i.key,None)
         self.assertEqual(i.size,None)
         self.assertEqual(i.keystatus,None)
+        self.assertEqual(i.timeusec,0)
         self.assertEqual(i.status,None)
         self.assertEqual(i.sequence,None)
         self.assertEqual(i.endfield,0xdead)
@@ -58,15 +63,16 @@ class IENATest(unittest.TestCase):
         i.setPacketTime(time.mktime(datetime.datetime(datetime.datetime.today().year, 1, 2, 0, 0, 0,0).timetuple()),0)
         i.payload = struct.pack('H',0x5)
         # size = 9. Time = midnight Jan 02 = 86400s 0us = 0x14dd760000
-        expected_payload = struct.pack(iena.IENA.IENA_HEADER_FORMAT,1,9,0x14,0x1dd76000,2,3,10) + struct.pack('H',0x5) + struct.pack('>H',0xdead)
-        self.assertEqual(i.pack(),expected_payload)
+        expected_payload = struct.pack(iena.IENA().HEADER_FORMAT,1,9,0x14,0x1dd76000,2,3,10) + struct.pack('H',0x5) + struct.pack('>H',0xdead)
+        self.assertEqual(i.pack(), expected_payload)
 
     def test_unpackIENA(self):
         pass
 
     def test_unpackIEANFromPcap(self):
         '''Read all the IENA packets in a pcap file and check each field'''
-        p = pcap.Pcap("iena_test.pcap")
+        TESTDATA_FILENAME = os.path.join(os.path.dirname(__file__), 'iena_test.pcap')
+        p = pcap.Pcap(TESTDATA_FILENAME)
         p.readGlobalHeader()
         sequencenum = 195
         exptime = 0x1d102f800
@@ -77,26 +83,25 @@ class IENATest(unittest.TestCase):
             except IOError:
                 # End of file reached
                 break
-            e = SimpleEthernet.Ethernet()
+            e = Ethernet.Ethernet()
             e.unpack(mypcaprecord.packet)
-            ip =  SimpleEthernet.IP()
-            ip.unpack(e.payload)
-            u = SimpleEthernet.UDP()
-            u.unpack(ip.payload)
+            i = ip.IP()
+            i.unpack(e.payload)
+            u = udp.UDP()
+            u.unpack(i.payload)
             # Now I have a payload that will be an iena packet
-            i = iena.IENA()
-            i.unpack(u.payload)
-            self.assertEquals(i.key,0x1a)
-            self.assertEquals(i.size,24)
-            self.assertEquals(i.status,0)
-            self.assertEquals(i.keystatus,0)
-            self.assertEquals(i.sequence,sequencenum)
+            ie = iena.IENA()
+            ie.unpack(u.payload)
+            self.assertEqual(ie.key,0x1a)
+            self.assertEqual(ie.size,24)
+            self.assertEqual(ie.status,0)
+            self.assertEqual(ie.keystatus,0)
+            self.assertEqual(ie.sequence,sequencenum)
             sequencenum += 1
-            self.assertEqual(i.timeusec,exptime)
+            self.assertEqual(ie.timeusec,exptime)
             exptime += 0x186a0 # The timestamp increments by a fixed number of microseconds
-            self.assertEquals(i.endfield,0xdead)
-
-
+            self.assertEqual(ie.endfield,0xdead)
+        p.close()
 
 if __name__ == '__main__':
     unittest.main()
