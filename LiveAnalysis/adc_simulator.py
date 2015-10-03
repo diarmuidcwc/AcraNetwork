@@ -1,5 +1,8 @@
 __author__ = 'diarmuid'
 
+
+import sys
+sys.path.append("../")
 # Simulate an ADC placed packet.
 
 import AcraNetwork.iNetX as inetx
@@ -41,7 +44,7 @@ while True:
     signalValues = []
     # calculate the sample values for all the parameters in the current packet
     for sample in range(PARAMETERS_PER_PACKET):
-        sampletime += float(1.0/SAMPLE_RATE)
+        sampletime = (sampletime + float(1.0/SAMPLE_RATE)) % 1.0
         signalValues.append(int(AMPLITUDE * math.sin(FREQ*sampletime)))
     # pack the payload with the parameters
     adcpacket.payload = struct.pack("{}H".format(PARAMETERS_PER_PACKET),*signalValues)
