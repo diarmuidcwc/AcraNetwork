@@ -8,6 +8,8 @@ import socket
 import struct
 from matplotlib import pyplot as plt
 from matplotlib import animation
+import thread
+from collections import deque
 
 
 # some configuration
@@ -21,33 +23,49 @@ udp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,socket.inet_at
 udp_socket.bind(('', MULTICAST_PORT))
 
 # the stack containing the samples
-datastack = [0,0,0]
-timeaxis = 0.0
+datastack = deque([0,0,0])
+xaxis = deque([0])
+yaxis = deque([0])
+
 # create the plot
 fig = plt.figure()
-ax = plt.axes(xlim=(0, 2), ylim=(-2, 2))
+ax = plt.axes(xlim=(0, 200), ylim=(0, 100000))
 line, = ax.plot([], [], lw=2)
+
+def UDPClient(arg):
+    while True:
+        data, addr = udp_socket.recvfrom(2048)
+        packet = inetx.iNetX()
+        packet.unpack(data)
+        samples = struct.unpack("{}H".format(PARAMETERS_PER_PACKET),packet.payload)
+        datastack.extend(samples)
 
 def init():
     line.set_data([], [])
     return line,
 
 def animate(i):
-    global timeaxis
-    print datastack[0]
+    global xaxis
+    global yaxis
+    #for value in datastack:
+    #    print value
 
-    line.set_data(timeaxis, datastack.pop())
-    timeaxis = (timeaxis + 0.125) % 1
+    newxpoint = xaxis[-1] + 0.125
+    xaxis.append(newxpoint)
+    if len(xaxis) > 1000:
+        xaxis.popleft()
+
+    yaxis.append(datastack.popleft())
+    if len(yaxis) > 1000:
+        yaxis.popleft()
+
+    line.set_data(xaxis, yaxis)
     return line,
 
+thread.start_new_thread(UDPClient, (0,))
+
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=100, interval=1000, blit=False)
+                               frames=100, interval=10, blit=True)
 plt.show()
 
 
-while True:
-    data, addr = udp_socket.recvfrom(2048)
-    packet = inetx.iNetX()
-    packet.unpack(data)
-    samples = struct.unpack("{}H".format(PARAMETERS_PER_PACKET),packet.payload)
-    datastack.extend(samples)

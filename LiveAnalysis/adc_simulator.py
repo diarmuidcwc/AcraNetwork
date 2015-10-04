@@ -17,10 +17,10 @@ import time
 SAMPLE_RATE = 512
 PARAMETERS_PER_PACKET = 64
 DELAY_BETWEEN_PACKETS = float(PARAMETERS_PER_PACKET)/SAMPLE_RATE # milliseconds
-FREQ = 1
+FREQ = 10
 MULTICAST_IP = "235.0.0.1"
 MULTICAST_PORT = 8010
-AMPLITUDE = 65536
+AMPLITUDE = 30000
 # end configuration
 
 
@@ -45,7 +45,7 @@ while True:
     # calculate the sample values for all the parameters in the current packet
     for sample in range(PARAMETERS_PER_PACKET):
         sampletime = (sampletime + float(1.0/SAMPLE_RATE)) % 1.0
-        signalValues.append(int(AMPLITUDE * math.sin(FREQ*sampletime)))
+        signalValues.append(int(AMPLITUDE * (math.sin(FREQ*sampletime)+1)))
     # pack the payload with the parameters
     adcpacket.payload = struct.pack("{}H".format(PARAMETERS_PER_PACKET),*signalValues)
     # work out the timestamos
