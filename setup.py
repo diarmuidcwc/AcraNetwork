@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='AcraNetwork',
-      version='0.2',
+      version='0.3',
       description='Classes and utilities to support Flight Test Instrumentation Ethernet networks',
       author='Diarmuid Collins',
       author_email='dcollins@curtisswright.com',

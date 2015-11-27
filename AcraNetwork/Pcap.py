@@ -151,7 +151,10 @@ class Pcap(object):
         # read the pcap header to a new object
         pcaprecord = PcapRecord()
         pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
+        try:
         pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
+        except:
+            raise IOError("Failed to read {} bytes from pcap file".format(pcaprecord.incl_len))
         self.bytesread += pcaprecord.incl_len+Pcap.RECORD_HEADER_SIZE
 
         return pcaprecord

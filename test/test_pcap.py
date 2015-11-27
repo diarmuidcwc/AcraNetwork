@@ -69,6 +69,7 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(p.versionmin,4)
         self.assertEqual(p.zone,0)
         self.assertEqual(p.filesize,42)
+        p.close()
         os.remove("_tmp.pcap")
 
 
