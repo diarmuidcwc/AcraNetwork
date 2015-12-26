@@ -1,1 +1,2 @@
+include README.md
 recursive-include examples p*.py s*.py
