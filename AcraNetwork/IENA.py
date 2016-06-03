@@ -80,7 +80,7 @@ class IENA ():
             raise ValueError("Buffer passed to unpack is too small to be an IENA packet")
 
         (self.key, self.size, timehi, timelo, self.keystatus, self.status, self.sequence)  = self._packetStrut.unpack_from(buf)
-        self.timeusec = timelo | (timehi << 32)
+        self.timeusec = timelo + timehi * 2**32
 
         if self.size*2 != len(buf):
             self.lengthError = True

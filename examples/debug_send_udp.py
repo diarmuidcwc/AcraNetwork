@@ -41,7 +41,7 @@ print "UDP target port:", UDP_PORT
 
 
 sock = mcast.McastSocket()
-sock.mcast_add(UDP_IP)
+#sock.mcast_add(UDP_IP)
 
 # Fixed payload for both
 payload = struct.pack(">L",5)
@@ -72,12 +72,12 @@ while True:
 
     myiena.sequence += 1
     myiena.setPacketTime(currenttime)
-    sock.sendto(myiena.pack(), (UDP_IP, UDP_PORT))
-    print "iena sent"
+    #sock.sendto(myiena.pack(), (UDP_IP, UDP_PORT))
+    #print "iena sent"
 
     myinetx.sequence += 1
     myinetx.setPacketTime(currenttime)
     sock.sendto(myinetx.pack(), (UDP_IP, UDP_PORT+1))
     print "inetx sent"
 
-    time.sleep(1)
+    time.sleep(2)

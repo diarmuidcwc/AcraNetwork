@@ -11,7 +11,7 @@ except ImportError:
     shutil.copyfile("README.md","README.txt")
 
 setup(name='AcraNetwork',
-      version='0.6',
+      version='0.7',
       description='Classes and utilities to support Flight Test Instrumentation Ethernet networks',
       author='Diarmuid Collins',
       author_email='dcollins@curtisswright.com',

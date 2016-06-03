@@ -5,7 +5,16 @@ import os
 
 import unittest
 import AcraNetwork.Pcap as pcap
+import AcraNetwork.SimpleEthernet as SimpleEthernet
 import struct
+
+def getEthernetPacket(data=0xa):
+    e = SimpleEthernet.Ethernet()
+    e.srcmac = 0x001122334455
+    e.dstmac = 0x998877665544
+    e.type = SimpleEthernet.Ethernet.TYPE_IP
+    e.payload = struct.pack("H",data)
+    return e.pack()
 
 class PcapBasicTest(unittest.TestCase):
 
@@ -16,15 +25,15 @@ class PcapBasicTest(unittest.TestCase):
         self.assertRaises(IOError,lambda: pcap.Pcap("nofile.pcap"))
 
     def test_defaultMagicNumber(self):
-        p = pcap.Pcap("_tmp.pcap",forreading=False)
+        p = pcap.Pcap("_tmp.pcap",mode='w')
         self.assertEqual(p.magic,0xa1b2c3d4)
 
     def test_defaultVersionMaj(self):
-        p = pcap.Pcap("_tmp.pcap",forreading=False)
+        p = pcap.Pcap("_tmp.pcap",mode='w')
         self.assertEqual(p.versionmaj,2)
 
     def test_defaultVersionMin(self):
-        p = pcap.Pcap("_tmp.pcap",forreading=False)
+        p = pcap.Pcap("_tmp.pcap",mode='w')
         self.assertEqual(p.versionmin,4)
 
     def test_readTestFile(self):
@@ -52,11 +61,11 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(mypcaprecord.incl_len,70)
 
     def test_writeARecord(self):
-        p = pcap.Pcap("_tmp.pcap",forreading=False)
+        p = pcap.Pcap("_tmp.pcap",mode='w')
         p.writeGlobalHeader()
         r = pcap.PcapRecord()
         r.setCurrentTime()
-        r.packet = struct.pack("H",0x5)
+        r.packet = getEthernetPacket(0xa)
         p.writeARecord(r)
         p.close()
         p = pcap.Pcap("_tmp.pcap")
@@ -68,9 +77,35 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(p.versionmaj,2)
         self.assertEqual(p.versionmin,4)
         self.assertEqual(p.zone,0)
-        self.assertEqual(p.filesize,42)
+        self.assertEqual(p.filesize,56)
         p.close()
         os.remove("_tmp.pcap")
+
+    def test_appendARecord(self):
+        p = pcap.Pcap("_tmp2.pcap",mode='w')
+        p.writeGlobalHeader()
+        r = pcap.PcapRecord()
+        r.setCurrentTime()
+        r.packet = getEthernetPacket(0xa)
+        p.writeARecord(r)
+        p.close()
+        # Now try to append a record
+        p = pcap.Pcap("_tmp2.pcap",mode='a')
+        r.packet = getEthernetPacket(0xb)
+        p.writeARecord(r)
+        p.close()
+        # Read back to verify
+        p = pcap.Pcap("_tmp2.pcap")
+        p.readGlobalHeader()
+        self.assertEqual(p.filesize,88)
+        rec1 = p.readAPacket()
+        rec2 = p.readAPacket()
+        e = SimpleEthernet.Ethernet()
+        e.unpack(rec1.packet)
+        self.assertEqual(e.payload,struct.pack("H",0xa))
+        e.unpack(rec2.packet)
+        self.assertEqual(e.payload,struct.pack("H",0xb))
+        os.remove("_tmp2.pcap")
 
 
 
