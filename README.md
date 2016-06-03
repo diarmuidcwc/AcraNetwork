@@ -103,7 +103,8 @@ To create a new pcap object you need to supply a filename and a flag to indicate
 file. eg
 ```python
 pcap_for_reading = pcap.Pcap("input.pcap") 						# Create a new Pcap object based on reading from the file
-pcap_for_writing = pcap.Pcap("output.pcap",forreading=False)	# Create a new Pcap object that will be writting to a file
+pcap_for_writing = pcap.Pcap("output.pcap",mode='w')	# Create a new Pcap object that will be writing to a file
+pcap_for_appending = pcap.Pcap("output.pcap",mode='a')	# Open an existing pcap file for appending
 ```
 
 ####readGlobalHeader()

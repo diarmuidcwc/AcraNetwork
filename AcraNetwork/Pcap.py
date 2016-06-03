@@ -84,7 +84,7 @@ class Pcap(object):
     RECORD_HEADER_SIZE =  struct.calcsize(RECORD_HEADER_FORMAT)
     GLOBAL_HEADER_SIZE = struct.calcsize(GLOBAL_HEADER_FORMAT)
 
-    def __init__(self,filename,forreading=True):
+    def __init__(self,filename,**kwargs):
         '''Class for parsing pcap file.
         Create a new pcap object passing in the pcapfilename.
         Then call the other methods to parse the file
@@ -95,13 +95,25 @@ class Pcap(object):
 
         self.filename = filename
         self.bytesread=0
+        self.mode = kwargs.get('mode','r')
 
-        if forreading:
+        if 'forreading' in kwargs:
+            if kwargs['forreading']  == False:
+                self.mode = 'w'
+            raise DeprecationWarning("forreading is being deprecated and replaced with the mode argument")
+
+        if self.mode == 'a':
+            try:
+                self.fopen = file(filename,'ab')
+            except:
+                raise IOError("Failed to open {} for appending".format(filename))
+
+        elif self.mode == 'r':
             try:
                 self.fopen = file(filename,'rb')
                 self.filesize = os.path.getsize(filename)
-            except:
-                raise IOError
+            except Exception as e:
+                raise IOError("Failed to open {} for reading {}".format(filename,e))
         else:
             self.fopen = file(filename,'wb')
 
