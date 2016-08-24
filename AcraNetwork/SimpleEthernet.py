@@ -137,7 +137,7 @@ class IP():
         #self.ihl = na1 & 0xf
         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
-        self.payload = buf[IP.IP_HEADER_SIZE:]
+        self.payload = buf[IP.IP_HEADER_SIZE:self.len]
 
     def pack(self):
         '''Pack the IP object into a string buffer

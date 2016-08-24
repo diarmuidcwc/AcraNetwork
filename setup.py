@@ -10,8 +10,10 @@ except ImportError:
     print("warning: pypandoc module not found, could not convert Markdown to RST")
     shutil.copyfile("README.md","README.txt")
 
+exec(open('AcraNetwork/__version__.py').read())
+
 setup(name='AcraNetwork',
-      version='0.7',
+      version=__version__,
       description='Classes and utilities to support Flight Test Instrumentation Ethernet networks',
       author='Diarmuid Collins',
       author_email='dcollins@curtisswright.com',

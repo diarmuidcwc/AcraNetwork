@@ -105,6 +105,7 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(e.payload,struct.pack("H",0xa))
         e.unpack(rec2.packet)
         self.assertEqual(e.payload,struct.pack("H",0xb))
+        p.close()
         os.remove("_tmp2.pcap")
 
 
