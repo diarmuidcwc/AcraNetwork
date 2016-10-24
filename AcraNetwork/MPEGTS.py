@@ -31,7 +31,7 @@ NAL_HEADER_LEN = 4
 NAL_TYPES = { "SEI":6, "Unspecified" : 0, "Coded IDR" : 5, "SPS" : 7, "PPS" : 8, "AUD" : 9,
               "EOS" : 10, "DPS" : 16}
 # Invert it to go from integer to more useful name
-NAL_TYPES_INV = {v: k for k, v in NAL_TYPES.items()}
+NAL_TYPES_INV = dict((v, k) for k, v in NAL_TYPES.iteritems())
 SEI_UNREG_DATA = 5
 
 
