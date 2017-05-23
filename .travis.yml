@@ -1,9 +1,13 @@
+sudo: required
 language: python
+
 python:
-  - "2.6"
   - "2.7"
-# command to install dependencies
-#install: "pip install -r requirements.txt"
-# command to run tests
-script:
+  - "3.6"
+  - "3.7-dev" # 3.7 development branch
+
+install: 
+
+script: 
+  - "python setup.py install"
   - sh -c 'cd test && python -m unittest test_iena test_iena test_afdx test_mpegts test_pcap test_simpleethernet'

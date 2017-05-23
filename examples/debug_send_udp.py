@@ -36,8 +36,8 @@ import AcraNetwork.McastSocket as mcast
 UDP_IP = "235.0.0.1"
 UDP_PORT = 5005
 
-print "UDP target IP:", UDP_IP
-print "UDP target port:", UDP_PORT
+print("UDP target IP:", UDP_IP)
+print("UDP target port:", UDP_PORT)
 
 
 sock = mcast.McastSocket()
@@ -78,6 +78,6 @@ while True:
     myinetx.sequence += 1
     myinetx.setPacketTime(currenttime)
     sock.sendto(myinetx.pack(), (UDP_IP, UDP_PORT+1))
-    print "inetx sent"
+    print("inetx sent")
 
     time.sleep(2)

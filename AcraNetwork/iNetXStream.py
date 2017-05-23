@@ -21,7 +21,7 @@
 
 
 
-import inetx
+from . import inetx
 
 def getaccuratetiming():
     if sys.platform.startswith('linux'):
@@ -242,7 +242,7 @@ class iNetXStream(socket.socket):
                     ptpnsec = int(math.modf(current_time)[0] * 1e9)
 
                 if i % (loopdelay*10) == loopdelay*10-1:
-                    print ("INFO Current bit rate = {} Mbit/s. Delay loop = {} Data sent = {} MB Delay loop change = {} ".format(mbitrate,self._delayloop,self.streamsize/1000000,dlyloop_change))
+                    print(("INFO Current bit rate = {} Mbit/s. Delay loop = {} Data sent = {} MB Delay loop change = {} ".format(mbitrate,self._delayloop,self.streamsize/1000000,dlyloop_change)))
 
     def sendudp(self,bench=False):
         '''This proc just sends a stream of upd packets. Need to move this out of this class as it's not a inetx stream'''
@@ -273,7 +273,7 @@ class iNetXStream(socket.socket):
                     start_time_of_100_packets = time.clock()
 
                     if i % 10000 == 9999:
-                        print ("INFO Current bit rate = {} Mbit/s. Delay loop = {} Data sent = {} MB".format(mbitrate,self._delayloop,self.streamsize/1000000))
+                        print(("INFO Current bit rate = {} Mbit/s. Delay loop = {} Data sent = {} MB".format(mbitrate,self._delayloop,self.streamsize/1000000)))
 
 
     def pcapstreamread(self,filename,dport=0,pkttype="inetx",dietpacket=True):
@@ -282,7 +282,7 @@ class iNetXStream(socket.socket):
         try:
             open(filename)
         except IOError:
-            print 'Cannot read pcap file '
+            print('Cannot read pcap file ')
 
         pcapfile = pcap.pcap(filename)
         count = 0
@@ -381,7 +381,7 @@ class iNetXStream(socket.socket):
                 packet_data = gpspacketstruct.unpack_from(packet.payload)
                 gpslockint = int(math.floor(packet_data[10]/(2**15)))
                 if gpslockint != previous_gpslock:
-                    print "Packet Count = {} GPS Lock = {}".format(pktcount,gpslockint)
+                    print("Packet Count = {} GPS Lock = {}".format(pktcount,gpslockint))
                     previous_gpslock = gpslockint
 
 
@@ -390,9 +390,9 @@ class iNetXStream(socket.socket):
 
                 pkttime = time.gmtime(packet.ptptimeseconds)
                 if packet.ptptimeseconds != previouspackettime:
-                    print "Packet PTP Time = {} sequence={} on streamid={} packet count={}".format(time.strftime("%H:%M:%S %d %b %Y",pkttime),packet.sequence,packet.streamid,pktcount)
+                    print("Packet PTP Time = {} sequence={} on streamid={} packet count={}".format(time.strftime("%H:%M:%S %d %b %Y",pkttime),packet.sequence,packet.streamid,pktcount))
                     if packet.ptptimeseconds - previouspackettime > 1:
-                        print " -- ERROR -- Time jump of over 1 second"
+                        print(" -- ERROR -- Time jump of over 1 second")
 
                 previouspackettime = packet.ptptimeseconds
 

@@ -69,7 +69,7 @@ def main():
         recv_socket.mcast_add(args.address, '0.0.0.0')
         recv_socket.settimeout(3)
     except:
-        print "Can't bind to socket {}".format(udp_port)
+        print("Can't bind to socket {}".format(udp_port))
         exit()
 
     start_time = time.time()
@@ -85,7 +85,7 @@ def main():
         try:
             data, addr = recv_socket.recvfrom(2048) # buffer size is 1500 bytes
         except:
-            print "timeout on socket"
+            print("timeout on socket")
             exit()
 
         (udpsrcport,srcipaddr) = addr
@@ -136,8 +136,8 @@ def main():
 
     end_time = time.time()
     average_len = sum(data_len)/len(data_len)
-    print "INFO: Recevied {} packets in {} seconds with {} dropped packets".format(packet_count,end_time-start_time,drop_count)
-    print "INFO: Recevied {:.3f} Mbps".format((average_len*packet_count*8)/((end_time-start_time)*1024*1024))
+    print("INFO: Recevied {} packets in {} seconds with {} dropped packets".format(packet_count,end_time-start_time,drop_count))
+    print("INFO: Recevied {:.3f} Mbps".format((average_len*packet_count*8)/((end_time-start_time)*1024*1024)))
 
 if __name__ == '__main__':
     main()

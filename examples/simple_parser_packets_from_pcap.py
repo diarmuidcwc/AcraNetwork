@@ -29,7 +29,7 @@ def main():
     try:
         pcapfile = pcap.Pcap("SSR_ABM_102_capture_example1.pcap")
     except IOError:
-        print "ERROR: Could not find input file SSR_ABM_102_capture_example1.pcap"
+        print("ERROR: Could not find input file SSR_ABM_102_capture_example1.pcap")
         exit()
 
     # Keep a running count of the packets
@@ -60,10 +60,10 @@ def main():
                     PreviousSeqNum[inetx_packet.streamid] = inetx_packet.sequence
                 else:
                     if PreviousSeqNum[inetx_packet.streamid]+1 != inetx_packet.sequence:
-                        print "ERROR: Dropped {} packets on streamid={:#x} at packet count={}".format(inetx_packet.sequence - PreviousSeqNum[inetx_packet.streamid] + 1,inetx_packet.streamid,packet_count)
+                        print("ERROR: Dropped {} packets on streamid={:#x} at packet count={}".format(inetx_packet.sequence - PreviousSeqNum[inetx_packet.streamid] + 1,inetx_packet.streamid,packet_count))
                     PreviousSeqNum[inetx_packet.streamid] = inetx_packet.sequence
 
-                print "----- StreamID={:#10x} SourceIP= {:10s} -----".format(inetx_packet.streamid,ip_packet.srcip)
+                print("----- StreamID={:#10x} SourceIP= {:10s} -----".format(inetx_packet.streamid,ip_packet.srcip))
                 #--------------------------------------------------------------------------------
                 # Packets on stream id 0x11121314 is a parser aligned block so lets look at this
                 #--------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ def main():
                     # Loop through all the blocks in the packet and spit them out
                     for pblock in parser_aligned_packet.parserblocks:
                         (payload_data,) =struct.unpack('>I',pblock.payload)
-                        print "Sequence Number = {:8} Quadbyes={:5} Msgcnt={:5} BusId={:4} Elapsed={:20} ".format(inetx_packet.sequence, pblock.quadbytes,pblock.messagecount,pblock.busid,pblock.elapsedtime,payload_data)
+                        print("Sequence Number = {:8} Quadbyes={:5} Msgcnt={:5} BusId={:4} Elapsed={:20} ".format(inetx_packet.sequence, pblock.quadbytes,pblock.messagecount,pblock.busid,pblock.elapsedtime,payload_data))
 
 
             packet_count += 1

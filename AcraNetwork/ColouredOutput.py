@@ -81,7 +81,7 @@ class ColouredOutput():
     def PrintHeader(self):
         """Print a header describing the columns"""
         outstring="{:>10s} {:>15s} {:>15s} {:>15s}".format("StreamID","Source IP","Sequence Num","TimeStamp")
-        print( pos(self.y_location, self.x_location) + colorama.Fore.BLACK+colorama.Back.RED + outstring)
+        print(( pos(self.y_location, self.x_location) + colorama.Fore.BLACK+colorama.Back.RED + outstring))
 
 
     def PrintALine(self,string,sequencenum,streamid):
@@ -102,7 +102,7 @@ class ColouredOutput():
 
 
         # Print it to the correct position on the scree
-        print( pos(self.YPosition[streamid], self.x_location) + outputcolour + string)
+        print(( pos(self.YPosition[streamid], self.x_location) + outputcolour + string))
 
 
     def PrintDroppedPacket(self,sequencenum,streamid,packet_count,pcapfilename):
@@ -113,7 +113,7 @@ class ColouredOutput():
         else:
             if self.PreviousSeqNum[streamid]+1 != sequencenum:
                 # Dropped packet!
-                print( pos(self.YPosition[streamid], self.x_location+72) + colorama.Fore.MAGENTA+colorama.Back.CYAN+ "Dropped packet at count={} in {}".format(packet_count,pcapfilename))
+                print(( pos(self.YPosition[streamid], self.x_location+72) + colorama.Fore.MAGENTA+colorama.Back.CYAN+ "Dropped packet at count={} in {}".format(packet_count,pcapfilename)))
 
             self.PreviousSeqNum[streamid] = sequencenum
 
@@ -123,21 +123,21 @@ class ColouredOutput():
         # So loop through the column and print accordingly
         for yposn in range(ColouredOutput.MINY, ColouredOutput.MINY + ColouredOutput.BAR_LEN):
             if yposn >= bar_max_y:
-                print ( pos(yposn, 70) + self.TempGradient[offset] + "{: 3.1f}".format(temperature))
+                print(( pos(yposn, 70) + self.TempGradient[offset] + "{: 3.1f}".format(temperature)))
             else:
-                print ( pos(yposn, 70) + colorama.Back.BLACK + "     ")
+                print(( pos(yposn, 70) + colorama.Back.BLACK + "     "))
 
 
     def PrintFileName(self,pcapfilename):
         """Print a header with the filename"""
-        print( pos(self.y_location-1, self.x_location) + colorama.Fore.BLACK+colorama.Back.RED + pcapfilename)
+        print(( pos(self.y_location-1, self.x_location) + colorama.Fore.BLACK+colorama.Back.RED + pcapfilename))
 
     def PrintExitInfo(self,string):
-        print( pos(self.y_location-1, self.x_location+30) + colorama.Fore.WHITE+colorama.Back.BLACK + string)
+        print(( pos(self.y_location-1, self.x_location+30) + colorama.Fore.WHITE+colorama.Back.BLACK + string))
 
 
     def PrintMissingContinuity(self,streamid,mpegts):
         """Print out a warning if we have missed some sequence numbers"""
         # Check if we have dropped packets
-        print( pos(self.YPosition[streamid], self.x_location+72) + colorama.Fore.MAGENTA+colorama.Back.CYAN+ "Missed Continutiy")
+        print(( pos(self.YPosition[streamid], self.x_location+72) + colorama.Fore.MAGENTA+colorama.Back.CYAN+ "Missed Continutiy"))
 
