@@ -73,7 +73,7 @@ def main():
         try:
             data, addr = recv_socket.recvfrom(2048) # buffer size is 1500 bytes
         except socket.timeout:
-            print "timeout on socket"
+            print("timeout on socket")
             exit()
 
         # we are expecting a iNetX packets
@@ -92,7 +92,7 @@ def main():
             mpegtspackets = mpegts.MPEGTS()
             mpegtspackets.unpack(aligned_payload[:1316])
             for mpegblock in mpegtspackets.blocks:
-                print "PID = {}".format(PID_TEXT[mpegblock.pid])
+                print("PID = {}".format(PID_TEXT[mpegblock.pid]))
 
             aligned_payload = aligned_payload[1316:]
 

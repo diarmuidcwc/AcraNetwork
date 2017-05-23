@@ -43,7 +43,7 @@ class MPEGTSBasicTest(unittest.TestCase):
         mpegts.unpack(inetxpacket.payload)
         self.assertEqual(mpegts.NumberOfBlocks(),7)
         self.assertFalse(mpegts.contunityerror)
-        for packet_index in (range(7)):
+        for packet_index in (list(range(7))):
             if packet_index == 0:
                 self.assertEqual(mpegts.blocks[packet_index].pid,0)
                 self.assertEqual(mpegts.blocks[packet_index].syncbyte,0x47)
