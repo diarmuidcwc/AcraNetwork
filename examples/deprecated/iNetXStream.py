@@ -99,9 +99,9 @@ class iNetXStream(socket.socket):
             packet = iNetX() # create a iNetX packet
             packet.sequence = i
 
-            # fill the payload
+            # fill the _payload
             if self.parserblocks > 0:
-                # we want to create a parser aligned payload
+                # we want to create a parser aligned _payload
                 packet.parserPayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
             else:
                 packet.randomPayload(self.payloadsize)
@@ -180,9 +180,9 @@ class iNetXStream(socket.socket):
                 packet.sequence = i % pow(2,16)
 
 
-            # fill the payload
+            # fill the _payload
             if self.parserblocks > 0:
-                # we want to create a parser aligned payload
+                # we want to create a parser aligned _payload
                 packet.parserPayload(self.parserblocks,quadbytes=3,count=i*self.parserblocks)
             else:
                 packet.randomPayload(self.payloadsize)
@@ -250,7 +250,7 @@ class iNetXStream(socket.socket):
         start_time_of_100_packets = time.clock()
         for i in range(self.length):
 
-            #payload = ''.join(['\x05' for num in xrange(self.payloadsize)])
+            #_payload = ''.join(['\x05' for num in xrange(self.payloadsize)])
             payload = '\x05' * self.payloadsize
             payloadsize = self.payloadsize + 32
             self.streamsize += payloadsize

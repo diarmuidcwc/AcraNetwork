@@ -1,0 +1,318 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>NDP Documentation &#8212; AcraNetwork 0.12.2 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/py.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Chapter 10 Documentation" href="chapter10.html" />
+    <link rel="prev" title="Parser Aligned Documentation" href="parseraligned.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="chapter10.html" title="Chapter 10 Documentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="parseraligned.html" title="Parser Aligned Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ndp-documentation">
+<h1><code class="xref py py-class docutils literal notranslate"><span class="pre">NDP</span></code> Documentation<a class="headerlink" href="#ndp-documentation" title="Permalink to this headline">¶</a></h1>
+<p>NDP is a TTC payload format usual encapsulated in UDP payloads</p>
+<p>This module supports the creating and analysis of NDP packets</p>
+<p>In typical use, a UDP payload is captured from the network or read from a PCAP file. This is then passed to the
+<a class="reference internal" href="#NDP.NDP.unpack" title="NDP.NDP.unpack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">NDP.unpack()</span></code></a> method which converts it into an NDP packet</p>
+<p>NDP packets consists of NDP Segments which are handled by <a class="reference internal" href="#NDP.NDPSegment" title="NDP.NDPSegment"><code class="xref py py-class docutils literal notranslate"><span class="pre">NDPSegment</span></code></a></p>
+<p>Examples and details are available below</p>
+<div class="section" id="ndp-objects">
+<h2><a class="reference internal" href="#NDP.NDP" title="NDP.NDP"><code class="xref py py-class docutils literal notranslate"><span class="pre">NDP</span></code></a> Objects<a class="headerlink" href="#ndp-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="NDP.NDP">
+<em class="property">class </em><code class="descclassname">NDP.</code><code class="descname">NDP</code><a class="headerlink" href="#NDP.NDP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to pack and unpack NDP payloads.</p>
+<p>Capture a UDP packet and unpack the _payload as an NDP packet</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n</span> <span class="o">=</span> <span class="n">NDP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">n</span><span class="o">.</span><span class="n">datatype</span>
+<span class="go">6</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">segments</span><span class="p">:</span>
+<span class="gp">... </span> <span class="nb">print</span> <span class="n">segment</span><span class="o">.</span><span class="n">errorcode</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="NDP.NDP.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#NDP.NDP.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the NDP object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="NDP.NDP.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#NDP.NDP.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an NDP object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an NDP packet</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.cfgcnt">
+<code class="descname">cfgcnt</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.cfgcnt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.datasrcid">
+<code class="descname">datasrcid</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.datasrcid" title="Permalink to this definition">¶</a></dt>
+<dd><p>A unique data source identifier for each data source.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.datatype">
+<code class="descname">datatype</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.datatype" title="Permalink to this definition">¶</a></dt>
+<dd><p>A unique identifier for the type of data collected in the packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.flags">
+<code class="descname">flags</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flags [0]-Unlocked timestamp [1]-Packet fragmentation [2]-Relative Time Count Present</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.hdrlen">
+<code class="descname">hdrlen</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.hdrlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Header Length</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.mcastaddr">
+<code class="descname">mcastaddr</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.mcastaddr" title="Permalink to this definition">¶</a></dt>
+<dd><p>The 32-bit IP multicast address used as the destination address of the packet.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.packetlen">
+<code class="descname">packetlen</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.packetlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of 32-bit words in the data packet including the NPD header and data segments.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.segments">
+<code class="descname">segments</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.segments" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of all the data segments</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.sequence">
+<code class="descname">sequence</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sequence number</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.timestamp">
+<code class="descname">timestamp</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.timestamp" title="Permalink to this definition">¶</a></dt>
+<dd><p>The content of this field is based upon the R bit in the flags field of the NPD Packet Protocol header.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDP.version">
+<code class="descname">version</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDP.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Version</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="ndpsegment-objects">
+<h2><a class="reference internal" href="#NDP.NDPSegment" title="NDP.NDPSegment"><code class="xref py py-class docutils literal notranslate"><span class="pre">NDPSegment</span></code></a> Objects<a class="headerlink" href="#ndpsegment-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="NDP.NDPSegment">
+<em class="property">class </em><code class="descclassname">NDP.</code><code class="descname">NDPSegment</code><a class="headerlink" href="#NDP.NDPSegment" title="Permalink to this definition">¶</a></dt>
+<dd><p>NDP Payloads are split into segments. This class will pack and unpack segments</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="NDP.NDPSegment.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#NDP.NDPSegment.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the NDP object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="NDP.NDPSegment.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#NDP.NDPSegment.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an NDP segment. Return the remaining buffer so that the next segment can iteratively
+be unpacked</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an NDP segment</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDPSegment.errorcode">
+<code class="descname">errorcode</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDPSegment.errorcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>This field has a zero value if there are no errors</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDPSegment.flags">
+<code class="descname">flags</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDPSegment.flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>[2:1] Fragmentation state flag</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDPSegment.payload">
+<code class="descname">payload</code><a class="headerlink" href="#NDP.NDPSegment.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Payload of segment
+:return:</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDPSegment.segmentlen">
+<code class="descname">segmentlen</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDPSegment.segmentlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the segment header and data in bytes excluding padding.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="NDP.NDPSegment.timedelta">
+<code class="descname">timedelta</code><em class="property"> = None</em><a class="headerlink" href="#NDP.NDPSegment.timedelta" title="Permalink to this definition">¶</a></dt>
+<dd><p>The R-bit in the Flags field of the packet header dictates the format of this field.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">NDP</span></code> Documentation</a><ul>
+<li><a class="reference internal" href="#ndp-objects"><code class="docutils literal notranslate"><span class="pre">NDP</span></code> Objects</a></li>
+<li><a class="reference internal" href="#ndpsegment-objects"><code class="docutils literal notranslate"><span class="pre">NDPSegment</span></code> Objects</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="parseraligned.html"
+                        title="previous chapter">Parser Aligned Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="chapter10.html"
+                        title="next chapter">Chapter 10 Documentation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/ndp.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="chapter10.html" title="Chapter 10 Documentation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="parseraligned.html" title="Parser Aligned Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Diarmuid Collins.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.7.0b1.
+    </div>
+  </body>
+</html>

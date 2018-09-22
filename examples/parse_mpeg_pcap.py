@@ -1,3 +1,21 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+===== 
+Parse MPEG TS packets in pcap....
+===== 
+
+"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__version__ = "0.0.1"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
+
+
+import sys
+sys.path.append("..")
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.MPEGTS as mpegts
@@ -7,6 +25,7 @@ import datetime
 
 # This script shows how to parse either a pcap file or a TS file into the constituent
 # NALS and finds the unique STANAG SEI User data with the timestamp
+
 
 def pcap_to_ts(pcapfile,ts_file,udp_port=8010):
     '''
@@ -18,36 +37,30 @@ def pcap_to_ts(pcapfile,ts_file,udp_port=8010):
     '''
 
     mpegpcap = pcap.Pcap(pcapfile, mode='r')
-    mpegpcap.readGlobalHeader()
 
     ts = open(ts_file, mode='wb')
     mpeghex = ""
     rec_count = 0
 
-    while not ts.closed:
+    for rec in mpegpcap:
         try:
-            rec = mpegpcap.readAPacket()
+            e = eth.Ethernet()
+            e.unpack(rec.packet)
+            i = eth.IP()
+            i.unpack(e.payload)
+            u = eth.UDP()
+            u.unpack(i.payload)
+            if u.dstport == udp_port:
+                rec_count += 1
+                inet = inetx.iNetX()
+                inet.unpack(u.payload)
+                mpegtspackets = mpegts.MPEGTS()
+                mpegtspackets.unpack(inet.payload)
+                for packet in mpegtspackets.blocks:
+                    mpeghex += packet.payload
+                ts.write(inet.payload)
         except:
-            ts.close()
-        else:
-            try:
-                e = eth.Ethernet()
-                e.unpack(rec.packet)
-                i = eth.IP()
-                i.unpack(e.payload)
-                u = eth.UDP()
-                u.unpack(i.payload)
-                if u.dstport == udp_port:
-                    rec_count += 1
-                    inet = inetx.iNetX()
-                    inet.unpack(u.payload)
-                    mpegtspackets = mpegts.MPEGTS()
-                    mpegtspackets.unpack(inet.payload)
-                    for packet in mpegtspackets.blocks:
-                        mpeghex += packet.payload
-                    ts.write(inet.payload)
-            except:
-                continue
+            continue
 
 
 def parse_ts_file(tsfile):
@@ -78,9 +91,10 @@ def parse_ts_file(tsfile):
         print "{} {} NALs in input".format(nal_counts[type],mpegts.NAL_TYPES_INV[type])
     print "{} STANAG Timestamps".format(timestamp_count)
 
+
 def main():
     # Read in a TS file and print out some useful information
-    parse_ts_file("../test/stanag_sample.ts")
+    parse_ts_file("frompcap_0x1001.ts")
 
 
 if __name__ == "__main__":

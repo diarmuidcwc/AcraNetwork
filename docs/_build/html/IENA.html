@@ -1,0 +1,604 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>IENA Documentation &#8212; AcraNetwork 0.12.2 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/py.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="iNET Documentation" href="inet.html" />
+    <link rel="prev" title="SimpleEthernet Documentation" href="simpleethernet.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="inet.html" title="iNET Documentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="simpleethernet.html" title="SimpleEthernet Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="iena-documentation">
+<h1>IENA Documentation<a class="headerlink" href="#iena-documentation" title="Permalink to this headline">¶</a></h1>
+<p>IENA Packet is an AIRBUS packet format that is used in FTI. The packet format is fully described in a technical document
+issued by Airbus Referemce:RP0701637</p>
+<p>This module supports the creating and analysis of IENA-P, IENA-M, IENA-Q, IENA-N and IENA-D packet formats.</p>
+<p>Examples and details are available below</p>
+<div class="section" id="iena-objects">
+<h2><a class="reference internal" href="#IENA.IENA" title="IENA.IENA"><code class="xref py py-class docutils literal notranslate"><span class="pre">IENA</span></code></a> Objects<a class="headerlink" href="#iena-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.IENA">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">IENA</code><a class="headerlink" href="#IENA.IENA" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to <a class="reference internal" href="#IENA.IENA.pack" title="IENA.IENA.pack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">IENA.pack()</span></code></a> and <a class="reference internal" href="#IENA.IENA.unpack" title="IENA.IENA.unpack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">IENA.unpack()</span></code></a> IENA payloads.</p>
+<p>IENA is an proprietary payload format
+developed by Airbus for use in FTI networks. It is usually transmitted in a UDP packet
+containing parameter data acquired from sensors and buses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">--</span> <span class="o">-----------</span><span class="mi">6</span><span class="n">B</span><span class="o">-----------</span> <span class="o">-</span><span class="mi">1</span><span class="n">B</span><span class="o">-</span> <span class="o">-</span><span class="mi">1</span><span class="n">B</span><span class="o">-</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">------</span><span class="mi">0</span><span class="n">B</span> <span class="n">to</span> <span class="mi">65490</span><span class="n">B</span><span class="o">-----</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span>
+<span class="o">|</span> <span class="n">KEY</span>   <span class="o">|</span> <span class="n">SIZE</span>  <span class="o">|</span> <span class="n">TIME</span> <span class="n">SINCE</span> <span class="n">START</span> <span class="n">YR</span><span class="p">(</span><span class="n">US</span><span class="p">)</span><span class="o">|</span> <span class="n">ST</span> <span class="o">|</span> <span class="n">N2</span> <span class="o">|</span> <span class="n">SEQNUM</span> <span class="o">|</span>      <span class="n">PARAMETERS</span>       <span class="o">|</span>   <span class="n">END</span>  <span class="o">|</span>
+<span class="o">--------</span> <span class="o">-------</span> <span class="o">------------------------</span> <span class="o">----</span> <span class="o">----</span> <span class="o">--------</span> <span class="o">-----------------------</span> <span class="o">--------</span>  
+</pre></div>
+</div>
+<p>Create an IENA packet and return the packed buffer</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENA</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="mh">0xDC</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">sequence</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">endfield</span> <span class="o">=</span> <span class="mh">0xDEAD</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">keystatus</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="mh">0x0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">setPacketTime</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;H&#39;</span><span class="p">,</span><span class="mh">0x5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Unpack some received packet from the network</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENA</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="IENA.IENA.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENA.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the IENA payload into a binary string</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="IENA.IENA.setPacketTime">
+<code class="descname">setPacketTime</code><span class="sig-paren">(</span><em>utctimestamp</em>, <em>microseconds=0</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENA.setPacketTime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the packet timestamp</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>timestamp</strong> (<em>int</em>) – The seconds timestamp based on he standard timeformat</li>
+<li><strong>microseconds</strong> (<em>int</em>) – The microseconds part of the timestamp</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="IENA.IENA.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENA.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IENA object
+Accepts a buffer to unpack as the required argument</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.endfield">
+<code class="descname">endfield</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.endfield" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trailer field in the IENA packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.key">
+<code class="descname">key</code><a class="headerlink" href="#IENA.IENA.key" title="Permalink to this definition">¶</a></dt>
+<dd><p>The IENA Key. Identifies the IENA packet type</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.keystatus">
+<code class="descname">keystatus</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.keystatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Key Status. Fully described in the IENA standard</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.n2">
+<code class="descname">n2</code><a class="headerlink" href="#IENA.IENA.n2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of the N2 Status.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Payload of the IENA packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.sequence">
+<code class="descname">sequence</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sequence Number. Circular counter unique per key. Wraps at 16 bits.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.size">
+<code class="descname">size</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>IENA packet size incl header. This is calculated automatically when packing the message</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.status">
+<code class="descname">status</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>N2 Status. Fully described in the IENA standard</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.streamid">
+<code class="descname">streamid</code><a class="headerlink" href="#IENA.IENA.streamid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias of the IENA key.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENA.timeusec">
+<code class="descname">timeusec</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENA.timeusec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Time of the first byte in the payload in us since Jan 1st of the current year</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="iena-m-objects">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">IENA-M</span></code> Objects<a class="headerlink" href="#iena-m-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.IENAM">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">IENAM</code><a class="headerlink" href="#IENA.IENAM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Support for IENA-M packets. Message Parameters with delay field</p>
+<p>This payload includes a defined parameter ID, a delay and a length field</p>
+<p>All this is encapsulated inside an IENA packet as defined above:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">--</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">------</span><span class="mi">0</span><span class="n">B</span> <span class="n">to</span> <span class="mi">65490</span><span class="n">B</span><span class="o">----------</span>
+<span class="o">|</span><span class="n">PARAM</span>  <span class="o">|</span> <span class="n">DELAY</span> <span class="o">|</span> <span class="n">LENGTH</span> <span class="o">|</span> <span class="n">Dataset</span> <span class="k">with</span> <span class="n">opt</span> <span class="mi">1</span><span class="n">B</span> <span class="n">pad</span>    <span class="o">|</span>
+<span class="o">--------</span> <span class="o">-------</span> <span class="o">-------------------------------------</span>  
+</pre></div>
+</div>
+<p>Unpack some received packet from the network</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENAM</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="nb">print</span> <span class="n">param</span><span class="o">.</span><span class="n">paramid</span>
+<span class="go">6</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="IENA.IENAM.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAM.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the IENA-M payload into a binary string</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="IENA.IENAM.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAM.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IENA-M object
+Accepts a buffer to unpack as the required argument</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENAM.parameters">
+<code class="descname">parameters</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENAM.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of all MParameters in thie IENA-M packet Each entry is of class <a class="reference internal" href="#IENA.MParameter" title="IENA.MParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">MParameter</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="mparameter-objects">
+<h2><a class="reference internal" href="#IENA.MParameter" title="IENA.MParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">MParameter</span></code></a> Objects<a class="headerlink" href="#mparameter-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.MParameter">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">MParameter</code><a class="headerlink" href="#IENA.MParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The MParameter is a object representing each MParameter in an IENA-M packet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>paramid</strong> (<em>int</em>) – The param ID for this parameter</li>
+<li><strong>delay</strong> (<em>int</em>) – The delay for this parameter</li>
+<li><strong>dataset</strong> – The dataset payload as a string</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="iena-q-objects">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">IENA-Q</span></code> Objects<a class="headerlink" href="#iena-q-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.IENAQ">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">IENAQ</code><a class="headerlink" href="#IENA.IENAQ" title="Permalink to this definition">¶</a></dt>
+<dd><p>Support for IENA-Q packets. Message Parameters without delay field</p>
+<p>This payload includes a defined parameter ID and a length field</p>
+<p>All this is encapsulated inside an IENA packet as defined above:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span>  <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">------</span><span class="mi">0</span><span class="n">B</span> <span class="n">to</span> <span class="mi">65490</span><span class="n">B</span><span class="o">----------</span>
+<span class="o">|</span><span class="n">PARAM</span>   <span class="o">|</span> <span class="n">LENGTH</span> <span class="o">|</span> <span class="n">Dataset</span> <span class="k">with</span> <span class="n">opt</span> <span class="mi">1</span><span class="n">B</span> <span class="n">pad</span>    <span class="o">|</span>
+<span class="o">--------</span>  <span class="o">-------</span> <span class="o">-----------------------------</span>
+</pre></div>
+</div>
+<p>Unpack some received packet from the network</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENAQ</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="nb">print</span> <span class="n">param</span><span class="o">.</span><span class="n">paramid</span>
+<span class="go">6</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="IENA.IENAQ.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAQ.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the IENA-Q payload into a binary string</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="IENA.IENAQ.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAQ.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IENA-Q object
+Accepts a buffer to unpack as the required argument</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENAQ.parameters">
+<code class="descname">parameters</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENAQ.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of all QParameters in thie IENA-Q packet Each entry is of class <code class="xref py py-class docutils literal notranslate"><span class="pre">QParameter</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="qparameter-objects">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">QParameter</span></code> Objects<a class="headerlink" href="#qparameter-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">MParameter</code></dt>
+<dd><p>The MParameter is a object representing each MParameter in an IENA-M packet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>paramid</strong> (<em>int</em>) – The param ID for this parameter</li>
+<li><strong>delay</strong> (<em>int</em>) – The delay for this parameter</li>
+<li><strong>dataset</strong> – The dataset payload as a string</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="iena-n-objects">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">IENA-N</span></code> Objects<a class="headerlink" href="#iena-n-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.IENAN">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">IENAN</code><a class="headerlink" href="#IENA.IENAN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Support for IENA-N packets. Std parameters without delay field</p>
+<p>This payload includes a defined parameter ID and payload</p>
+<p>All this is encapsulated inside an IENA packet as defined above with this pattern repeated</p>
+<p>The number of D-words are defined in the N2 field of the IENA header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">--</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">----</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span>
+<span class="o">|</span><span class="n">PARAM</span>  <span class="o">|</span> <span class="n">D</span><span class="c1">#N   | D#N-1  |   D#-1  | ...    | D0     |  </span>
+<span class="o">--------</span> <span class="o">-------</span> <span class="o">------------------------------------</span>  
+</pre></div>
+</div>
+<p>Unpack some received packet from the network</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENAN</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+<span class="go">6</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">i</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">paramid</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="go">4</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="IENA.IENAN.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAN.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IENA-M object
+Accepts a buffer to unpack as the required argument</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENAN.parameters">
+<code class="descname">parameters</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENAN.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of all N-type parameters. Each entry is of class <a class="reference internal" href="#IENA.NParameter" title="IENA.NParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">NParameter</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="nparameter-objects">
+<h2><a class="reference internal" href="#IENA.NParameter" title="IENA.NParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">NParameter</span></code></a> Objects<a class="headerlink" href="#nparameter-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.NParameter">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">NParameter</code><a class="headerlink" href="#IENA.NParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The NParameter is a object representing each NParameter in an IENA-N packet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>paramid</strong> (<em>int</em>) – The param ID for this parameter</li>
+<li><strong>dwords</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – List of all the d-words in the parameter</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="iena-d-objects">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">IENA-D</span></code> Objects<a class="headerlink" href="#iena-d-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.IENAD">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">IENAD</code><a class="headerlink" href="#IENA.IENAD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Support for IENA-D packets. Std parameters with delay field</p>
+<p>This payload includes a defined parameter ID, a delay and a length field</p>
+<p>All this is encapsulated inside an IENA packet as defined above with this pattern repeated</p>
+<p>The number of D-words are defined in the N2 field of the IENA header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">--</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">----</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span> <span class="o">---</span><span class="mi">2</span><span class="n">B</span><span class="o">---</span>
+<span class="o">|</span><span class="n">PARAM</span>  <span class="o">|</span> <span class="n">DELAY</span> <span class="o">|</span> <span class="n">D</span><span class="c1">#N    | D#-1    | ...    | D0     |</span>
+<span class="o">--------</span> <span class="o">-------</span> <span class="o">------------------------------------</span>  
+</pre></div>
+</div>
+<p>Unpack some received packet from the network</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IENAD</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+<span class="go">6</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="IENA.IENAD.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#IENA.IENAD.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IENA-M object
+Accepts a buffer to unpack as the required argument</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="IENA.IENAD.parameters">
+<code class="descname">parameters</code><em class="property"> = None</em><a class="headerlink" href="#IENA.IENAD.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of all DParameters in thie IENA-D packet Each entry is of class <a class="reference internal" href="#IENA.DParameter" title="IENA.DParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">DParameter</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="dparameter-objects">
+<h2><a class="reference internal" href="#IENA.DParameter" title="IENA.DParameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">DParameter</span></code></a> Objects<a class="headerlink" href="#dparameter-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="IENA.DParameter">
+<em class="property">class </em><code class="descclassname">IENA.</code><code class="descname">DParameter</code><a class="headerlink" href="#IENA.DParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The DParameter is a object representing each DParameter in an IENA-D packet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>paramid</strong> (<em>int</em>) – The param ID for this parameter</li>
+<li><strong>delay</strong> (<em>int</em>) – The delay for this parameter</li>
+<li><strong>dwords</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – List of all the d-words in the parameter</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">IENA Documentation</a><ul>
+<li><a class="reference internal" href="#iena-objects"><code class="docutils literal notranslate"><span class="pre">IENA</span></code> Objects</a></li>
+<li><a class="reference internal" href="#iena-m-objects"><code class="docutils literal notranslate"><span class="pre">IENA-M</span></code> Objects</a></li>
+<li><a class="reference internal" href="#mparameter-objects"><code class="docutils literal notranslate"><span class="pre">MParameter</span></code> Objects</a></li>
+<li><a class="reference internal" href="#iena-q-objects"><code class="docutils literal notranslate"><span class="pre">IENA-Q</span></code> Objects</a></li>
+<li><a class="reference internal" href="#qparameter-objects"><code class="docutils literal notranslate"><span class="pre">QParameter</span></code> Objects</a></li>
+<li><a class="reference internal" href="#iena-n-objects"><code class="docutils literal notranslate"><span class="pre">IENA-N</span></code> Objects</a></li>
+<li><a class="reference internal" href="#nparameter-objects"><code class="docutils literal notranslate"><span class="pre">NParameter</span></code> Objects</a></li>
+<li><a class="reference internal" href="#iena-d-objects"><code class="docutils literal notranslate"><span class="pre">IENA-D</span></code> Objects</a></li>
+<li><a class="reference internal" href="#dparameter-objects"><code class="docutils literal notranslate"><span class="pre">DParameter</span></code> Objects</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="simpleethernet.html"
+                        title="previous chapter">SimpleEthernet Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="inet.html"
+                        title="next chapter">iNET Documentation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/IENA.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="inet.html" title="iNET Documentation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="simpleethernet.html" title="SimpleEthernet Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Diarmuid Collins.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.7.0b1.
+    </div>
+  </body>
+</html>

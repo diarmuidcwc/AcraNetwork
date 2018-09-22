@@ -1,53 +1,67 @@
-#-------------------------------------------------------------------------------
-# Name:        SimpleEthernet
-# Purpose:     A very trimmed down set of classes to unpack the common network packet formats
-#
-# Author:      DCollins
-#
-# Created:     19/12/2013
-#
-# Copyright 2014 Diarmuid Collins
-#
-#    This program is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License
-#    as published by the Free Software Foundation; either version 2
-#    of the License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
+.. module:: SimpleEthernet
+    :platform: Unix, Windows
+    :synopsis: A very trimmed down set of classes to unpack the common network packet formats
+
+.. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
+
+"""
+
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
 
 
 import struct
 import socket
 import array
 
+
 def unpack48(x):
-    '''Convert a 48 bit buffer into an integer'''
+    """
+    Unpack a 48bit string returning an integer
+
+    :param x: 6 byte buffer
+    :type x: str
+
+    :rtype: int 
+    """
     x2, x3 = struct.unpack('>HI', x)
     return x3 | (x2 << 32)
 
 
-
 def mactoreadable(macaddress):
-    '''Convert a macaddress into the readable form'''
+    """
+    Convert a macaddress into the readable form
+    
+    :param macaddress: The mac address in integer format
+    :type macaddress: int
+    
+    :rtype: str
+    """
     mac_string = ""
-    for i in range(5,0,-1):
-        eachbyte = 0xff & int(macaddress >> (i*8))
-        mac_string += ":{:02x}".format(eachbyte)
-    return mac_string
+    b = []
+    for i in range(6):
+        eachbyte = (macaddress >> i*8) & 0xFF
+        b.append(eachbyte)
+
+    return "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}".format(b[5], b[4], b[3], b[2],  b[1], b[0])
 
 
-def calc_checksum(pkt):
-    '''Calculate the checksum of a packet'''
+def ip_calc_checksum(pkt):
+    """
+    Calculate the checksum of a packet
+    
+    :param pkt: The IP packet header packed into bytes
+    :type pkt: str
+    :return: 
+    """
+
     if len(pkt) % 2 == 1:
         pkt += "\0"
-    s = sum(array.array("H", pkt))
+    s = sum(struct.unpack("<{}H".format(len(pkt) / 2), pkt))
     s = (s >> 16) + (s & 0xffff)
     s += s >> 16
     s = ~s
@@ -55,94 +69,163 @@ def calc_checksum(pkt):
 
 
 class Ethernet(object):
-    '''This is simple class to build or deconstruct an Ethernet packet'''
+    """
+    This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI
+    
+    Read an Ethernet Packet from a pcap file
+    
+    >>> import AcraNetwork.Pcap as Pcap
+    >>> p = Pcap.Pcap("test_input.pcap")
+    >>> mypcaprecord = p[0]
+    >>> e = Ethernet()
+    >>> e.unpack(mypcaprecord.packet)
+    >>> print e
+    SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800
+    
+    :type type: int
+    :type srcmac: int
+    :type dstmac: int
+    :type payload: str
+    
+    """
     HEADERLEN = 14
     TYPE_IP = 0x800
+    TYPE_IPv4 = 0x800  #:(Object Constant) IPv4 Type Constant
+    TYPE_IPv6 = 0x86DD  #:(Object Constant) IPv6 Type Constant
+    TYPE_ARP = 0x806   #:(Object Constant) ARP Type Constant
 
-    def __init__(self,buf=None):
-        '''Constructor for and Ethernet packet'''
-        self.type = None
-        """:type : int"""
-        self.srcmac = None
-        """:type : int"""
-        self.dstmac = None
-        """:type : int"""
-        self.payload = None
-        """:type : str"""
+    def __init__(self, buf=None):
 
-        if buf != None:
+        """
+        Create an Ethernet packet object. 
+
+        :param buf: If a buffer is passed in to the init method, it will be unpacked as a Ethernet packet
+        :type buf: str
+
+        """
+        self.type = None #: The Ethertype field. Assign using the TYPE_* constants. https://en.wikipedia.org/wiki/EtherType
+        self.srcmac = None #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        self.dstmac = None #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        self.payload = None #: The Ethernet payload. Typically an IP packet.
+
+        if buf is not None:
             self.unpack(buf)
 
     def unpack(self,buf):
-        '''Unpack a buffer into an Ethernet object
+        """
+        Unpack a raw byte stream to an Ethernet object
+
+        :param buf: The string buffer to unpack
         :type buf: str
-        '''
+        :rtype: bool
+        """
+
         self.dstmac = unpack48(buf[:6])
         self.srcmac = unpack48(buf[6:12])
         (self.type,) = struct.unpack_from('>H',buf,12)
         self.payload = buf[Ethernet.HEADERLEN:]
-
+        return True
 
     def pack(self):
-        '''Pack the Ethernet object into a bufferr
-        :rtype : str
-        '''
+        """
+        Pack the Ethernet object into a buffer
+        
+        :rtype: str
+        """
+
         if self.dstmac == None or self.srcmac == None or self.type == None or self.payload == None:
             raise ValueError("All thre required Ethernet fields are not complete")
         header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff),0x0800)
         return header + self.payload
 
+    def __repr__(self):
+        return "SRCMAC={} DSTMAC={} TYPE={:#0X}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type)
 
 
-class IP():
-    '''Create or unpack an IP packet'''
-    PROTOCOLS = {"ICMP":0x01,"IGMP" : 0X02, "TCP":0x6,"UDP":0x11}
+class IP(object):
+    """
+    Create or unpack an IP packet https://en.wikipedia.org/wiki/IPv4#Header
+    
+    If you wanted to unpack an Ethernet object payload which contains an IP packet
+    
+    >>> i = IP()
+    >>> i.unpack(eth_pkt.payload)
+    
+    :type srcip: str
+    :type dstip: str
+    :type len: int
+    :type flags: int
+    :type protocol: int
+    :type payload: str
+    :type version: int
+    :type ihl: int
+    :type dscp: int
+    :type id: int
+    :type ttl: int
+    
+    """
+
+    PROTOCOL_ICMP = 0x01  #:(Object Constant) ICMP Protocol Constant
+    PROTOCOL_IGMP = 0x02  #:(Object Constant) IGMP Protocol Constant
+    PROTOCOL_TCP = 0x6  #:(Object Constant) TCP Protocol Constant
+    PROTOCOL_UDP = 0x11  #:(Object Constant) UDP Protocol Constant
+
+    PROTOCOLS = {"ICMP":PROTOCOL_ICMP, "IGMP" : PROTOCOL_IGMP, "TCP":PROTOCOL_TCP, "UDP":PROTOCOL_UDP}  #:(Object Constant) Protocols available
     IP_HEADER_FORMAT = '>BBHHBBBBHII'
     IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
 
-    def __init__(self,buf=None):
-        self.srcip = None
-        """:type str"""
-        self.dstip = None
-        """:type str"""
-        self.len = None
-        """:type int"""
-        self.flags = 0x0
-        """:type int"""
-        self.protocol = IP.PROTOCOLS['UDP'] # default to udp
-        """:type int"""
-        self.payload = None
-        """:type str"""
-        self.version = 4 # IPV4
-        """:type int"""
-        self.ihl = 5 # Header len in 32 bit words
-        """:type int"""
-        self.dscp = 0
-        """:type int"""
-        self.id = 0
-        """:type int"""
-        self.ttl = 20
-        """:type int"""
-        if buf != None:
+    def __init__(self, buf=None):
+        """
+        Create an IP packet object. Currently supports only IPv4
+        
+        :param buf: If a buffer is passed in to the init method, it will be unpacked as a IP packet
+        :type buf: str
+        
+        """
+        self.srcip = None #: Source IP Address
+        self.dstip = None #: Destination IP Address
+        self.len = None #: Total Length. This is calculated when packing the packet
+        self.flags = 0x0 #: Three bit field identifying a flag
+        self.protocol = IP.PROTOCOL_UDP #: The type of the payload
+        self.payload = None #: The IPv4 payload
+        self.version = 4 #: IP version field
+        self.ihl = 5 #: Header length in 32 bit words
+        self.dscp = 0 #: Differentiated Services Code Point
+        self.id = 0 #: Identification Field
+        self.ttl = 20 #: Time to Live. In practice the hop count.
+
+        if buf is not None:
             self.unpack(buf)
 
-    def unpack(self,buf):
-        '''Unpack a buffer into an ethernet object'''
+    def unpack(self, buf):
+        """
+        Unpack a raw byte stream to an IP object
 
+        :param buf: The string buffer to unpack
+        :type buf: str
+        :rtype: bool
+        """
         if len(buf) < IP.IP_HEADER_SIZE:
             raise ValueError("Buffer too short for to be an IP packet")
-        (na1,self.dscp, self.len,self.id,self.flags,na3, self.ttl, self.protocol, checksum, self.srcip,self.dstip) = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
+        (na1, self.dscp, self.len, self.id, self.flags, na3, self.ttl, self.protocol, checksum, self.srcip, self.dstip) \
+            = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
         self.flags = self.flags >> 5
-        #self.version = na1 >>4
-        #self.ihl = na1 & 0xf
+        self.version = na1 >> 4
+        self.ihl = na1 & 0xf
         self.srcip = socket.inet_ntoa(struct.pack('!I',self.srcip))
         self.dstip = socket.inet_ntoa(struct.pack('!I',self.dstip))
+        # Fill IP payload with number of bytes declared in header's length field, leaving any trailer behind (e.g. typically padding to reach 64bytes)
         self.payload = buf[IP.IP_HEADER_SIZE:self.len]
 
+        return True
+
     def pack(self):
-        '''Pack the IP object into a string buffer
-        :rtype :str
-        '''
+        """
+        Pack the IP object into a buffer
+        
+        :rtype: str
+        """
+
         for word in [self.dscp,self.id,self.flags,self.ttl,self.protocol,self.srcip,self.dstip]:
             if word == None:
                 raise ValueError("All required IP payloads not defined")
@@ -151,51 +234,103 @@ class IP():
         (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
         self.len = IP.IP_HEADER_SIZE+len(self.payload)
         header = struct.pack(IP.IP_HEADER_FORMAT,0x45,self.dscp,self.len,self.id,self.flags,0,self.ttl,self.protocol,0,srcip_as_int,dstip_as_int)
-        checksum = calc_checksum(header)
+        checksum = ip_calc_checksum(header)
         header = header[:10] + struct.pack('H',checksum) + header[12:]
         return header + self.payload
 
+    def __repr__(self):
+        protocol = ""
+        for p,v in IP.PROTOCOLS.iteritems():
+            if v == self.protocol:
+                protocol = p
+        return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
 
-class UDP():
-    '''Class to build and unpack a UDP packet'''
+
+class UDP(object):
+    """
+    Class to build and unpack a UDP packet
+    
+    https://en.wikipedia.org/wiki/User_Datagram_Protocol#Packet_structure
+    
+    Packet structure::
+    
+        -----2B----- -----2B----- -----2B----- -----2B----- --0-65527B----
+        | SRC PORT  |  DEST PORT |   LENGTH   | CHECKSUM   | PAYLOAD
+        ------------ ------------ ------------ ------------ --------------
+    
+    Create a UDP packet
+    
+    >>> u = UDP()
+    >>> u.dstport = 5500
+    >>> u.srcport = 4400
+    >>> u.payload = struct.pack('B',0x5)
+    >>> mypacket = u.pack()
+    
+    :type srcport: int
+    :type dstport: int
+    :type len: int
+    :type payload: str
+    """
+
+
     UDP_HEADER_FORMAT = '>HHHH'
     UDP_HEADER_SIZE = struct.calcsize(UDP_HEADER_FORMAT)
-    def __init__(self,buf=None):
 
-        self.srcport = None
-        self.dstport = None
-        self.len = None
-        self.payload = None
+    def __init__(self, buf=None):
 
-        if buf != None:
+        self.srcport = None #: The UDP source port number
+        self.dstport = None #: The UDP desitnation port number
+        self.len = None #: The length of the UDP header and payload in bytes
+        self.payload = None #: The UDP payload
+
+        if buf is not None:
             self.unpack(buf)
 
     def unpack(self,buf):
-        '''Unpack a buffer into a UDP object'''
+        """
+        Unpack a raw byte stream to a UDP object
+
+        :param buf: The string buffer to unpack
+        :type buf: str
+        :rtype: bool
+        """
 
         if len(buf) < UDP.UDP_HEADER_SIZE:
             raise ValueError("Buffer too short to be a UDP packet")
         (self.srcport,self.dstport,self.len,checksum) = struct.unpack_from(UDP.UDP_HEADER_FORMAT,buf)
         self.payload = buf[UDP.UDP_HEADER_SIZE:]
 
+        return True
+
     def pack(self):
-        '''Pack a UDP object into a buffer
-        :rtype :str
-        '''
+        """
+        Pack the UDP object into a buffer
+        
+        :rtype: str
+        """
+
         if self.srcport == None or self.dstport == None or self.payload == None:
             raise ValueError("All UDP fields need to be defined to pack the payload")
 
         self.len = len(self.payload) + UDP.UDP_HEADER_SIZE
         return struct.pack(UDP.UDP_HEADER_FORMAT,self.srcport,self.dstport,self.len,0) + self.payload
 
+    def __repr__(self):
+        return "SRCPORT={} DSTPORT={}".format(self.srcport, self.dstport)
 
-class AFDX():
-    '''This class will  unpack an AFDX packet'''
+
+class AFDX(object):
+    """
+    This class will  unpack an AFDX packet
+    
+    """
+
     HEADERLEN = 14
     DSTMAC_CONST = 0x3000000
     SRCMAC_CONST = 0x20000
     MIN_PAYLOAD_LEN = 42
-    def __init__(self,buf=None):
+
+    def __init__(self, buf=None):
         self.type =None
         self.networkID = None
         self.equipmentID = None

@@ -6,8 +6,10 @@ import unittest
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
-
 import struct
+import os
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class iNetXTest(unittest.TestCase):
 
@@ -43,9 +45,10 @@ class iNetXTest(unittest.TestCase):
         self.assertEqual(i.packetlen,30)
         self.assertEqual(i.pif,0)
         self.assertEqual(i.payload,struct.pack('H',0x5))
+        self.assertEqual(repr(i), "STREAMID=0XDC SEQ=2 LEN=30 PTPS=1 PTPNS=1")
 
     def test_unpackiNetFromPcap(self):
-        p = pcap.Pcap("inetx_test.pcap")
+        p = pcap.Pcap(os.path.join(THIS_DIR, "inetx_test.pcap"))
         p.readGlobalHeader()
         mypcaprecord = p.readAPacket()
         e = SimpleEthernet.Ethernet()
@@ -54,7 +57,7 @@ class iNetXTest(unittest.TestCase):
         ip.unpack(e.payload)
         u = SimpleEthernet.UDP()
         u.unpack(ip.payload)
-        # Now I have a payload that will be an inetx packet
+        # Now I have a _payload that will be an inetx packet
         i = inetx.iNetX()
         i.unpack(u.payload)
         self.assertEquals(i.inetxcontrol,0x11000000)
@@ -67,24 +70,17 @@ class iNetXTest(unittest.TestCase):
 
     def test_unpackMultiplePackets(self):
         sequencenum = 1011
-        mypcap = pcap.Pcap("inetx_test.pcap")       # Read the pcap file
-        mypcap.readGlobalHeader()
-        while True:
-            # Loop through the pcap file reading one packet at a time
-            try:
-                mypcaprecord = mypcap.readAPacket()
-            except IOError:
-                # End of file reached
-                break
+        mypcap = pcap.Pcap(os.path.join(THIS_DIR, "inetx_test.pcap"))       # Read the pcap file
+        for mypcaprecord in mypcap:
 
             ethpacket = SimpleEthernet.Ethernet()   # Create an Ethernet object
             ethpacket.unpack(mypcaprecord.packet)   # Unpack the pcap record into the eth object
             ippacket =  SimpleEthernet.IP()         # Create an IP packet
-            ippacket.unpack(ethpacket.payload)      # Unpack the ethernet payload into the IP packet
+            ippacket.unpack(ethpacket.payload)      # Unpack the ethernet _payload into the IP packet
             udppacket = SimpleEthernet.UDP()        # Create a UDP packet
-            udppacket.unpack(ippacket.payload)      # Unpack the IP payload into the UDP packet
+            udppacket.unpack(ippacket.payload)      # Unpack the IP _payload into the UDP packet
             inetxpacket = inetx.iNetX()             # Create an iNetx object
-            inetxpacket.unpack(udppacket.payload)   # Unpack the UDP payload into this iNetX object
+            inetxpacket.unpack(udppacket.payload)   # Unpack the UDP _payload into this iNetX object
             #print "INETX: StreamID ={:08X} Sequence = {:8d} PTP Seconds = {}".format(inetxpacket.streamid,inetxpacket.sequence,inetxpacket.ptptimeseconds)
             self.assertEquals(inetxpacket.sequence,sequencenum)
             sequencenum += 1

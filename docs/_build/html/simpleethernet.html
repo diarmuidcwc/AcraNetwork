@@ -1,0 +1,499 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>SimpleEthernet Documentation &#8212; AcraNetwork 0.12.2 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/py.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="IENA Documentation" href="IENA.html" />
+    <link rel="prev" title="Pcap Documentation" href="pcap.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="IENA.html" title="IENA Documentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="pcap.html" title="Pcap Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="simpleethernet-documentation">
+<h1>SimpleEthernet Documentation<a class="headerlink" href="#simpleethernet-documentation" title="Permalink to this headline">¶</a></h1>
+<p>This module containts a number of simple classes than can be used to create Ethernet, IP and UDP packets. The basic functionality
+of these packet formats are supported which should cover 95% of the use cases.</p>
+<p>You should understand the <code class="xref py py-func docutils literal notranslate"><span class="pre">struct.pack()</span></code> and <code class="xref py py-func docutils literal notranslate"><span class="pre">struct.unpack()</span></code> functions in python before using this module</p>
+<p>When reading a packet, typically a new instance of the class is created and the source of data is passed to the <a class="reference internal" href="#SimpleEthernet.Ethernet.pack" title="SimpleEthernet.Ethernet.pack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Ethernet.pack()</span></code></a> method.</p>
+<p>For writing a packet, the various attributes of the packets are created and the packed. This returns a string buffer which
+is the byte representation of the packet.</p>
+<p>Packet types which encapsulate other packets are unpacked by passing the payload of the outter packet to the inner packet. For example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">SimpleEthernet</span> <span class="k">as</span> <span class="nn">se</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ip_pkt</span> <span class="o">=</span> <span class="n">se</span><span class="o">.</span><span class="n">IP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ip_pkt</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ip_pkt</span><span class="o">.</span><span class="n">dstip</span> <span class="o">=</span> <span class="s2">&quot;192.168.28.2&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ip_pkt</span><span class="o">.</span><span class="n">srcip</span> <span class="o">=</span> <span class="s2">&quot;192.168.28.1&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">eth_pkt</span> <span class="o">=</span> <span class="n">se</span><span class="o">.</span><span class="n">Ethernet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">eth_pkt</span><span class="o">.</span><span class="n">dstmac</span> <span class="o">=</span> <span class="mh">0x1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">eth_pkt</span><span class="o">.</span><span class="n">srcmac</span> <span class="o">=</span> <span class="mh">0x2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1">#At this point we have the bones of two packets. Now to encapsulate the IP packet in the Ethernet packet</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">eth_pkt</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="n">ip_pkt</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="ethernet-objects">
+<h2><a class="reference internal" href="#SimpleEthernet.Ethernet" title="SimpleEthernet.Ethernet"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ethernet</span></code></a> Objects<a class="headerlink" href="#ethernet-objects" title="Permalink to this headline">¶</a></h2>
+<p>Used to build Ethernet packets. Payload encapsulated is typically the output of <a class="reference internal" href="#SimpleEthernet.IP.pack" title="SimpleEthernet.IP.pack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">IP.pack()</span></code></a></p>
+<dl class="class">
+<dt id="SimpleEthernet.Ethernet">
+<em class="property">class </em><code class="descclassname">SimpleEthernet.</code><code class="descname">Ethernet</code><span class="sig-paren">(</span><em>buf=None</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.Ethernet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI</p>
+<p>Read an Ethernet Packet from a pcap file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">AcraNetwork.Pcap</span> <span class="k">as</span> <span class="nn">Pcap</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">p</span> <span class="o">=</span> <span class="n">Pcap</span><span class="o">.</span><span class="n">Pcap</span><span class="p">(</span><span class="s2">&quot;test_input.pcap&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mypcaprecord</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span> <span class="o">=</span> <span class="n">Ethernet</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">mypcaprecord</span><span class="o">.</span><span class="n">packet</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">e</span>
+<span class="go">SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="SimpleEthernet.Ethernet.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.Ethernet.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the Ethernet object into a buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="SimpleEthernet.Ethernet.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.Ethernet.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an Ethernet object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.TYPE_ARP">
+<code class="descname">TYPE_ARP</code><em class="property"> = 2054</em><a class="headerlink" href="#SimpleEthernet.Ethernet.TYPE_ARP" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) ARP Type Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.TYPE_IPv4">
+<code class="descname">TYPE_IPv4</code><em class="property"> = 2048</em><a class="headerlink" href="#SimpleEthernet.Ethernet.TYPE_IPv4" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) IPv4 Type Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.TYPE_IPv6">
+<code class="descname">TYPE_IPv6</code><em class="property"> = 34525</em><a class="headerlink" href="#SimpleEthernet.Ethernet.TYPE_IPv6" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) IPv6 Type Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.dstmac">
+<code class="descname">dstmac</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.Ethernet.dstmac" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Ethernet destination MAC Address. This is encoded into a 48bit field. <a class="reference external" href="https://en.wikipedia.org/wiki/MAC_address">https://en.wikipedia.org/wiki/MAC_address</a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.Ethernet.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Ethernet payload. Typically an IP packet.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.srcmac">
+<code class="descname">srcmac</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.Ethernet.srcmac" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Ethernet source MAC Address. This is encoded into a 48bit field. <a class="reference external" href="https://en.wikipedia.org/wiki/MAC_address">https://en.wikipedia.org/wiki/MAC_address</a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.Ethernet.type">
+<code class="descname">type</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.Ethernet.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Ethertype field. Assign using the TYPE_* constants. <a class="reference external" href="https://en.wikipedia.org/wiki/EtherType">https://en.wikipedia.org/wiki/EtherType</a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="ip-objects">
+<h2><a class="reference internal" href="#SimpleEthernet.IP" title="SimpleEthernet.IP"><code class="xref py py-class docutils literal notranslate"><span class="pre">IP</span></code></a> Objects<a class="headerlink" href="#ip-objects" title="Permalink to this headline">¶</a></h2>
+<p>Used to build IP packets. Payload encapsulated is typically the output of <a class="reference internal" href="#SimpleEthernet.UDP.pack" title="SimpleEthernet.UDP.pack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">UDP.pack()</span></code></a>.</p>
+<p>Currently only supports IPv4</p>
+<dl class="class">
+<dt id="SimpleEthernet.IP">
+<em class="property">class </em><code class="descclassname">SimpleEthernet.</code><code class="descname">IP</code><span class="sig-paren">(</span><em>buf=None</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.IP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create or unpack an IP packet <a class="reference external" href="https://en.wikipedia.org/wiki/IPv4#Header">https://en.wikipedia.org/wiki/IPv4#Header</a></p>
+<p>If you wanted to unpack an Ethernet object payload which contains an IP packet</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">IP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">eth_pkt</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="SimpleEthernet.IP.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.IP.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the IP object into a buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="SimpleEthernet.IP.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.IP.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to an IP object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.PROTOCOLS">
+<code class="descname">PROTOCOLS</code><em class="property"> = {'ICMP': 1, 'IGMP': 2, 'TCP': 6, 'UDP': 17}</em><a class="headerlink" href="#SimpleEthernet.IP.PROTOCOLS" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) Protocols available</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.PROTOCOL_ICMP">
+<code class="descname">PROTOCOL_ICMP</code><em class="property"> = 1</em><a class="headerlink" href="#SimpleEthernet.IP.PROTOCOL_ICMP" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) ICMP Protocol Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.PROTOCOL_IGMP">
+<code class="descname">PROTOCOL_IGMP</code><em class="property"> = 2</em><a class="headerlink" href="#SimpleEthernet.IP.PROTOCOL_IGMP" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) IGMP Protocol Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.PROTOCOL_TCP">
+<code class="descname">PROTOCOL_TCP</code><em class="property"> = 6</em><a class="headerlink" href="#SimpleEthernet.IP.PROTOCOL_TCP" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) TCP Protocol Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.PROTOCOL_UDP">
+<code class="descname">PROTOCOL_UDP</code><em class="property"> = 17</em><a class="headerlink" href="#SimpleEthernet.IP.PROTOCOL_UDP" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) UDP Protocol Constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.dscp">
+<code class="descname">dscp</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.dscp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Differentiated Services Code Point</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.dstip">
+<code class="descname">dstip</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.dstip" title="Permalink to this definition">¶</a></dt>
+<dd><p>Destination IP Address</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.flags">
+<code class="descname">flags</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Three bit field identifying a flag</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.id">
+<code class="descname">id</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identification Field</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.ihl">
+<code class="descname">ihl</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.ihl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Header length in 32 bit words</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.len">
+<code class="descname">len</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total Length. This is calculated when packing the packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>The IPv4 payload</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.protocol">
+<code class="descname">protocol</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.protocol" title="Permalink to this definition">¶</a></dt>
+<dd><p>The type of the payload</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.srcip">
+<code class="descname">srcip</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.srcip" title="Permalink to this definition">¶</a></dt>
+<dd><p>Source IP Address</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.ttl">
+<code class="descname">ttl</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.ttl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Time to Live. In practice the hop count.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.IP.version">
+<code class="descname">version</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.IP.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>IP version field</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="udp-objects">
+<h2><a class="reference internal" href="#SimpleEthernet.UDP" title="SimpleEthernet.UDP"><code class="xref py py-class docutils literal notranslate"><span class="pre">UDP</span></code></a> Objects<a class="headerlink" href="#udp-objects" title="Permalink to this headline">¶</a></h2>
+<p>Used to build UDP packets. Payload encapsulated is typically an iNetX or IENA packet.</p>
+<dl class="class">
+<dt id="SimpleEthernet.UDP">
+<em class="property">class </em><code class="descclassname">SimpleEthernet.</code><code class="descname">UDP</code><span class="sig-paren">(</span><em>buf=None</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.UDP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to build and unpack a UDP packet</p>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/User_Datagram_Protocol#Packet_structure">https://en.wikipedia.org/wiki/User_Datagram_Protocol#Packet_structure</a></p>
+<p>Packet structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----</span><span class="mi">2</span><span class="n">B</span><span class="o">-----</span> <span class="o">-----</span><span class="mi">2</span><span class="n">B</span><span class="o">-----</span> <span class="o">-----</span><span class="mi">2</span><span class="n">B</span><span class="o">-----</span> <span class="o">-----</span><span class="mi">2</span><span class="n">B</span><span class="o">-----</span> <span class="o">--</span><span class="mi">0</span><span class="o">-</span><span class="mi">65527</span><span class="n">B</span><span class="o">----</span>
+<span class="o">|</span> <span class="n">SRC</span> <span class="n">PORT</span>  <span class="o">|</span>  <span class="n">DEST</span> <span class="n">PORT</span> <span class="o">|</span>   <span class="n">LENGTH</span>   <span class="o">|</span> <span class="n">CHECKSUM</span>   <span class="o">|</span> <span class="n">PAYLOAD</span>
+<span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">------------</span> <span class="o">--------------</span>
+</pre></div>
+</div>
+<p>Create a UDP packet</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">u</span> <span class="o">=</span> <span class="n">UDP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">u</span><span class="o">.</span><span class="n">dstport</span> <span class="o">=</span> <span class="mi">5500</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">u</span><span class="o">.</span><span class="n">srcport</span> <span class="o">=</span> <span class="mi">4400</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">u</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;B&#39;</span><span class="p">,</span><span class="mh">0x5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mypacket</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">pack</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="SimpleEthernet.UDP.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.UDP.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the UDP object into a buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="SimpleEthernet.UDP.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buf</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.UDP.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a raw byte stream to a UDP object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buf</strong> (<em>str</em>) – The string buffer to unpack</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.UDP.dstport">
+<code class="descname">dstport</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.UDP.dstport" title="Permalink to this definition">¶</a></dt>
+<dd><p>The UDP desitnation port number</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.UDP.len">
+<code class="descname">len</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.UDP.len" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the UDP header and payload in bytes</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.UDP.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.UDP.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>The UDP payload</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="SimpleEthernet.UDP.srcport">
+<code class="descname">srcport</code><em class="property"> = None</em><a class="headerlink" href="#SimpleEthernet.UDP.srcport" title="Permalink to this definition">¶</a></dt>
+<dd><p>The UDP source port number</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="simpleethernet-functions">
+<h2>SimpleEthernet functions<a class="headerlink" href="#simpleethernet-functions" title="Permalink to this headline">¶</a></h2>
+<p>These are useful functions than are associated with Ethernet packets</p>
+<dl class="function">
+<dt id="SimpleEthernet.unpack48">
+<code class="descclassname">SimpleEthernet.</code><code class="descname">unpack48</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.unpack48" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a 48bit string returning an integer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>str</em>) – 6 byte buffer</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="SimpleEthernet.mactoreadable">
+<code class="descclassname">SimpleEthernet.</code><code class="descname">mactoreadable</code><span class="sig-paren">(</span><em>macaddress</em><span class="sig-paren">)</span><a class="headerlink" href="#SimpleEthernet.mactoreadable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a macaddress into the readable form</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>macaddress</strong> (<em>int</em>) – The mac address in integer format</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">SimpleEthernet Documentation</a><ul>
+<li><a class="reference internal" href="#ethernet-objects"><code class="docutils literal notranslate"><span class="pre">Ethernet</span></code> Objects</a></li>
+<li><a class="reference internal" href="#ip-objects"><code class="docutils literal notranslate"><span class="pre">IP</span></code> Objects</a></li>
+<li><a class="reference internal" href="#udp-objects"><code class="docutils literal notranslate"><span class="pre">UDP</span></code> Objects</a></li>
+<li><a class="reference internal" href="#simpleethernet-functions">SimpleEthernet functions</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="pcap.html"
+                        title="previous chapter">Pcap Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="IENA.html"
+                        title="next chapter">IENA Documentation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/simpleethernet.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="IENA.html" title="IENA Documentation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="pcap.html" title="Pcap Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Diarmuid Collins.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.7.0b1.
+    </div>
+  </body>
+</html>

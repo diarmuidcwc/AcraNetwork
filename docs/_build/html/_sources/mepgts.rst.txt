@@ -1,0 +1,34 @@
+MPEG TS Documentation
+=======================================
+
+.. py:currentmodule:: MPEGTS
+
+
+MPEGTS Class
+--------------
+.. autoclass:: MPEGTS
+   :members:
+
+
+MPEGPacket Class
+-----------------
+.. autoclass:: MPEGPacket
+   :members:
+
+
+H264 Class
+-------------
+.. autoclass:: H264
+   :members:
+
+
+NAL Class
+-------------
+.. autoclass:: NAL
+   :members:
+
+
+STANAG4609_SEI Class
+---------------------
+.. autoclass:: STANAG4609_SEI
+   :members:

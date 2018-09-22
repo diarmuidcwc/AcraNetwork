@@ -25,9 +25,22 @@
 #-------------------------------------------------------------------------------
 
 import socket
+import struct
+
 
 class McastSocket(socket.socket):
-    '''Create a multicast udp socket'''
+    """
+    Class to make Multicast UDP handling easier.
+    
+    >>> recv_socket = McastSocket(local_port=5555, reuse=1)
+    >>> recv_socket.mcast_add("235.0.0.1")
+    >>> recv_socket.settimeout(3)
+    >>> data, addr = recv_socket.recvfrom(2048)
+    
+    >>> recv_socket.sendto("hello", ("235.0.0.2", 8010))
+    
+    """
+
     def __init__(self, local_port=0, reuse=False):
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         if(reuse):
@@ -36,12 +49,18 @@ class McastSocket(socket.socket):
                 self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.bind(('', local_port))
 
-    def mcast_add(self, addr, iface="192.168.28.110"):
-        '''Add a multicast address to an interface
+    def mcast_add(self, addr, iface=socket.INADDR_ANY):
+        """
+        Add a multicast address to an interface
+        
+        :param addr: The multicast address to subscribe to
         :type addr: str
+        :param iface: IP address of network interface on which to use this multicast address. Generally not required.
         :type iface: str
-        '''
+        """
+
+        mreq = struct.pack("=4sl", socket.inet_aton(addr), socket.INADDR_ANY)
         self.setsockopt(
             socket.IPPROTO_IP,
             socket.IP_ADD_MEMBERSHIP,
-            socket.inet_aton(addr) + socket.inet_aton(iface))
+            mreq)

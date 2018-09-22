@@ -1,26 +1,17 @@
-#-------------------------------------------------------------------------------
-# Name:        iNetX
-# Purpose:     Class to construct and de construct iNetx Packets
-#
-# Author:      DCollins
-#
-# Created:     19/12/2013
-#
-# Copyright 2014 Diarmuid Collins
-#
-#    This program is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License
-#    as published by the Free Software Foundation; either version 2
-#    of the License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+"""
+.. module:: MPEGTS
+    :platform: Unix, Windows
+    :synopsis: Class to handle MPEG Transport Streams
+
+.. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
+
+"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
 
 
 import struct
@@ -31,37 +22,41 @@ NAL_HEADER_LEN = 4
 NAL_TYPES = { "SEI":6, "Unspecified" : 0, "Coded IDR" : 5, "SPS" : 7, "PPS" : 8, "AUD" : 9,
               "EOS" : 10, "DPS" : 16}
 # Invert it to go from integer to more useful name
-NAL_TYPES_INV = dict((v, k) for k, v in NAL_TYPES.iteritems())
+NAL_TYPES_INV = {v: k for k, v in NAL_TYPES.items()}
 SEI_UNREG_DATA = 5
 
 
-class MPEGTS():
-    '''
+class MPEGTS(object):
+    """
     This class handles MPEG Transport Streams.
     https://en.wikipedia.org/wiki/MPEG_transport_stream
 
     Each transport stream contains 188 byte packets.
     These packets contain either video, audio or metadata information
 
-    '''
+    :type blocks: list[MPEGPacket]
+    
+    """
 
     def __init__(self):
-        '''
-        Each MPEGTS contains an array of MPEGTS Packets
-        '''
+
         self.previouscounter = {}
-        self.discontinuity ={}
-        self.blocks = []
+        self.discontinuity = {}
+        self.blocks = [] #: List of MPEGPacket objects
         self.contunityerror = False
         self.invalidsync = False
         self.invalidsyncblock = list()
 
     def unpack(self,buf):
-        '''
+        """
         This method will convert a buffer of bytes into an array of MPEG TS packets
-        :param buf:
-        :return:
-        '''
+        
+        :param buf: The buffer to unpack
+        :type buf: str
+        
+        :rtype: bool
+        """
+
         remainingbytes = 0
         prevcount = self.previouscounter
         block_count = 0
@@ -84,22 +79,41 @@ class MPEGTS():
                 prevcount[MpegBlock.pid] = MpegBlock.continuitycounter
 
         self.previouscounter = prevcount
+        return True
+
 
     def NumberOfBlocks(self):
+        """
+        How many MPEG blocks in the current TS
+        
+        :rtype: int 
+        """
+
         return len(self.blocks)
 
     def FirstCount(self):
+        """
+        Get the value of the first continuity counter
+        
+        :rtype: int 
+        """
         return self.blocks[0].continuitycounter
 
     def LastCount(self):
+        """
+        Get the value of the final continuity counter
+
+        :rtype: int 
+        """
         return self.blocks[self.NumberOfBlocks()-1].continuitycounter
 
 
-class MPEGPacket():
-    '''
+class MPEGPacket(object):
+    """
     The MPEGPacket is the elementary unit in an MPEG Transport Stream
-    It contains an header, in which there's a sync word, continuity counter, and a payload
-    '''
+    It contains an header, in which there's a sync word, continuity counter, and a _payload
+    """
+
     def __init__(self):
         self.packetstrut = struct.Struct('>BHB')
         self.sync = None
@@ -108,14 +122,15 @@ class MPEGPacket():
         self.invalidsync = False
         self.payload = ""
 
-
-    def unpack(self,buf):
-        '''
+    def unpack(self, buf):
+        """
         Converts a buffer into an MPEGTS packet
-        :param buf:
-        :return:
-        '''
-        (self.syncbyte,pid_full,counter_full)  = self.packetstrut.unpack_from(buf)
+        
+        :param buf: The buffer to unpack into an MPEG Packet
+        :type buf: str
+        :rtype: bool
+        """
+        (self.syncbyte, pid_full, counter_full)  = self.packetstrut.unpack_from(buf)
         if self.syncbyte != 0x47:
             self.invalidsync = True
 
@@ -125,20 +140,22 @@ class MPEGPacket():
 
 
 class H264(object):
-    '''
-    This class will handle H.264 payload. It can convert a buffer of bytes into an array
+    """
+    This class will handle H.264 _payload. It can convert a buffer of bytes into an array
     of NALs(https://en.wikipedia.org/wiki/Network_Abstraction_Layer)
     The NALs contain different data, based on their types.
-    '''
+    """
 
     def __init__(self):
         self.nals = []
 
-    def unpack(self,buf):
+    def unpack(self, buf):
         """
-        Unpack a buffer into the NALs
-        :param buf:
-        :return:
+        Split the buffer into multiple NALs and store as a H264 object
+
+        :param buf: The buffer to unpack into a H264 object
+        :type buf: str
+        :rtype: bool
         """
         nal_hdr = struct.pack(">L",NAL_HEADER)
         offsets = string_matching_boyer_moore_horspool(buf,nal_hdr)
@@ -155,17 +172,27 @@ class H264(object):
 
         return True
 
+
 class NAL(object):
-    '''
+    """
     The NAL can be split into the various types of NALs.
-    '''
+    """
+
     def __init__(self):
         self.type = None
         self.size = None
         self.sei = None
         self.offset = None
 
-    def unpack(self,buf):
+    def unpack(self, buf):
+        """
+        Split the buffer into a NAL object
+
+        :param buf: The buffer to unpack into an NAL
+        :type buf: str
+        :rtype: bool
+        """
+
         # First 4 bytes are the NAL_HEADER, then forbidden + type
         (self.type,) = struct.unpack(">B",buf[NAL_HEADER_LEN])
         self.type = self.type & 0x1F
@@ -176,10 +203,10 @@ class NAL(object):
 
 
 class STANAG4609_SEI(object):
-    '''
+    """
     Handle the SEI NAL and more specifically this will handle SEIs defined in 3.14.3.5 of the STANAG standard
     http://www.gwg.nga.mil/misb/docs/nato_docs/STANAG_4609_Ed3.pdf
-    '''
+    """
     def __init__(self):
         self.payloadtype = None
         self.payloadsize = None
@@ -191,7 +218,15 @@ class STANAG4609_SEI(object):
         self.time = None
         self.stanag = False
 
-    def unpack(self,buf):
+    def unpack(self, buf):
+        """
+        Unpack the NAL _payload as an STANAG4609_SEI
+
+        :param buf: The buffer to unpack into an STANAG4609_SEI
+        :type buf: str
+        :rtype: bool
+        """
+
         (self.payloadtype,self.payloadsize) = struct.unpack(">BB",buf[0:2])
         if self.payloadtype == SEI_UNREG_DATA:
             self.unregdata = True
@@ -208,7 +243,8 @@ class STANAG4609_SEI(object):
 
 
 def string_matching_boyer_moore_horspool(text='', pattern=''):
-    """Returns positions where pattern is found in text.
+    """
+    Returns positions where pattern is found in text.
     O(n)
     Performance: ord() is slow so we shouldn't use it here
     Example: text = 'ababbababa', pattern = 'aba'

@@ -1,0 +1,597 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Chapter 10 Documentation &#8212; AcraNetwork 0.12.2 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/py.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="MPEG TS Documentation" href="mpegts.html" />
+    <link rel="prev" title="NDP Documentation" href="ndp.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="mpegts.html" title="MPEG TS Documentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ndp.html" title="NDP Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="chapter-10-documentation">
+<h1>Chapter 10 Documentation<a class="headerlink" href="#chapter-10-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Chapter10 is a IRIG106 payload format usual encapsulated in UDP payloads. The full standard is defined in <a class="reference external" href="http://www.irig106.org/docs/106-11/chapter10.pdf">http://www.irig106.org/docs/106-11/chapter10.pdf</a></p>
+<p>This module supports the creating and analysis of Chapter10 packets</p>
+<p>In typical use, a UDP payload is captured from the network or read from a PCAP file. This is then passed to the
+<a class="reference internal" href="#Chapter10.Chapter10UDP.unpack" title="Chapter10.Chapter10UDP.unpack"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Chapter10UDP.unpack()</span></code></a> method which converts it into an Chapter10 object</p>
+<p>The payload of the UDP wrapper contains a Data Format packet (described in 10.6.1 of the spec) which is handled by the
+Chapter10 object <a class="reference internal" href="#Chapter10.Chapter10" title="Chapter10.Chapter10"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chapter10</span></code></a></p>
+<p>Examples and details are available below</p>
+<div class="section" id="chapter10-objects">
+<h2><a class="reference internal" href="#Chapter10.Chapter10" title="Chapter10.Chapter10"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chapter10</span></code></a> Objects<a class="headerlink" href="#chapter10-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="Chapter10.Chapter10">
+<em class="property">class </em><code class="descclassname">Chapter10.</code><code class="descname">Chapter10</code><a class="headerlink" href="#Chapter10.Chapter10" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to pack and unpack Chapter10 payloads.</p>
+<p>Create a packet and transmit it via UDP</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Open a socket</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tx_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create the Ch10 UDP wrapper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span> <span class="o">=</span> <span class="n">Chapter10UDP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">Chapter10UDP</span><span class="o">.</span><span class="n">TYPE_FULL</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Populate the Chapter 10 packet inthe wrapper</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">channelID</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">datatypeversion</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">sequence</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">packetflag</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># No secondary</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">datatype</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">relativetimecounter</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s2">&quot;&gt;II&quot;</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">44</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Send the packet</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tx_socket</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">ch10_udp</span><span class="o">.</span><span class="n">pack</span><span class="p">(),</span> <span class="p">(</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="mi">8010</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="Chapter10.Chapter10.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.Chapter10.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the Chapter10 object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Chapter10.Chapter10.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.Chapter10.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an Chapter10 object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an Chapter10 packet</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_1588_TIME">
+<code class="descname">PKT_FLAG_1588_TIME</code><em class="property"> = 4</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_1588_TIME" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_16BIT_CHKSUM">
+<code class="descname">PKT_FLAG_16BIT_CHKSUM</code><em class="property"> = 2</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_16BIT_CHKSUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_32BIT_CHKSUM">
+<code class="descname">PKT_FLAG_32BIT_CHKSUM</code><em class="property"> = 3</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_32BIT_CHKSUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_8BIT_CHKSUM">
+<code class="descname">PKT_FLAG_8BIT_CHKSUM</code><em class="property"> = 1</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_8BIT_CHKSUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_DATA_OVERFLOW">
+<code class="descname">PKT_FLAG_DATA_OVERFLOW</code><em class="property"> = 16</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_DATA_OVERFLOW" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_RCC_TIME">
+<code class="descname">PKT_FLAG_RCC_TIME</code><em class="property"> = 0</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_RCC_TIME" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_RTC_SYNC_ERROR">
+<code class="descname">PKT_FLAG_RTC_SYNC_ERROR</code><em class="property"> = 32</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_RTC_SYNC_ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_SECONDARY">
+<code class="descname">PKT_FLAG_SECONDARY</code><em class="property"> = 128</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_SECONDARY" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.PKT_FLAG_SEC_HDR_TIME">
+<code class="descname">PKT_FLAG_SEC_HDR_TIME</code><em class="property"> = 64</em><a class="headerlink" href="#Chapter10.Chapter10.PKT_FLAG_SEC_HDR_TIME" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) add to <a class="reference internal" href="#Chapter10.Chapter10.packetflag" title="Chapter10.Chapter10.packetflag"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.packetflag</span></code></a> to enable</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.SYNC_WORD">
+<code class="descname">SYNC_WORD</code><em class="property"> = 60197</em><a class="headerlink" href="#Chapter10.Chapter10.SYNC_WORD" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) Sync word</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.TS_SOURCES">
+<code class="descname">TS_SOURCES</code><em class="property"> = ['rtc', 'ch4', 'ieee1588']</em><a class="headerlink" href="#Chapter10.Chapter10.TS_SOURCES" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Object Constant) Valid timesources, assign to <a class="reference internal" href="#Chapter10.Chapter10.ts_source" title="Chapter10.Chapter10.ts_source"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.ts_source</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.channelID">
+<code class="descname">channelID</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.channelID" title="Permalink to this definition">¶</a></dt>
+<dd><p>(2 Bytes) contains a value representing the Packet Channel ID.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.datalen">
+<code class="descname">datalen</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.datalen" title="Permalink to this definition">¶</a></dt>
+<dd><p>(4 Bytes) contains a value representing the valid data length within the packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.datatype">
+<code class="descname">datatype</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.datatype" title="Permalink to this definition">¶</a></dt>
+<dd><p>(1 Byte) contains a value representing the type and format of the data</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.datatypeversion">
+<code class="descname">datatypeversion</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.datatypeversion" title="Permalink to this definition">¶</a></dt>
+<dd><p>RCC released versions</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.packetflag">
+<code class="descname">packetflag</code><a class="headerlink" href="#Chapter10.Chapter10.packetflag" title="Permalink to this definition">¶</a></dt>
+<dd><p>(1 Byte) contains bits representing information on the content and format of the packet(s)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.packetlen">
+<code class="descname">packetlen</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.packetlen" title="Permalink to this definition">¶</a></dt>
+<dd><p>(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>The payload</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.relativetimecounter">
+<code class="descname">relativetimecounter</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.relativetimecounter" title="Permalink to this definition">¶</a></dt>
+<dd><p>(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.sequence">
+<code class="descname">sequence</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>(1 Byte) contains a value representing the packet sequence number for each Channel ID.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.syncpattern">
+<code class="descname">syncpattern</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.syncpattern" title="Permalink to this definition">¶</a></dt>
+<dd><p>(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.timestamp">
+<code class="descname">timestamp</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.timestamp" title="Permalink to this definition">¶</a></dt>
+<dd><p>(8 byte) timestmap. Either IEEE-1558 or RCC106 Chapter 4</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10.ts_source">
+<code class="descname">ts_source</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10.ts_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>The timestamp source. Select from <a class="reference internal" href="#Chapter10.Chapter10.TS_SOURCES" title="Chapter10.Chapter10.TS_SOURCES"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10.TS_SOURCES</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="chapter10udp-objects">
+<h2><a class="reference internal" href="#Chapter10.Chapter10UDP" title="Chapter10.Chapter10UDP"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chapter10UDP</span></code></a> Objects<a class="headerlink" href="#chapter10udp-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="Chapter10.Chapter10UDP">
+<em class="property">class </em><code class="descclassname">Chapter10.</code><code class="descname">Chapter10UDP</code><a class="headerlink" href="#Chapter10.Chapter10UDP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to encapsulate Chapter10 payload in UDP packets</p>
+<p>Capture a UDP packet and unpack the payload as an Chapter 10 packet</p>
+<p>There are two types of packets, segmented and full.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="go">&gt;&gt;&gt;&gt; recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  </span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="n">recv_socket</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n</span> <span class="o">=</span> <span class="n">Chapter10UDP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">n</span><span class="o">.</span><span class="n">type</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="Chapter10.Chapter10UDP.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.Chapter10UDP.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the Chapter10UDP object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Chapter10.Chapter10UDP.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.Chapter10UDP.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an Chapter10UDP object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an Chapter10UDP packet</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.TYPE_FULL">
+<code class="descname">TYPE_FULL</code><em class="property"> = 0</em><a class="headerlink" href="#Chapter10.Chapter10UDP.TYPE_FULL" title="Permalink to this definition">¶</a></dt>
+<dd><p>Full Chapter 10 packets type field constant. Assign to <a class="reference internal" href="#Chapter10.Chapter10UDP.type" title="Chapter10.Chapter10UDP.type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10UDP.type</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.TYPE_SEG">
+<code class="descname">TYPE_SEG</code><em class="property"> = 1</em><a class="headerlink" href="#Chapter10.Chapter10UDP.TYPE_SEG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Segmented Chapter 10 packets type field constant. Assign to <a class="reference internal" href="#Chapter10.Chapter10UDP.type" title="Chapter10.Chapter10UDP.type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Chapter10UDP.type</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.channelID">
+<code class="descname">channelID</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.channelID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Segmented Packets Only. Channel ID of the data in the RCC 106 Chapter 10 packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.channelsequence">
+<code class="descname">channelsequence</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.channelsequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Segmented Packets Only, Channel Sequence Number of the data in the RCC 106 Chapter 10 packet</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.chapter10">
+<code class="descname">chapter10</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.chapter10" title="Permalink to this definition">¶</a></dt>
+<dd><p>The encapsulated Chapter10 packet. <a class="reference internal" href="#Chapter10.Chapter10" title="Chapter10.Chapter10"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chapter10</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.segmentoffset">
+<code class="descname">segmentoffset</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.segmentoffset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Segmented Packets Only. The 32-bit Segmented Packets Only, Position of the data in the RCC 106 Chapter 10 packet.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.sequence">
+<code class="descname">sequence</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Segmented Packets Only. Binary value incrementing by one for each UDP message even if segment of RCC 106 Chapter 10 packet.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.type">
+<code class="descname">type</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Type of message , Full or Segmented</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.Chapter10UDP.version">
+<code class="descname">version</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.Chapter10UDP.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Version</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="arinc429datapacket-objects">
+<h2><a class="reference internal" href="#Chapter10.ARINC429DataPacket" title="Chapter10.ARINC429DataPacket"><code class="xref py py-class docutils literal notranslate"><span class="pre">ARINC429DataPacket</span></code></a> Objects<a class="headerlink" href="#arinc429datapacket-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="Chapter10.ARINC429DataPacket">
+<em class="property">class </em><code class="descclassname">Chapter10.</code><code class="descname">ARINC429DataPacket</code><a class="headerlink" href="#Chapter10.ARINC429DataPacket" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data Packet Format. Contains a list of Arinc Data Words</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">Chapter10UDP</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">arinc_p</span> <span class="o">=</span> <span class="n">ARINC429DataPacket</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">arinc_p</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">chapter10</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">arinc_p</span>
+<span class="go">ARINCPayload: MessageCount=0</span>
+<span class="go">  ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=0</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="Chapter10.ARINC429DataPacket.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.ARINC429DataPacket.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the ARINC-429 data packet object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Chapter10.ARINC429DataPacket.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.ARINC429DataPacket.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an ARINC-429 data packet object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an ARINC-429 data  packet</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataPacket.arincwords">
+<code class="descname">arincwords</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataPacket.arincwords" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of <a class="reference internal" href="#Chapter10.ARINC429DataWord" title="Chapter10.ARINC429DataWord"><code class="xref py py-class docutils literal notranslate"><span class="pre">ARINC429DataWord</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataPacket.msgcount">
+<code class="descname">msgcount</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataPacket.msgcount" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number ofARINC-429 words included in the packet.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="arinc429dataword-objects">
+<h2><a class="reference internal" href="#Chapter10.ARINC429DataWord" title="Chapter10.ARINC429DataWord"><code class="xref py py-class docutils literal notranslate"><span class="pre">ARINC429DataWord</span></code></a> Objects<a class="headerlink" href="#arinc429dataword-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="Chapter10.ARINC429DataWord">
+<em class="property">class </em><code class="descclassname">Chapter10.</code><code class="descname">ARINC429DataWord</code><a class="headerlink" href="#Chapter10.ARINC429DataWord" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Chapter 10 standard defines specific payload formats for different data. This class handles AROINC-429 packets</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+</tbody>
+</table>
+<dl class="method">
+<dt id="Chapter10.ARINC429DataWord.pack">
+<code class="descname">pack</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.ARINC429DataWord.pack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pack the ARINC-429 data packet object into a binary buffer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Chapter10.ARINC429DataWord.unpack">
+<code class="descname">unpack</code><span class="sig-paren">(</span><em>buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#Chapter10.ARINC429DataWord.unpack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unpack a string buffer into an ARINC-429 data packet object</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>buffer</strong> (<em>str</em>) – A string buffer representing an ARINC-429 data  packet</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.HI_SPEED">
+<code class="descname">HI_SPEED</code><em class="property"> = 1</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.HI_SPEED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bus speed constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.LO_SPEED">
+<code class="descname">LO_SPEED</code><em class="property"> = 0</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.LO_SPEED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bus speed constant</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.bus">
+<code class="descname">bus</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.bus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bus number index from 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.bus_speed">
+<code class="descname">bus_speed</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.bus_speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Arinc bus speed</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.format_error">
+<code class="descname">format_error</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.format_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format error has occurred</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.gaptime">
+<code class="descname">gaptime</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.gaptime" title="Permalink to this definition">¶</a></dt>
+<dd><p>The gap time from the beginning of the preceding bus word (regardless of bus) to the</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.parity_error">
+<code class="descname">parity_error</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.parity_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parity error has occurred</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Chapter10.ARINC429DataWord.payload">
+<code class="descname">payload</code><em class="property"> = None</em><a class="headerlink" href="#Chapter10.ARINC429DataWord.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>ARINC word as a string payload</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Chapter 10 Documentation</a><ul>
+<li><a class="reference internal" href="#chapter10-objects"><code class="docutils literal notranslate"><span class="pre">Chapter10</span></code> Objects</a></li>
+<li><a class="reference internal" href="#chapter10udp-objects"><code class="docutils literal notranslate"><span class="pre">Chapter10UDP</span></code> Objects</a></li>
+<li><a class="reference internal" href="#arinc429datapacket-objects"><code class="docutils literal notranslate"><span class="pre">ARINC429DataPacket</span></code> Objects</a></li>
+<li><a class="reference internal" href="#arinc429dataword-objects"><code class="docutils literal notranslate"><span class="pre">ARINC429DataWord</span></code> Objects</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ndp.html"
+                        title="previous chapter"><code class="docutils literal notranslate"><span class="pre">NDP</span></code> Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="mpegts.html"
+                        title="next chapter">MPEG TS Documentation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/chapter10.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="mpegts.html" title="MPEG TS Documentation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ndp.html" title="NDP Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AcraNetwork 0.12.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Diarmuid Collins.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.7.0b1.
+    </div>
+  </body>
+</html>

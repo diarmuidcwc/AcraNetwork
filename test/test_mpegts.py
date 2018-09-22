@@ -10,7 +10,7 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.MPEGTS as MPEGTS
 
-import struct
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class MPEGTSBasicTest(unittest.TestCase):
@@ -26,18 +26,18 @@ class MPEGTSBasicTest(unittest.TestCase):
         Takes the first packet in there and decoms the mpegts blocks
         Verifies each block in that first packet
         '''
-        p = pcap.Pcap("mpegts_input.pcap")
+        p = pcap.Pcap(os.path.join(THIS_DIR, "mpegts_input.pcap"))
         p.readGlobalHeader()
         mypcaprecord = p.readAPacket()
 
         ethpacket = SimpleEthernet.Ethernet()   # Create an Ethernet object
         ethpacket.unpack(mypcaprecord.packet)   # Unpack the pcap record into the eth object
         ippacket =  SimpleEthernet.IP()         # Create an IP packet
-        ippacket.unpack(ethpacket.payload)      # Unpack the ethernet payload into the IP packet
+        ippacket.unpack(ethpacket.payload)      # Unpack the ethernet _payload into the IP packet
         udppacket = SimpleEthernet.UDP()        # Create a UDP packet
-        udppacket.unpack(ippacket.payload)      # Unpack the IP payload into the UDP packet
+        udppacket.unpack(ippacket.payload)      # Unpack the IP _payload into the UDP packet
         inetxpacket = inetx.iNetX()             # Create an iNetx object
-        inetxpacket.unpack(udppacket.payload)   # Unpack the UDP payload into this iNetX object
+        inetxpacket.unpack(udppacket.payload)   # Unpack the UDP _payload into this iNetX object
 
         mpegts = MPEGTS.MPEGTS()
         mpegts.unpack(inetxpacket.payload)
@@ -62,24 +62,17 @@ class MPEGTSBasicTest(unittest.TestCase):
         in the file and checks for any continuity errors
         :return:
         '''
-        p = pcap.Pcap("mpegts_input.pcap")
-        p.readGlobalHeader()
-        while True:
-            # Loop through the pcap file reading one packet at a time
-            try:
-                mypcaprecord = p.readAPacket()
-            except IOError:
-                # End of file reached
-                break
+        p = pcap.Pcap(os.path.join(THIS_DIR, "mpegts_input.pcap"))
+        for mypcaprecord in p:
 
             ethpacket = SimpleEthernet.Ethernet()   # Create an Ethernet object
             ethpacket.unpack(mypcaprecord.packet)   # Unpack the pcap record into the eth object
             ippacket =  SimpleEthernet.IP()         # Create an IP packet
-            ippacket.unpack(ethpacket.payload)      # Unpack the ethernet payload into the IP packet
+            ippacket.unpack(ethpacket.payload)      # Unpack the ethernet _payload into the IP packet
             udppacket = SimpleEthernet.UDP()        # Create a UDP packet
-            udppacket.unpack(ippacket.payload)      # Unpack the IP payload into the UDP packet
+            udppacket.unpack(ippacket.payload)      # Unpack the IP _payload into the UDP packet
             inetxpacket = inetx.iNetX()             # Create an iNetx object
-            inetxpacket.unpack(udppacket.payload)   # Unpack the UDP payload into this iNetX object
+            inetxpacket.unpack(udppacket.payload)   # Unpack the UDP _payload into this iNetX object
             mpegts = MPEGTS.MPEGTS()
             mpegts.unpack(inetxpacket.payload)
             self.assertEqual(mpegts.NumberOfBlocks(),7)
@@ -89,7 +82,7 @@ class MPEGTSBasicTest(unittest.TestCase):
 
 
     def test_stanag(self):
-        ts_file = open("stanag_sample.ts", mode='rb')
+        ts_file = open(os.path.join(THIS_DIR, "stanag_sample.ts"), mode='rb')
         h264_data = MPEGTS.H264()
         self.assertTrue(h264_data.unpack(ts_file.read()))
         self.assertEqual(len(h264_data.nals),5062)

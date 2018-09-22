@@ -79,7 +79,7 @@ def main():
                     # We have a parser aligned block
                     if inetx_packet.streamid == 0x11121314: # This specific streamid is a parser aligned block
                         parser_aligned_packet = ParserAligned.ParserAlignedPacket()
-                        # unpack the payload as the parser data
+                        # unpack the _payload as the parser data
                         parser_aligned_packet.unpack(inetx_packet.payload)
                         # Loop through all the blocks in the packet and spit them out
                         for pblock in parser_aligned_packet.parserblocks:

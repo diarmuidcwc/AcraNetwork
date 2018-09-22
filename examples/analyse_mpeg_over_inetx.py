@@ -1,17 +1,19 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
-#
-# Author:      Diarmuid
-#
-# Created:     16/12/2013
-# Copyright:   (c) SPACE 2013
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
-#
-# This script listens to a udp port for inetx packets containing MPEG TS packets
-# on reception it prints out the PIDs found
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+===== 
+MPEG OVER INETX 
+===== 
+
+This script listens to a udp port for inetx packets containing MPEG TS packets on reception it prints out the PIDs found
+"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__version__ = "0.0.1"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
+
 
 import socket,os,sys
 sys.path.append("..")
@@ -24,7 +26,7 @@ import struct
 def align_payload(buf):
     byteindex = 0
     while len(buf) > byteindex:
-            #print "idx={} len={}".format(byteindex,len(self.payload))
+            #print "idx={} len={}".format(byteindex,len(self._payload))
             (thisByte,) = struct.unpack_from('B',buf[byteindex])
             #logging.error("Byte = {:0X}".format(thisByte))
             if thisByte == 0x47:
@@ -83,11 +85,11 @@ def main():
         except:
             pass
 
-        # if we are in snarfer mode then align the payload
+        # if we are in snarfer mode then align the _payload
         aligned_payload = align_payload(aligned_payload+inetxpacket.payload)
         if len(aligned_payload) >= 1316:
 
-            # take the aligned payload and convert it into MPEG TS blocks
+            # take the aligned _payload and convert it into MPEG TS blocks
             # Then print out the blocks
             mpegtspackets = mpegts.MPEGTS()
             mpegtspackets.unpack(aligned_payload[:1316])

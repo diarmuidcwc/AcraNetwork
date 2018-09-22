@@ -1,28 +1,34 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
-#
-# Author:      Diarmuid
-#
-# Created:     16/12/2013
-# Copyright:   (c) SPACE 2013
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+===== 
+Multicast reception example
+===== 
+
+
+"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__version__ = "0.1.0"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
+
 import sys
 sys.path.append("..")
 
 import socket
-
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.McastSocket as McastSocket
-udp_port = 5555
+
+udp_port = 5567
 
 #------------------------------------------------------------
 # Setup a socket to recieve all traffic
 #------------------------------------------------------------
 try:
     recv_socket = McastSocket.McastSocket(local_port=udp_port, reuse=1)
-    recv_socket.mcast_add('235.0.0.2', '0.0.0.0')
+    recv_socket.mcast_add('235.0.0.1', '0.0.0.0')
     recv_socket.settimeout(10)
 except:
     print "Can't bind to socket {}".format(udp_port)

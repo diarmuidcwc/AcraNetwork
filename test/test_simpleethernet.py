@@ -8,6 +8,8 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
 
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 class SimpleEthernetTest(unittest.TestCase):
 
     ######################
@@ -82,6 +84,7 @@ class SimpleEthernetTest(unittest.TestCase):
         u.payload = struct.pack('B',0x5)
         mypacket = u.pack()
         self.assertEqual(mypacket,struct.pack('>HHHHB',4400,5500,9,0,0x5))
+        self.assertEqual(repr(u), "SRCPORT=4400 DSTPORT=5500")
 
     def test_unpackUDPShort(self):
         u = SimpleEthernet.UDP()
@@ -92,7 +95,7 @@ class SimpleEthernetTest(unittest.TestCase):
     # Read a complete pcap file
     ######################
     def test_readUDP(self):
-        p = pcap.Pcap("test_input.pcap")
+        p = pcap.Pcap(os.path.join(THIS_DIR, "test_input.pcap"))
         p.readGlobalHeader()
         mypcaprecord = p.readAPacket()
         e = SimpleEthernet.Ethernet()
@@ -100,16 +103,57 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(e.srcmac,0x0018f8b84454)
         self.assertEqual(e.dstmac,0xe0f847259336)
         self.assertEqual(e.type,0x0800)
+        self.assertEqual(repr(e), "SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800")
 
+        # checksum test
+        (exp_checksum,) = struct.unpack("<H", e.payload[10:12])
+        ip_hdr_checksum = SimpleEthernet.ip_calc_checksum(e.payload[:10] + e.payload[12:20])
+        self.assertEqual(exp_checksum, ip_hdr_checksum)
         i = SimpleEthernet.IP()
         i.unpack(e.payload)
-        self.assertEqual(i.dstip,"192.168.1.110")
-        self.assertEqual(i.srcip,"213.199.179.165")
-        self.assertEqual(i.protocol,0x6)
-        self.assertEqual(i.ttl,48)
-        self.assertEqual(i.flags,0x2)
-        self.assertEqual(i.id,0x4795)
-        self.assertEqual(i.len,56)
+        self.assertEqual(i.dstip, "192.168.1.110")
+        self.assertEqual(i.srcip, "213.199.179.165")
+        self.assertEqual(i.protocol, 0x6)
+        self.assertEqual(i.ttl, 48)
+        self.assertEqual(i.flags, 0x2)
+        self.assertEqual(i.id, 0x4795)
+        self.assertEqual(i.len, 56)
+        self.assertEqual(i.version, 4)
+        #print i
+        self.assertEqual(repr(i), "SRCIP=213.199.179.165 DSTIP=192.168.1.110 PROTOCOL=TCP LEN=56")
+
+    # Write an ICMP
+    def test_writeICMP(self):
+
+        e = SimpleEthernet.Ethernet()
+        e.srcmac = 0x001122334455
+        e.dstmac = 0x998877665544
+        e.type = SimpleEthernet.Ethernet.TYPE_IP
+
+        i = SimpleEthernet.IP()
+        i.dstip = "235.0.0.1"
+        i.srcip = "192.168.1.1"
+        i.protocol = SimpleEthernet.IP.PROTOCOLS["ICMP"]
+        i.payload = struct.pack(">H", 0xa5)
+        e.payload = i.pack()
+
+        p = pcap.Pcap("_icmp.pcap",mode='w')
+        p.writeGlobalHeader()
+        r = pcap.PcapRecord()
+        r.setCurrentTime()
+        r.packet = e.pack()
+        p.writeARecord(r)
+        p.close()
+
+
+    @unittest.skip("No pcap")
+    def test_readIPchecksum(self):
+        p = pcap.Pcap(os.path.join(THIS_DIR, "good_ip.pcap"))
+        mypcaprecord = p[0]
+        e = SimpleEthernet.Ethernet()
+        e.unpack(mypcaprecord.packet)
+        i = SimpleEthernet.IP()
+        self.assertTrue(i.unpack(e.payload))
 
 if __name__ == '__main__':
     unittest.main()

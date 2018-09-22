@@ -1,26 +1,19 @@
-# -------------------------------------------------------------------------------
-# Name:        benchmark_pcap
-# Purpose:     Benchmark the creation and parsing of a biug pcap file
-#
-# Author:
-#
-# Created:
-#
-# Copyright 2014 Diarmuid Collins
-#
-#    This program is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License
-#    as published by the Free Software Foundation; either version 2
-#    of the License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+===== 
+Benchmark Multicast UDP Reception
+===== 
+
+Benchmark the reception of multicast packets
+"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__version__ = "0.0.1"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
+
 
 
 import sys
@@ -92,7 +85,7 @@ def main():
 
         # keep a track of the sizes of the last 20 packets received so that we
         # can calculate the bandwitdh
-        # The data returned in the UDP payload only so add 42 bytes for the rest of the
+        # The data returned in the UDP _payload only so add 42 bytes for the rest of the
         # ethernet header just so the calculated number agress with Wireshark
         data_len.append(len(data)+42)
         if len(data_len) > 20:

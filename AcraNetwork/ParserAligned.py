@@ -1,40 +1,54 @@
-#-------------------------------------------------------------------------------
-# Name:        ParserAlignedPacket
-# Purpose:
-#
-# Author:      DCollins
-#
-# Created:     19/12/2013
-#
-# Copyright 2014 Diarmuid Collins
-#
-#    This program is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License
-#    as published by the Free Software Foundation; either version 2
-#    of the License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
+.. module:: ParserAlignedPacket
+    :platform: Unix, Windows
+    :synopsis: Class to pack and unpack Parser Aligned payloads
+
+.. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
+
+"""
 
 import struct
 
 
-class ParserAlignedPacket():
-    """A class that handles parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks"""
+__author__ = "Diarmuid Collins"
+__copyright__ = "Copyright 2018"
+__maintainer__ = "Diarmuid Collins"
+__email__ = "dcollins@curtisswright.com"
+__status__ = "Production"
+
+
+class ParserAlignedPacket(object):
+    """
+    A class that handles parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks
+    
+    Capture a UDP packet,unpack as iNetX whose payload is parser aligned
+    
+    >>> import iNetX, socket
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> i = iNetX.iNetX()
+    >>> i.unpack(data)
+    >>> p = ParserAlignedPacket()
+    >>> p.unpack(i.payload)
+    >>> print p
+    
+    :type parserblocks: list[ParserAlignedBlock]
+    :type numberofblocks: int
+    """
+
     def __init__(self):
-        self.parserblocks = []
-        self.numberofblocks =0
+        self.parserblocks = [] #: List of ParserAlignedBlock
+        self.numberofblocks = 0 #: The number of ParserAlignedBlock
 
-
-    def unpack(self,buf):
-        """Pass a buffer containing all the Parser alignd payload and this method will
-        unpack all the fields. Returns a list of parserblocks"""
+    def unpack(self, buf):
+        """
+        Pass a buffer containing all the Parser alignd payload and this method will
+        unpack all the fields. Returns a list of parserblocks
+    
+        :param buf: The string buffer to unpack
+        :type buf: str
+        :rtype: bool
+        """
         fullbufferlen = len(buf)
         bufferparsed = 0
         while bufferparsed < fullbufferlen:
@@ -42,32 +56,72 @@ class ParserAlignedPacket():
             # unpack and add the amount unpacked to the running total
             bufferparsed += block.unpack(buf[bufferparsed:])
             self.parserblocks.append(block)
+        return True
+
+    def pack(self):
+        """Not implemented"""
+
+        raise NotImplementedError("Ask Diarmuid to implement")
+
+    def __iter__(self):
+        self._index = 0
+        return self
+
+    def next(self):
+        if self._index < len(self.parserblocks):
+            _block = self.parserblocks[self._index]
+            self._index += 1
+            return _block
+        else:
+            raise StopIteration
+
+    def __len__(self):
+        return len(self.parserblocks)
+
+    def __getitem__(self, key):
+        return self.parserblocks[key]
 
 
-
-class ParserAlignedBlock():
-    """A class to handle a single Parser Block. Returns an object containing all the fields of a parser block"""
+class ParserAlignedBlock(object):
+    """
+    A class to handle a single Parser Block. Returns an object containing all the fields of a parser block
+    
+    :type error: bool
+    :type errorcode: int
+    :type quadbytes: int
+    :type messagecount: int
+    :type busid: int
+    :type elapsedtime: int
+    :type payload: str
+    """
     def __init__(self):
 
-        self.error = False
-        self.errorcode = 0
-        self.quadbytes = 1
-        self.messagecount = 0
-        self.busid = 1
-        self.elapsedtime = 2
-        self.payload = ""
+        self.error = False #: Error Flag
+        self.errorcode = 0 #: Error code field
+        self.quadbytes = 1 #: Number of quadbytes in the parser block
+        self.messagecount = 0 #: Wrapping 8 bit message counter
+        self.busid = 1 #: Bus ID on which the message was captured
+        self.elapsedtime = 2 #: Time tag in nanoseconds offset from the iNetx timestamp
+        self.payload = "" #: Payload
 
         self.format = '>HBBL'
         self.headerlen = struct.calcsize(self.format)
 
+    def unpack(self, buf):
+        """
+        Unpack a single parser block. Unsually called only from the ParserAlignedPacket unpack method. 
+        
+        Returns the length of the parser block
+        
+        :param buf: The string buffer to unpack
+        :type buf: str
+        :rtype: int
+        """
 
-    def unpack(self,buf):
-        """Unpack a single parser block. Unsually called only from the iNetXParser unpack method. Returns the length of the
-        parser block"""
         # Unpack the fields
-        (error_and_quad,self.messagecount,self.busid,self.elapsedtime)=struct.unpack_from(self.format,buf)
+        (error_and_quad, self.messagecount, self.busid, self.elapsedtime)= struct.unpack_from(self.format, buf)
         # MSB bit is the error flag
-        if ((error_and_quad >> 15) == 1):
+        if (error_and_quad >> 15) == 1:
             self.error = True
         else:
             self.error = False
@@ -77,15 +131,31 @@ class ParserAlignedBlock():
         self.quadbytes = error_and_quad & 0x1ff
         payload_length_in_bytes = (self.quadbytes - 2)*4
 
+        if self.quadbytes < 2:
+            raise ValueError("The quad bytes cannot be less than 2. Actual={}".format(self.quadbytes))
+
         # Raise an exception if the payload is not as expected
-        if len(buf) < self.headerlen+payload_length_in_bytes:
-            raise ValueError
+        if len(buf) < self.headerlen + payload_length_in_bytes:
+            raise ValueError("The length of the block buffer {} is smaller the expect length {}".format(
+                len(buf), self.headerlen + payload_length_in_bytes
+            ))
+
         self.payload = buf[self.headerlen:self.quadbytes*4]
         # Return the length of the block as a courtesy
         return self.quadbytes*4
 
+    def pack(self):
+        """Not implemented"""
 
-class ARINC429():
+        raise NotImplementedError("Ask Diarmuid to implement it")
+
+    def __repr__(self):
+        return "Block: QuadBytes={} Error={} ErrorCode={} BusID={} MessageCount={} ElapsedTime={}".format(
+            self.quadbytes, self.error, self.errorcode, self.busid, self.messagecount, self.elapsedtime
+        )
+
+
+class ARINC429(object):
     """This is not working yet. Don't use it"""
     MESSAGE_LEN = 4 # 4 bytes
     LABEL_REVERSE = [
@@ -123,6 +193,7 @@ class ARINC429():
         0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff, # 248 - 255
         0x00
     ]
+
     def __init__(self):
         self.parity = None
         self.ssm = None
@@ -132,7 +203,7 @@ class ARINC429():
 
     def unpack(self,buf):
         if len(buf) != ARINC429.MESSAGE_LEN:
-            raise ValueError
+            raise ValueError("Buffer is not the correct length for an ARINC429 message")
         (byte1,byte2,byte3,byte4) = struct.unpack('BBBB',buf)
         self.parity = byte1 / 128
         self.ssm = (byte1/32) % 4
