@@ -1,6 +1,3 @@
-__author__ = 'diarmuid'
-import sys
-sys.path.append("..")
 import unittest
 import AcraNetwork.iNET as iNET
 import os

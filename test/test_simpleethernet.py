@@ -91,6 +91,15 @@ class SimpleEthernetTest(unittest.TestCase):
         dymmypayload =  struct.pack('H',0xa5)
         self.assertRaises(ValueError,lambda : u.unpack(dymmypayload))
 
+
+    ######################
+    # ICMP
+    ######################
+
+    def test_defICMP(self):
+        i = SimpleEthernet.ICMP()
+        self.assertRaises(ValueError, lambda: i.pack())
+
     ######################
     # Read a complete pcap file
     ######################
@@ -125,6 +134,18 @@ class SimpleEthernetTest(unittest.TestCase):
     # Write an ICMP
     def test_writeICMP(self):
 
+        p = pcap.Pcap("_icmp.pcap",mode='w')
+        p.write_global_header()
+        r = pcap.PcapRecord()
+        r.setCurrentTime()
+
+        ping_req = SimpleEthernet.ICMP()
+        ping_req.type = SimpleEthernet.ICMP.TYPE_REQUEST
+        ping_req.code = 0
+        ping_req.request_id = 0x100
+        ping_req.request_sequence = 123
+        ping_req.payload = struct.pack(">32B", *range(32))
+
         e = SimpleEthernet.Ethernet()
         e.srcmac = 0x001122334455
         e.dstmac = 0x998877665544
@@ -134,17 +155,16 @@ class SimpleEthernetTest(unittest.TestCase):
         i.dstip = "235.0.0.1"
         i.srcip = "192.168.1.1"
         i.protocol = SimpleEthernet.IP.PROTOCOLS["ICMP"]
-        i.payload = struct.pack(">H", 0xa5)
+        i.payload = ping_req.pack()
         e.payload = i.pack()
-
-        p = pcap.Pcap("_icmp.pcap",mode='w')
-        p.writeGlobalHeader()
-        r = pcap.PcapRecord()
-        r.setCurrentTime()
         r.packet = e.pack()
-        p.writeARecord(r)
+        p.write(r)
+        ping_req.type = SimpleEthernet.ICMP.TYPE_REPLY
+        i.payload = ping_req.pack()
+        e.payload = i.pack()
+        r.packet = e.pack()
+        p.write(r)
         p.close()
-
 
     @unittest.skip("No pcap")
     def test_readIPchecksum(self):

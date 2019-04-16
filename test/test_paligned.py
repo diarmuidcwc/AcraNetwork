@@ -13,8 +13,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 class TestParserAligned(unittest.TestCase):
     def test_read_pcap(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "valid_paligned.pcap"))
-        p.readGlobalHeader()
-        mypcaprecord = p.readAPacket()
+        mypcaprecord = p[0]
         # Now I have a _payload that will be an inetx packet
         i = inetx.iNetX()
         i.unpack(mypcaprecord.payload[0x2a:-4])
@@ -23,7 +22,7 @@ class TestParserAligned(unittest.TestCase):
         p = paligned.ParserAlignedPacket()
         p.unpack(i.payload)
         self.assertEqual(len(p), 83)
-        self.assertEqual(repr(p[3]), "Block: QuadBytes=3 Error=False ErrorCode=0 BusID=16 MessageCount=3 ElapsedTime=10000")
+        self.assertEqual(repr(p[3]), "QuadBytes=3 Error=False ErrorCode=0 BusID=16 MessageCount=3 ElapsedTime=10000")
 
 
 if __name__ == '__main__':

@@ -23,10 +23,11 @@ class ParserAlignedPacket(object):
     
     Capture a UDP packet,unpack as iNetX whose payload is parser aligned
     
-    >>> import iNetX, socket
+    >>> import AcraNetwork.iNetX as inetx
+    >>> import socket
     >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
-    >>> i = iNetX.iNetX()
+    >>> i = inetx.iNetX()
     >>> i.unpack(data)
     >>> p = ParserAlignedPacket()
     >>> p.unpack(i.payload)
@@ -80,6 +81,12 @@ class ParserAlignedPacket(object):
 
     def __getitem__(self, key):
         return self.parserblocks[key]
+
+    def __repr__(self):
+        rep = ""
+        for idx, b in enumerate(self.parserblocks):
+            rep += "Block {}: {}".format(idx, repr(b))
+        return rep
 
 
 class ParserAlignedBlock(object):
@@ -150,7 +157,7 @@ class ParserAlignedBlock(object):
         raise NotImplementedError("Ask Diarmuid to implement it")
 
     def __repr__(self):
-        return "Block: QuadBytes={} Error={} ErrorCode={} BusID={} MessageCount={} ElapsedTime={}".format(
+        return "QuadBytes={} Error={} ErrorCode={} BusID={} MessageCount={} ElapsedTime={}".format(
             self.quadbytes, self.error, self.errorcode, self.busid, self.messagecount, self.elapsedtime
         )
 

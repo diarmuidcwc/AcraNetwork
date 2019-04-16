@@ -101,7 +101,9 @@ class NPDSegment(object):
     def __repr__(self):
         return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={}".format(
             self.timedelta, self.segmentlen, self.errorcode, self.flags)
-
+    # def __repr__(self):
+        # return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={} Payload={}".format(
+            # self.timedelta, self.segmentlen, self.errorcode, self.flags, self.payload)
 
 class A429Segment(NPDSegment):
     pass
