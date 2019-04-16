@@ -304,8 +304,8 @@ class Chapter10(object):
 
         offset_hdr = struct.calcsize(Chapter10.CH10_HDR_FORMAT)-2
         exp_checksum = get_checksum_buf(buffer[:offset_hdr])
-        #if checksum != exp_checksum:
-        #    raise Exception("Ch10 Header checksum does not match expected={:#0X}".format(exp_checksum))
+        if checksum != exp_checksum:
+            raise Exception("Ch10 Header checksum does not match expected={:#0X}".format(exp_checksum))
 
         self.relativetimecounter = _rtc_lwr + (_rtc_upr << 32)
 
@@ -406,7 +406,11 @@ class ARINC429DataPacket(object):
             arinc_msg_word_buffer = buffer[offset:offset+ARINC_WORD_LEN]
             arinc_data.unpack(arinc_msg_word_buffer)
             self.arincwords.append(arinc_data)
-
+            
+        if self.msgcount != len(self.arincwords):
+            raise Exception("The ARINC Message Count={} does not match number of messages in the packet={}".format(
+                self.msgcount, len(self.arincwords)
+            ))
         return True
 
     def __eq__(self, other):

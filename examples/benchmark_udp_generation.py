@@ -25,7 +25,6 @@ import AcraNetwork.McastSocket as mcast
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import argparse
-import os
 
 parser = argparse.ArgumentParser(description='Benchmark the transmission of multicast packets')
 parser.add_argument('--type',  required=True, type=str,choices=["udp","iena","inetx"],  help='The type of _payload, udp iena or inetx')
@@ -33,14 +32,14 @@ parser.add_argument('--ignoretime',required=False, action='store_true', default=
 args = parser.parse_args()
 
 # constants
-PACKETS_TO_SEND = 50000000
+PACKETS_TO_SEND = 50000
 PAYLOAD_SIZE = 1300 # size of the _payload in bytes
 HEADER_SIZE = {'udp' : 58 , 'inetx' :86 ,'iena':74}
-UDP_IP = "192.168.1.173"
+UDP_IP = "235.0.0.1"
 UDP_PORT = 8888
 
 # Fixed _payload for both
-payload = os.urandom(PAYLOAD_SIZE)
+payload = (struct.pack(">B",5) * PAYLOAD_SIZE)
 
 if args.type == "inetx":
     # Create an inetx packet
@@ -61,7 +60,7 @@ elif args.type == "iena":
     avionics_packet.status = 0
 
 mcastsocket = mcast.McastSocket(2048)
-#mcastsocket.mcast_add(UDP_IP)
+mcastsocket.mcast_add(UDP_IP)
 
 packets_sent = 0
 

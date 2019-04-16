@@ -25,5 +25,6 @@
 # 0.13.0 - Added UART Payload for Chapter 10
 # 0.13.1 - Bug fixes on UART for Chapter 10
 # 0.13.2 - Added NPD Segments for RS232
+# 0.13.3 - Parser aligned printout
 # 0.14.0 - Made compatiable with python3
 __version__ = '0.14.0'

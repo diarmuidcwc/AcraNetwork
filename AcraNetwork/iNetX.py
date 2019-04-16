@@ -47,7 +47,7 @@ class iNetX (object):
     INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
     REQ_ATTR = ("inetxcontrol", "streamid", "sequence", "ptptimeseconds", "ptptimenanoseconds", "pif", "payload")
 
-    def __init__(self):
+    def __init__(self, buf=None):
         '''Creator method for an iNetX class'''
         self.inetxcontrol = iNetX.DEF_CONTROL_WORD #: Control Word
         self.streamid = None #: Stream ID. Typically to identify a unique packet in an FTI network. 4 bytes in size
@@ -59,6 +59,8 @@ class iNetX (object):
         self.payload = None #: Payload
 
         self._packetStrut = struct.Struct(iNetX.INETX_HEADER_FORMAT)
+        if buf is not None:
+            self.unpack(buf)
 
     def pack(self):
         """

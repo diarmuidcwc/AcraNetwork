@@ -111,7 +111,7 @@ class Ethernet(object):
         if buf is not None:
             self.unpack(buf)
 
-    def unpack(self,buf):
+    def unpack(self, buf):
         """
         Unpack a raw byte stream to an Ethernet object
 
@@ -375,3 +375,36 @@ class AFDX(object):
         return packet
 
 
+class ICMP(object):
+    """
+    ICMP packets.
+    """
+
+    TYPE_REPLY = 0x0
+    TYPE_UNREACHABLE = 0X1
+    TYPE_REDIRECT = 0X5
+    TYPE_REQUEST = 0X8
+
+    def __init__(self):
+        self.type = None
+        self.code = None
+        self.request_id = None
+        self.request_sequence = None
+        self.payload = ""
+
+    def pack(self):
+        """
+        Pack an ICMP object into a buff
+        :return:
+        """
+        for attr in ("type", "code", "request_id", "request_sequence"):
+            if type(getattr(self, attr)) != int:
+                raise ValueError("Attribute {} is not an integer".format(attr))
+
+        _hdr_no_checksum = struct.pack(">BBHHH", self.type, self.code, 0, self.request_id, self.request_sequence)
+        _icmp_checksum = ip_calc_checksum(_hdr_no_checksum + self.payload)
+        _hdr = _hdr_no_checksum[:2] + struct.pack('H', _icmp_checksum) + _hdr_no_checksum[4:]
+        return _hdr + self.payload
+
+    def unpack(self, buffer):
+        raise NotImplementedError("Not implemented")
