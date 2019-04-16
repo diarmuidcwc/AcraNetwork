@@ -1,4 +1,4 @@
-AcraNetwork [![Build Status](https://travis-ci.org/diarmuidcwc/AcraNetwork.svg?branch=master)](https://travis-ci.org/diarmuidcwc/AcraNetwork)
+AcraNetwork [![Build Status](https://travis-ci.org/diarmuidcwc/AcraNetwork.svg?branch=master)](https://travis-ci.org/diarmuidcwc/AcraNetwork)[![codecov](https://codecov.io/gh/diarmuidcwc/AcraNetwork/branch/master/graph/badge.svg)](https://codecov.io/gh/diarmuidcwc/AcraNetwork)
 ===========
 
 A collection of classes that can be used to decom network or PCM based FTI traffic
