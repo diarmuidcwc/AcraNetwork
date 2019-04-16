@@ -161,6 +161,7 @@ class SimpleEthernetTest(unittest.TestCase):
         ping_req.type = SimpleEthernet.ICMP.TYPE_REPLY
         i.payload = ping_req.pack()
         e.payload = i.pack()
+        p.close()
 
         p = pcap.Pcap("_icmp.pcap",mode='w')
         p.write_global_header()
