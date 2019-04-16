@@ -14,6 +14,7 @@ __status__ = "Production"
 
 
 import struct
+from functools import reduce
 
 
 def get_checksum_buf(buf):
@@ -26,7 +27,7 @@ def get_checksum_buf(buf):
     if len(buf) % 2 != 0:
         raise Exception("buffer needsto be 16-bit aligned")
 
-    words = struct.unpack("<{}H".format(len(buf)/2), buf)
+    words = struct.unpack("<{}H".format(len(buf)//2), buf)
     sum = reduce(lambda x, y: x + y, words)
 
     return sum % 65536
@@ -101,7 +102,7 @@ class Chapter10UDP(object):
         """
         Pack the Chapter10UDP object into a binary buffer
 
-        :rtype: str 
+        :rtype: bytes
         """
 
         _ver_type = (self.type << 4) + self.version
@@ -154,6 +155,7 @@ class Chapter10(object):
     >>> # Create the Ch10 UDP wrapper
     >>> ch10_udp = Chapter10UDP()
     >>> ch10_udp.type = Chapter10UDP.TYPE_FULL
+    >>> ch10_udp.sequence = 1
     >>> # Populate the Chapter 10 packet inthe wrapper
     >>> ch10_udp.chapter10.channelID = 1
     >>> ch10_udp.chapter10.datatypeversion = 2
@@ -164,7 +166,7 @@ class Chapter10(object):
     >>> ch10_udp.chapter10.payload = struct.pack(">II", 33, 44)
     >>> # Send the packet
     >>> tx_socket.sendto(ch10_udp.pack(), ("127.0.0.1", 8010))
-    True
+    36
 
     :type syncpattern: int
     :type channelID: int
@@ -176,9 +178,9 @@ class Chapter10(object):
     :type relativetimecounter: int
     :type timestamp: int
     :type ts_source: str
-    :type payload: str
+    :type payload: bytes
     :type data_checksum_size: int
-    :type filler: str
+    :type filler: bytes
     """
 
     SYNC_WORD = 0xEB25  #:(Object Constant) Sync word
@@ -215,9 +217,9 @@ class Chapter10(object):
         self.ptptimeseconds = None  #: PTP Timestamp seconds
         self.ptptimenanoseconds = None  #: PTP Timestamp nanoseconds
         self.ts_source = "ieee1588" #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
-        self.payload = ""  #:The payload
+        self.payload = b""  #:The payload
         self.data_checksum_size = 0
-        self.filler = ""
+        self.filler = b""
         self._secondary_header = False
 
     @property
@@ -253,7 +255,7 @@ class Chapter10(object):
         """
         Pack the Chapter10 object into a binary buffer
 
-        :rtype: str 
+        :rtype: bytes
         """
 
         if self._secondary_header:
@@ -265,13 +267,13 @@ class Chapter10(object):
             cs = get_checksum_buf(sec_hdr)
             sec_hdr = sec_hdr[:-2] + struct.pack("<H", cs)
         else:
-            sec_hdr = ""
+            sec_hdr = b""
 
         total_len_excl_filler = len(sec_hdr) + len(self.payload) + Chapter10.CH10_HDR_FORMAT_LEN + self.data_checksum_size
 
         # Add the filler
         if total_len_excl_filler % 4 == 0:
-            self.filler = ""
+            self.filler = b""
         else:
             fill_len = 4 - (total_len_excl_filler % 4)
             fill_val = [0xFF] * fill_len
@@ -294,7 +296,7 @@ class Chapter10(object):
         Unpack a string buffer into an Chapter10 object
 
         :param buffer: A string buffer representing an Chapter10 packet
-        :type buffer: str
+        :type buffer: bytes
         :rtype: None
         """
         (self.syncpattern, self.channelID, self.packetlen, self.datalen, self.datatypeversion, self.sequence,
@@ -397,7 +399,7 @@ class ARINC429DataPacket(object):
         CH_SPECIFIC_HDR_LEN = 4
         ARINC_WORD_LEN = 8
         (self.msgcount, _res) = struct.unpack_from("<HH", buffer)
-        exp_msg = (len(buffer) - CH_SPECIFIC_HDR_LEN) / ARINC_WORD_LEN
+        exp_msg = (len(buffer) - CH_SPECIFIC_HDR_LEN) // ARINC_WORD_LEN
         for msg_idx in range(exp_msg):
             offset = (msg_idx * ARINC_WORD_LEN) + CH_SPECIFIC_HDR_LEN
             arinc_data = ARINC429DataWord()
@@ -431,7 +433,7 @@ class ARINC429DataPacket(object):
         self._index = 0
         return self
 
-    def next(self):
+    def __next__(self):
         if self._index < len(self.arincwords):
             _dw = self.arincwords[self._index]
             self._index += 1
@@ -471,13 +473,13 @@ class ARINC429DataWord(object):
         self.parity_error = False  #: Parity error has occurred
         self.bus_speed = ARINC429DataWord.LO_SPEED  #: Arinc bus speed
         self.bus = None  #: Bus number index from 0
-        self.payload = ""  #: ARINC word as a string payload
+        self.payload = b""  #: ARINC word as a string payload
 
     def pack(self):
         """
         Pack the ARINC-429 data packet object into a binary buffer
 
-        :rtype: str 
+        :rtype: str|bytes
         """
         _flag = (self.format_error << 7) + (self.parity_error << 6) + (self.bus_speed << 5) + (self.gaptime >> 16)
         _gap = self.gaptime & 0xFFFF
@@ -623,6 +625,8 @@ class UARTDataPacket(object):
         else:
             raise StopIteration
 
+    __next__ = next
+
     def __len__(self):
         return len(self.uartwords)
 
@@ -648,7 +652,7 @@ class UARTDataWord(object):
         self.parity_error = False  #: Parity error has occurred
         self.subchannel = None  #: Subchannel
         self.datalength = None  #: Data Length
-        self._payload = ""  #: UART payload
+        self._payload = b""  #: UART payload
 
     @property
     def payload(self):
@@ -664,12 +668,12 @@ class UARTDataWord(object):
         """
         Pack the UART data packet object into a binary buffer
 
-        :rtype: str
+        :rtype: str|bytes
         """
         if self.ptptimeseconds is not None and self.ptptimenanoseconds is not None:
             ch_spec_word = struct.pack("<II",self.ptptimenanoseconds, self.ptptimeseconds)
         else:
-            ch_spec_word = ""
+            ch_spec_word = b""
         data_len = len(self.payload)
         if self.parity_error:
             _subch = self.subchannel + 0x80
@@ -680,7 +684,7 @@ class UARTDataWord(object):
         if data_len % 2 == 1:
             padding = struct.pack("B", 0xFF)
         else:
-            padding = ""
+            padding = b""
 
         return ch_spec_word + intra_pkt_header + self.payload + padding
 

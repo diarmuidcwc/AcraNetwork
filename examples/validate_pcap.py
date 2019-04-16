@@ -41,7 +41,7 @@ for file in all_files:
             if dst_port == udp_port:
                 if stream_id in stream_ids:
                     if seq != (stream_ids[stream_id] + 1) % roll_over:
-                        print "ERROR: StreamID={:#0X} Prev={} Cur={}".format(stream_id, stream_ids[stream_id], seq)
+                        print("ERROR: StreamID={:#0X} Prev={} Cur={}".format(stream_id, stream_ids[stream_id], seq))
                 stream_ids[stream_id] = seq
                 inetx_pkts_validate += 1
                 data_count_bytes += len(r.payload)
@@ -49,8 +49,8 @@ for file in all_files:
     # The data rate at which we are validating
     dr = data_count_bytes*60/(1e6 * (time.time() - start_t))
 
-    print "{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {}".format(inetx_pkts_validate, dr,
-                                                                                     data_count_bytes/1e6, file)
+    print("{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {}".format(inetx_pkts_validate, dr,
+                                                                                     data_count_bytes/1e6, file))
     for s in stream_ids:
-        print "Found StreamID={:#0X}".format(s)
+        print("Found StreamID={:#0X}".format(s))
 

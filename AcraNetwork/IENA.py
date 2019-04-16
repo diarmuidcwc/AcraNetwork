@@ -32,27 +32,29 @@ class IENA (object):
     
     Create an IENA packet and return the packed buffer
     
-        
-        
+
     >>> i = IENA()
     >>> i.key = 0xDC
     >>> i.sequence = 1
     >>> i.endfield = 0xDEAD
     >>> i.keystatus = 0
     >>> i.status = 0x0
-    >>> i.setPacketTime(0, 0)
+    >>> i.timeusec = int(10e6)
     >>> i.payload = struct.pack('H',0x5)
     >>> i.pack()
+    b'\\x00\\xdc\\x00\\t\\x00\\x00\\x00\\x98\\x96\\x80\\x00\\x00\\x00\\x01\\x05\\x00\\xde\\xad'
     
-    Unpack some received packet from the network
+    Read in some data stored in a UDP packet in a pcap file
     
-    >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> import AcraNetwork.Pcap as pcap
+    >>> p = pcap.Pcap("../test/iena_test.pcap")
+    >>> rec_payload = p[0].payload
     >>> i = IENA()
-    >>> i.unpack(data)
-    
-    
+    >>> i.unpack(rec_payload[0x2a:])  # Offset into the pcap record
+    True
+    >>> print("{:#0X}".format(i.key))
+    0X1A
+
     :type key: int
     :type size: int
     :type timeusec: int
@@ -60,7 +62,7 @@ class IENA (object):
     :type status: int
     :type sequence: int
     :type endfield: int
-    :type payload: str
+    :type payload: bytes
      
     """
     IENA_HEADER_FORMAT = '>HHHIBBH'
@@ -127,7 +129,7 @@ class IENA (object):
         Accepts a buffer to unpack as the required argument
         
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -142,7 +144,7 @@ class IENA (object):
             raise Exception("Length field does not match the size of the packet")
 
         self.payload = buf[IENA.IENA_HEADER_LENGTH:-2]
-        (self.endfield,) = struct.unpack(">H",buf[-2:]) # last two bytes are the trailer
+        (self.endfield,) = struct.unpack_from(">H",buf, -2) # last two bytes are the trailer
 
         return True
 
@@ -150,7 +152,7 @@ class IENA (object):
         """
         Pack the IENA payload into a binary string
         
-        :rtype: str
+        :rtype: bytes
         """
 
         for attr in self._req_attr:
@@ -160,10 +162,11 @@ class IENA (object):
         timehi = self.timeusec >> 32
         timelo = self.timeusec % 0x100000000
 
-        self.size =  (len(self.payload)  + IENA.IENA_HEADER_LENGTH + IENA.TRAILER_LENGTH) /2 # size is in words
+        self.size =  (len(self.payload)  + IENA.IENA_HEADER_LENGTH + IENA.TRAILER_LENGTH) // 2 # size is in words
 
-        packetvalues = (self.key,self.size,timehi,timelo,self.keystatus,self.status,self.sequence)
-        packet = self._packetStrut.pack(*packetvalues) + self.payload + struct.pack('>H',self.endfield)
+        packetvalues = (self.key, self.size, timehi, timelo, self.keystatus, self.status, self.sequence)
+        packet = self._packetStrut.pack(*packetvalues) + self.payload + struct.pack('>H', self.endfield)
+
         return packet
 
     def _getPacketTime(self):
@@ -212,7 +215,7 @@ class MParameter(namedtuple("MParameter", "paramid, delay, dataset")):
     :param delay: The delay for this parameter
     :type delay: int
     :param dataset: The dataset payload as a string
-    :type dwords: str
+    :type dwords: bytes
     """
 
     def __repr__(self):
@@ -234,7 +237,7 @@ class IENAM(IENA):
     Unpack some received packet from the network
     
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = IENAM()
     >>> i.unpack(data)
@@ -259,7 +262,7 @@ class IENAM(IENA):
         Accepts a buffer to unpack as the required argument
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -287,9 +290,9 @@ class IENAM(IENA):
         """
         Pack the IENA-M payload into a binary string
 
-        :rtype: str
+        :rtype: bytes
         """
-        self.payload = ""
+        self.payload = b""
         for mparam in self:
             datasetlength = len(mparam.dataset)
             self.payload += struct.pack(IENAM._FORMAT_, mparam.paramid, mparam.delay, datasetlength)
@@ -319,11 +322,14 @@ class IENAM(IENA):
         else:
             raise StopIteration
 
+    __next__ = next
+
     def __len__(self):
         return len(self.parameters)
 
     def __getitem__(self, key):
         return self.parameters[key]
+
 
 class QParameter(namedtuple("QParameter", "paramid, dataset")):
     """
@@ -332,7 +338,7 @@ class QParameter(namedtuple("QParameter", "paramid, dataset")):
     :param paramid: The param ID for this parameter
     :type paramid: int
     :param dataset: The dataset payload as a string
-    :type dwords: str
+    :type dwords: bytes
     """
 
     def __repr__(self):
@@ -354,7 +360,7 @@ class IENAQ(IENA):
     Unpack some received packet from the network
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = IENAQ()
     >>> i.unpack(data)
@@ -379,7 +385,7 @@ class IENAQ(IENA):
         Accepts a buffer to unpack as the required argument
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -407,9 +413,9 @@ class IENAQ(IENA):
         """
         Pack the IENA-Q payload into a binary string
 
-        :rtype: str
+        :rtype: bytes
         """
-        self.payload = ""
+        self.payload = b""
         for qparam in self:
             datasetlength = len(qparam.dataset)
             self.payload += struct.pack(IENAQ._FORMAT_, qparam.paramid, datasetlength)
@@ -437,6 +443,8 @@ class IENAQ(IENA):
             return _param
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.parameters)
@@ -474,7 +482,7 @@ class IENAD(IENA):
     Unpack some received packet from the network
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = IENAD()
     >>> i.unpack(data)
@@ -498,7 +506,7 @@ class IENAD(IENA):
         Accepts a buffer to unpack as the required argument
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -507,7 +515,7 @@ class IENAD(IENA):
         #According to the IENA spec,the N2 field contains the numner of data words
         dataword_count = self.keystatus & 0x7
         len_param_bytes = dataword_count * 2 + 4 # how big is each parameter grouping
-        num_params = len(self.payload) / len_param_bytes  # So how many in the payload
+        num_params = len(self.payload) // len_param_bytes  # So how many in the payload
         if len(self.payload) - (num_params * len_param_bytes) != 0:
             raise ValueError("There are not an integer number of D Parameters in the payload. Length DParam={} "
                             "Length IENA Payload={}".format(len_param_bytes, len(self.payload)))
@@ -537,6 +545,8 @@ class IENAD(IENA):
             return _param
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.parameters)
@@ -573,7 +583,7 @@ class IENAN(IENA):
     Unpack some received packet from the network
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = IENAN()
     >>> i.unpack(data)
@@ -601,7 +611,7 @@ class IENAN(IENA):
         Accepts a buffer to unpack as the required argument
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
 
         :rtype: bool
         """
@@ -611,7 +621,7 @@ class IENAN(IENA):
         #According to the IENA spec,the N2 field contains the numner of data words
         dataword_count = self.keystatus & 0x7
         len_param_bytes = dataword_count * 2 + 2 # how big is each parameter grouping
-        num_params = len(self.payload) / len_param_bytes  # So how many in the
+        num_params = len(self.payload) // len_param_bytes  # So how many in the
         # Check that we don't have od
         if len(self.payload) - (num_params * len_param_bytes) != 0:
             raise ValueError("There are not an integer number of N Parameters in the payload. Length NParam={} "
@@ -642,6 +652,8 @@ class IENAN(IENA):
             return _param
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.parameters)

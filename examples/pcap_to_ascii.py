@@ -49,7 +49,7 @@ def main():
         try:
             pcapfile = pcap.Pcap(pcapfilename)
         except IOError:
-            print "ERROR: File {} not found".format(pcapfilename)
+            print("ERROR: File {} not found".format(pcapfilename))
             exit()
 
         if not os.path.exists(args.outdir):
@@ -80,7 +80,7 @@ def main():
                 output_file = open(output_file_name,'a')
 
                 # Start the byte count per streamID
-                if  not output_byte_count.has_key(inetx_packet.streamid):
+                if  inetx_packet.streamid not in output_byte_count:
                     output_byte_count[inetx_packet.streamid] = 1
 
                 # Go thorough each byte in the _payload. Not particularly efficient
@@ -106,7 +106,7 @@ def main():
                         output_file.write('\n')
                     output_byte_count[inetx_packet.streamid] += 1
 
-        print "Output files created in {} directory".format(args.outdir)
+        print("Output files created in {} directory".format(args.outdir))
 
 
 

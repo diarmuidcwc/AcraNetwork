@@ -16,14 +16,16 @@ __status__ = "Production"
 
 import struct
 import datetime
+import sys
 
 NAL_HEADER = 0x00000001
 NAL_HEADER_LEN = 4
 NAL_TYPES = { "SEI":6, "Unspecified" : 0, "Coded IDR" : 5, "SPS" : 7, "PPS" : 8, "AUD" : 9,
               "EOS" : 10, "DPS" : 16}
 # Invert it to go from integer to more useful name
-NAL_TYPES_INV = {v: k for k, v in NAL_TYPES.items()}
+NAL_TYPES_INV = {v: k for k, v in list(NAL_TYPES.items())}
 SEI_UNREG_DATA = 5
+PY3 = sys.version_info > (3,)
 
 
 class MPEGTS(object):
@@ -189,12 +191,12 @@ class NAL(object):
         Split the buffer into a NAL object
 
         :param buf: The buffer to unpack into an NAL
-        :type buf: str
+        :type buf: str|bytes
         :rtype: bool
         """
 
         # First 4 bytes are the NAL_HEADER, then forbidden + type
-        (self.type,) = struct.unpack(">B",buf[NAL_HEADER_LEN])
+        (self.type,) = struct.unpack_from(">B", buf, NAL_HEADER_LEN)
         self.type = self.type & 0x1F
         if self.type == NAL_TYPES["SEI"]:
             sei = STANAG4609_SEI()
@@ -262,7 +264,11 @@ def string_matching_boyer_moore_horspool(text='', pattern=''):
     for k in range(256):
         skip.append(m)
     for k in range(m-1):
-        skip[ord(pattern[k])] = m - k - 1
+        my = pattern[k]
+        if PY3:
+            skip[pattern[k]] = m - k - 1
+        else:
+            skip[ord(pattern[k])] = m - k - 1
     skip = tuple(skip)
     k = m - 1
     while k < n:
@@ -273,6 +279,9 @@ def string_matching_boyer_moore_horspool(text='', pattern=''):
             i -= 1
         if j == -1:
             offsets.append(i + 1)
-        k += skip[ord(text[k])]
+        if PY3:
+            k += skip[text[k]]
+        else:
+            k += skip[ord(text[k])]
 
     return offsets

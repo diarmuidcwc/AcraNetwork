@@ -77,7 +77,7 @@ class NPDSegment(object):
         :rtype: str 
         """
         if len(self.payload) % 4 == 0:
-            pad = ""
+            pad = b""
         else:
             pad_len = 4 - len(self.payload) % 4
             pad = struct.pack(">B",0xFF) * pad_len
@@ -135,7 +135,7 @@ class RS232Segment(NPDSegment):
         NPDSegment.__init__(self)
         self.block_status = None
         self.sync_bytes = []
-        self.data = ""
+        self.data = b""
 
     def unpack(self, buffer):
         """
@@ -230,7 +230,7 @@ class NPD(object):
     def __init__(self):
         '''Creator method for a UDP class'''
         self.version = 3  #: Version
-        self.hdrlen = NPD.NPD_HEADER_LENGTH/4  #: Header Length
+        self.hdrlen = NPD.NPD_HEADER_LENGTH//4  #: Header Length
         self.datatype = None  #: A unique identifier for the type of data collected in the packet
         self.packetlen = None  #: The number of 32-bit words in the data packet including the NPD header and data segments.
         self.cfgcnt = None  #: Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.
@@ -261,7 +261,7 @@ class NPD(object):
             raise Exception("The self reported packet length does not match the length of the buffer supplied")
 
         remain_buf = _payload
-        while remain_buf != "":
+        while remain_buf != b"":
             if self.datatype in NPD.NPD_DT:
                 segment = NPD.NPD_DT[self.datatype]()
             else:
@@ -284,10 +284,10 @@ class NPD(object):
         _ver_hdr = (self.version << 4) + self.hdrlen
         (_mc,) = struct.unpack(">I", inet_aton(self.mcastaddr))
 
-        _payload = ""
+        _payload = b""
         for segment in self.segments:
             _payload += segment.pack()
-        self.packetlen = (NPD.NPD_HEADER_LENGTH + len(_payload))/4
+        self.packetlen = (NPD.NPD_HEADER_LENGTH + len(_payload))//4
         hdr_buf = struct.pack(NPD.NPD_HEADER_FORMAT, _ver_hdr, self.datatype, self.packetlen, self.cfgcnt, self.flags,
                               self.sequence, self.datasrcid, _mc, self.timestamp)
 
@@ -318,7 +318,7 @@ class NPD(object):
         self._index = 0
         return self
 
-    def next(self):
+    def __next__(self):
         if self._index < len(self.segments):
             _dw = self.segments[self._index]
             self._index += 1

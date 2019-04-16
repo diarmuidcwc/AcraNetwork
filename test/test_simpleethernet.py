@@ -43,7 +43,6 @@ class SimpleEthernetTest(unittest.TestCase):
         e = SimpleEthernet.Ethernet()
         self.assertRaises(ValueError,lambda: e.pack())
 
-
     ######################
     # IP
     ######################
@@ -96,8 +95,8 @@ class SimpleEthernetTest(unittest.TestCase):
     ######################
     def test_readUDP(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "test_input.pcap"))
-        p.readGlobalHeader()
-        mypcaprecord = p.readAPacket()
+        mypcaprecord = p[0]
+        p.close()
         e = SimpleEthernet.Ethernet()
         e.unpack(mypcaprecord.packet)
         self.assertEqual(e.srcmac,0x0018f8b84454)
@@ -106,7 +105,7 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(repr(e), "SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800")
 
         # checksum test
-        (exp_checksum,) = struct.unpack("<H", e.payload[10:12])
+        (exp_checksum,) = struct.unpack_from("<H", e.payload, 10)
         ip_hdr_checksum = SimpleEthernet.ip_calc_checksum(e.payload[:10] + e.payload[12:20])
         self.assertEqual(exp_checksum, ip_hdr_checksum)
         i = SimpleEthernet.IP()
@@ -138,22 +137,22 @@ class SimpleEthernetTest(unittest.TestCase):
         e.payload = i.pack()
 
         p = pcap.Pcap("_icmp.pcap",mode='w')
-        p.writeGlobalHeader()
+        p.write_global_header()
         r = pcap.PcapRecord()
         r.setCurrentTime()
         r.packet = e.pack()
-        p.writeARecord(r)
+        p.write(r)
         p.close()
 
-
-    @unittest.skip("No pcap")
     def test_readIPchecksum(self):
-        p = pcap.Pcap(os.path.join(THIS_DIR, "good_ip.pcap"))
+        p = pcap.Pcap(os.path.join(THIS_DIR, "inetx_test.pcap"))
         mypcaprecord = p[0]
         e = SimpleEthernet.Ethernet()
         e.unpack(mypcaprecord.packet)
         i = SimpleEthernet.IP()
         self.assertTrue(i.unpack(e.payload))
+        p.close()
+
 
 if __name__ == '__main__':
     unittest.main()

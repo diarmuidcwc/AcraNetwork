@@ -55,13 +55,13 @@ def ip_calc_checksum(pkt):
     Calculate the checksum of a packet
     
     :param pkt: The IP packet header packed into bytes
-    :type pkt: str
+    :type pkt: str|bytes
     :return: 
     """
 
     if len(pkt) % 2 == 1:
-        pkt += "\0"
-    s = sum(struct.unpack("<{}H".format(len(pkt) / 2), pkt))
+        pkt += b"\0"
+    s = sum(struct.unpack("<{}H".format(len(pkt) // 2), pkt))
     s = (s >> 16) + (s & 0xffff)
     s += s >> 16
     s = ~s
@@ -227,20 +227,21 @@ class IP(object):
         """
 
         for word in [self.dscp,self.id,self.flags,self.ttl,self.protocol,self.srcip,self.dstip]:
-            if word == None:
+            if word is None:
                 raise ValueError("All required IP payloads not defined")
 
         (srcip_as_int,) = struct.unpack('!I',socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
         self.len = IP.IP_HEADER_SIZE+len(self.payload)
-        header = struct.pack(IP.IP_HEADER_FORMAT,0x45,self.dscp,self.len,self.id,self.flags,0,self.ttl,self.protocol,0,srcip_as_int,dstip_as_int)
+        header = struct.pack(IP.IP_HEADER_FORMAT, 0x45, self.dscp, self.len, self.id, self.flags, 0, self.ttl,
+                             self.protocol, 0, srcip_as_int,dstip_as_int)
         checksum = ip_calc_checksum(header)
         header = header[:10] + struct.pack('H',checksum) + header[12:]
         return header + self.payload
 
     def __repr__(self):
         protocol = ""
-        for p,v in IP.PROTOCOLS.iteritems():
+        for p,v in IP.PROTOCOLS.items():
             if v == self.protocol:
                 protocol = p
         return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)

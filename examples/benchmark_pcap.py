@@ -36,7 +36,7 @@ args = parser.parse_args()
 PCAP_FNAME = "output_test.pcap"
 PACKETS_TO_WRITE = 50000
 PAYLOAD_SIZE = 1300 # size of the _payload in bytes
-HEADER_SIZE = {'udp' : 58 , 'inetx' :86 ,'iena':74}
+HEADER_SIZE = {'udp': 58, 'inetx':86,'iena':74}
 
 # Write out a pcapfile with each inetx and iena packet generated
 mypcap = pcap.Pcap(PCAP_FNAME, mode='w')
@@ -73,8 +73,6 @@ else:
     avionics_packet.payload = payload
     avionics_packet.status = 0
 
-
-
 packets_written = 0
 
 start_time = time.time()
@@ -89,10 +87,10 @@ while packets_written < PACKETS_TO_WRITE:
         else:
             currenttime = int(time.time())
         if args.type == "iena":
-            avionics_packet.sequence = (avionics_packet.sequence +1) % 65536
+            avionics_packet.sequence = (avionics_packet.sequence + 1) % 65536
             udp_packet.srcport = 5000
         else:
-            avionics_packet.sequence = (avionics_packet.sequence +1) % 0x100000000
+            avionics_packet.sequence = (avionics_packet.sequence + 1) % 0x100000000
             udp_packet.srcport = 5001
 
         avionics_packet.setPacketTime(currenttime)
@@ -113,7 +111,7 @@ while packets_written < PACKETS_TO_WRITE:
 
 mypcap.close()
 end_time = time.time()
-print "INFO: Wrote {} packets of type {} with _payload of {} bytes in {} seconds".format(PACKETS_TO_WRITE,args.type,PAYLOAD_SIZE,end_time-start_time)
-print "INFO: Wrote {} bytes in {}".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_WRITE,end_time-start_time)
-print "INFO: Wrote {} packets per second".format(PACKETS_TO_WRITE/(end_time-start_time))
-print "INFO: Wrote {:.2f} Mbps".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_WRITE*8/((end_time-start_time)*1024*1024))
+print("INFO: Wrote {} packets of type {} with _payload of {} bytes in {} seconds".format(PACKETS_TO_WRITE,args.type,PAYLOAD_SIZE,end_time-start_time))
+print("INFO: Wrote {} bytes in {}".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_WRITE,end_time-start_time))
+print("INFO: Wrote {} packets per second".format(PACKETS_TO_WRITE/(end_time-start_time)))
+print("INFO: Wrote {:.2f} Mbps".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_WRITE*8/((end_time-start_time)*1024*1024)))

@@ -31,7 +31,7 @@ try:
     recv_socket.mcast_add('235.0.0.1', '0.0.0.0')
     recv_socket.settimeout(10)
 except:
-    print "Can't bind to socket {}".format(udp_port)
+    print("Can't bind to socket {}".format(udp_port))
     exit()
 
 packet_count = 1
@@ -39,7 +39,7 @@ while True:
     try:
         data, addr = recv_socket.recvfrom(2048) # buffer size is 1500 bytes
     except socket.timeout:
-        print "timeout on socket"
+        print("timeout on socket")
         exit()
 
     (udpsrcport,srcipaddr) = addr
@@ -52,4 +52,4 @@ while True:
         packet_count += 1
         continue
     else:
-        print "Packet withStread ID = {:0X}".format(avionics_packet.streamid)
+        print("Packet withStread ID = {:0X}".format(avionics_packet.streamid))

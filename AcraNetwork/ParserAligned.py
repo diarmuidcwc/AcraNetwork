@@ -67,7 +67,7 @@ class ParserAlignedPacket(object):
         self._index = 0
         return self
 
-    def next(self):
+    def __next__(self):
         if self._index < len(self.parserblocks):
             _block = self.parserblocks[self._index]
             self._index += 1

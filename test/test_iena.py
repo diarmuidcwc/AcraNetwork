@@ -33,14 +33,15 @@ def get_udp_packet(pcapfilename):
     :rtype: SimpleEthernet.UDP
     """
     p = pcap.Pcap(os.path.join(THIS_DIR, pcapfilename))
-    p.readGlobalHeader()
-    mypcaprecord = p.readAPacket()
+    p._read_global_header()
+    mypcaprecord = p[0]
     e = SimpleEthernet.Ethernet()
     e.unpack(mypcaprecord.packet)
     ip = SimpleEthernet.IP()
     ip.unpack(e.payload)
     udp_pkt = SimpleEthernet.UDP()
     udp_pkt.unpack(ip.payload)
+    p.close()
 
     return udp_pkt
 
@@ -50,11 +51,11 @@ class IENATest(unittest.TestCase):
     def setUp(self):
         # Get aUDP packet from a pack which can be used
         p = pcap.Pcap(os.path.join(THIS_DIR, "iena_test.pcap"))
-        p.readGlobalHeader()
+        p._read_global_header()
 
         # Loop through the pcap file reading one packet at a time
         try:
-            mypcaprecord = p.readAPacket()
+            mypcaprecord = p[0]
         except IOError:
             # End of file reached
             return
@@ -64,6 +65,7 @@ class IENATest(unittest.TestCase):
         ip.unpack(e.payload)
         self.upd = SimpleEthernet.UDP()
         self.upd.unpack(ip.payload)
+        p.close()
 
 
     def test_defaultIENA(self):
@@ -110,13 +112,13 @@ class IENATest(unittest.TestCase):
         # Now I have a _payload that will be an iena packet
         i = iena.IENA()
         i.unpack(self.upd.payload)
-        self.assertEquals(i.key,0x1a)
-        self.assertEquals(i.size,24)
-        self.assertEquals(i.status,1)
-        self.assertEquals(i.keystatus,1)
-        self.assertEquals(i.sequence, 195)
+        self.assertEqual(i.key,0x1a)
+        self.assertEqual(i.size,24)
+        self.assertEqual(i.status,1)
+        self.assertEqual(i.keystatus,1)
+        self.assertEqual(i.sequence, 195)
         self.assertEqual(i.timeusec,0x1d102f800)
-        self.assertEquals(i.endfield,0xdead)
+        self.assertEqual(i.endfield,0xdead)
         self.assertEqual(len(i), 48)
 
     def test_unpack_IENAM(self):
@@ -124,17 +126,17 @@ class IENATest(unittest.TestCase):
         # Now I have a _payload that will be an iena packet
         i = iena.IENAM()
         i.unpack(self.upd.payload)
-        self.assertEquals(i.key,0x1a)
+        self.assertEqual(i.key,0x1a)
         for mparam in i:
             self.assertEqual(mparam.paramid, 0xDC)
-        print i
+        #print(i)
         self.assertEqual(repr(i), "IENAM: KEY=0X1A SEQ=195 TIMEUS=7801600000 NUM_MPARAM=1\n M-Param #0:ParamID=0XDC Delay=16 Dataset Length=26\n")
 
     def test_unpack_IENAN(self):
         # Decode as IENA-N
         i = iena.IENAN()
         i.unpack(self.upd.payload)
-        self.assertEquals(i.key, 0x1a)
+        self.assertEqual(i.key, 0x1a)
         param_1 = i.parameters[0] # type: iena.NParameter
         self.assertEqual(param_1.paramid, 0xDC)
         self.assertListEqual(param_1.dwords, [0x10])
@@ -146,7 +148,7 @@ class IENATest(unittest.TestCase):
         udp_pkt = get_udp_packet("ienad.pcap")
         i = iena.IENAD()
         i.unpack(udp_pkt.payload)
-        self.assertEquals(i.key, 0x2cfa)
+        self.assertEqual(i.key, 0x2cfa)
         param_1 = i.parameters[0] # type: iena.DParameter
         self.assertEqual(param_1.paramid, 0xFFFF)
         self.assertEqual(param_1.delay, 0x0)
@@ -199,7 +201,7 @@ class IENATest(unittest.TestCase):
         for idx, p in enumerate(b):
             self.assertEqual(p.paramid, idx+10)
             self.assertEqual(len(p.dataset), idx+5+10)
-        print i
+        #print(i)
 
     def test_read_multiple_ienam(self):
         # Get aUDP packet from a pack which can be used
@@ -217,6 +219,7 @@ class IENATest(unittest.TestCase):
         i = iena.IENAM()
         i.unpack(udp.payload)
         self.assertEqual(len(i), 2)
+        p.close()
 
 
 if __name__ == '__main__':

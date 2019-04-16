@@ -27,8 +27,8 @@ class MPEGTSBasicTest(unittest.TestCase):
         Verifies each block in that first packet
         '''
         p = pcap.Pcap(os.path.join(THIS_DIR, "mpegts_input.pcap"))
-        p.readGlobalHeader()
-        mypcaprecord = p.readAPacket()
+        p._read_global_header()
+        mypcaprecord = p[0]
 
         ethpacket = SimpleEthernet.Ethernet()   # Create an Ethernet object
         ethpacket.unpack(mypcaprecord.packet)   # Unpack the pcap record into the eth object
@@ -43,7 +43,7 @@ class MPEGTSBasicTest(unittest.TestCase):
         mpegts.unpack(inetxpacket.payload)
         self.assertEqual(mpegts.NumberOfBlocks(),7)
         self.assertFalse(mpegts.contunityerror)
-        for packet_index in (range(7)):
+        for packet_index in (list(range(7))):
             if packet_index == 0:
                 self.assertEqual(mpegts.blocks[packet_index].pid,0)
                 self.assertEqual(mpegts.blocks[packet_index].syncbyte,0x47)
@@ -80,11 +80,11 @@ class MPEGTSBasicTest(unittest.TestCase):
 
         p.close()
 
-
     def test_stanag(self):
         ts_file = open(os.path.join(THIS_DIR, "stanag_sample.ts"), mode='rb')
         h264_data = MPEGTS.H264()
         self.assertTrue(h264_data.unpack(ts_file.read()))
+        ts_file.close()
         self.assertEqual(len(h264_data.nals),5062)
         nal_counts ={}
         for nal in h264_data.nals:
@@ -92,8 +92,8 @@ class MPEGTSBasicTest(unittest.TestCase):
                 nal_counts[nal.type] = 1
             else:
                 nal_counts[nal.type] += 1
-        self.assertEqual(nal_counts[0],687)
-        self.assertEqual(nal_counts[6],1374)
+        self.assertEqual(nal_counts[0], 687)
+        self.assertEqual(nal_counts[6], 1374)
 
 if __name__ == '__main__':
     unittest.main()

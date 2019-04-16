@@ -54,7 +54,7 @@ class testINET(unittest.TestCase):
             pkg.definitionID = 7
             pkg.flags = 8
             pkg.timedelta = 0x99
-            payload = range(pkg_idx)
+            payload = list(range(pkg_idx))
             pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload )
             self.i.packages.append(pkg)
 
@@ -88,7 +88,7 @@ class testINET(unittest.TestCase):
             pkg.definitionID = 7
             pkg.flags = 8
             pkg.timedelta = 99
-            payload = range(pkg_idx)
+            payload = list(range(pkg_idx))
             pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload )
             self.i.packages.append(pkg)
         rec.payload = getEthernetPacket(self.i.pack())

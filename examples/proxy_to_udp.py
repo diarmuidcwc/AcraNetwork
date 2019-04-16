@@ -35,7 +35,7 @@ parser.add_argument('--version', action='version', version='%(prog)s {}'.format(
 args = parser.parse_args()
 
 if not (args.inetx or args.iena):
-    print parser.print_help()
+    print(parser.print_help())
     sys.exit(1)
 
 # The incoming iNetx port
@@ -55,7 +55,7 @@ try:
     recv_socket.mcast_add(args.ipaddress, '0.0.0.0')
     recv_socket.settimeout(10)
 except:
-    print "Can't bind to socket {} on multicast {}".format(incoming_udp_port, args.ipaddress)
+    print("Can't bind to socket {} on multicast {}".format(incoming_udp_port, args.ipaddress))
     exit()
 
 tx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -68,8 +68,8 @@ while True:
     try:
         data, addr = recv_socket.recvfrom(2048) # buffer size is 1500 bytes
     except socket.timeout:
-        print "ERROR: No incoming packets received on UDP port {} on multicast {}. Timeout on socket".format(
-            incoming_udp_port, args.ipaddress)
+        print("ERROR: No incoming packets received on UDP port {} on multicast {}. Timeout on socket".format(
+            incoming_udp_port, args.ipaddress))
         exit()
 
     (udpsrcport,srcipaddr) = addr
@@ -90,6 +90,6 @@ while True:
         tx_socket.sendto(avionics_packet.payload, (args.ipaddress, outgoing_udp_port))
         # Print some info for the user
         if packet_count % 50 == 0:
-            print "."
+            print(".")
         else:
-            print ".",
+            print(".",)

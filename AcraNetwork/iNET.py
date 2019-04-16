@@ -23,14 +23,14 @@ class iNETPackage(object):
     PKG_FORMAT = ">IHBBI"
     PKG_FORMAT_LEN = struct.calcsize(PKG_FORMAT)
     REQ_ATTR = ("definitionID", "flags", "timedelta", "payload")
-    PAD_BYTE = '\x00'
+    PAD_BYTE = b'\x00'
 
     def __init__(self):
         self.definitionID = None  #: Package definition ID
         self.flags = None  #: Package status Flags defined in the MDL document
         self._length = 0
         self.timedelta = 0  #: Package time relative to the parent Message timestamp in nanoseconds
-        self.payload = ""  #: The package payload
+        self.payload = b""  #: The package payload
 
     def pack(self):
         """
@@ -45,7 +45,7 @@ class iNETPackage(object):
         if len(self.payload) % 4 != 0:
             padding = (4-len(self.payload) % 4) * iNETPackage.PAD_BYTE
         else:
-            padding = ""
+            padding = b""
 
         self._length = iNETPackage.PKG_FORMAT_LEN + len(self.payload)
 
@@ -129,12 +129,12 @@ class iNET(object):
         """
         Pack the packet into a binary format and return as a string
 
-        :rtype: str
+        :rtype: str|bytes
         """
 
         _wc_ver = len(self.app_fields) + (self.version << 4)
 
-        self._payload = ""
+        self._payload = b""
         for pkg in self.packages:
             self._payload += pkg.pack()
 

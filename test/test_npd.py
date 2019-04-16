@@ -48,6 +48,7 @@ class testNPD(unittest.TestCase):
 
         pcapr = pcap.Pcap(os.path.join(THIS_DIR, "npd_ref.pcap"), mode="r")
         rec = pcapr[0]
+        pcapr.close()
         self.readnpd_payload = rec.payload[(14+20+8):]
 
     def test_npds_print(self):
@@ -88,7 +89,7 @@ class testNPD(unittest.TestCase):
             ns.timedelta = 3
             ns.errorcode = 0
             ns.flags = 1
-            ns.payload = struct.pack(">{}IH".format(segment-1), *range(segment))
+            ns.payload = struct.pack(">{}IH".format(segment-1), *list(range(segment)))
             self.n.segments.append(ns)
         rec = getEthernetPacket(self.n.pack())
         self.pcapw = pcap.Pcap("test_npd.pcap", mode="w")
@@ -113,13 +114,13 @@ class testNPD(unittest.TestCase):
 
     def test_unpackwrap(self):
         pcapr = pcap.Pcap(os.path.join(THIS_DIR, "wrapped_ethernet.pcap"), mode="r")
-        pcapr.readGlobalHeader()
-        rec = pcapr.readAPacket()
+        rec = pcapr[0]
         readnpd_payload = rec.payload[(14+20+8):]
         n = NPD.NPD()
         n.unpack(readnpd_payload)
         self.assertEqual(len(n.segments),1)
         self.assertEqual(n.segments[0].segmentlen, 12)
+        pcapr.close()
 
     def test_rs232(self):
         self.n.datatype = 0x50

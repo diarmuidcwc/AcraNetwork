@@ -192,13 +192,13 @@ class Pcap(object):
 
         if self.mode == 'a':
             try:
-                self.fopen = file(filename,'ab')
+                self.fopen = open(filename,'ab')
             except:
                 raise IOError("Failed to open {} for appending".format(filename))
 
         elif self.mode == 'r':
             try:
-                self.fopen = file(filename,'rb')
+                self.fopen = open(filename,'rb')
                 self.filesize = os.path.getsize(filename)
             except Exception as e:
                 raise IOError("Failed to open {} for reading {}".format(filename,e))
@@ -206,7 +206,7 @@ class Pcap(object):
                 self._read_global_header()
 
         else:
-            self.fopen = file(filename,'wb')
+            self.fopen = open(filename,'wb')
 
     def readGlobalHeader(self):
         warnings.warn("This method is no longer required", DeprecationWarning)
@@ -269,7 +269,7 @@ class Pcap(object):
     def readAPacket(self):
 
         warnings.warn("Replace with the iterator", PendingDeprecationWarning)
-        return self.next()
+        return next(self)
 
     def __iter__(self):
         return self
@@ -289,6 +289,8 @@ class Pcap(object):
             raise StopIteration
         else:
             return pcaprecord
+
+    __next__ = next
 
     def __getitem__(self, item):
         self.fopen.seek(Pcap.GLOBAL_HEADER_SIZE)

@@ -86,7 +86,7 @@ while packets_sent < PACKETS_TO_SEND:
     packets_sent += 1
 
 end_time = time.time()
-print "INFO: Sent {} packets of type {} with _payload of {} bytes in {} seconds".format(PACKETS_TO_SEND,args.type,PAYLOAD_SIZE,end_time-start_time)
-print "INFO: Sent {} bytes in {}".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_SEND,end_time-start_time)
-print "INFO: Sent {} packets per second".format(PACKETS_TO_SEND/(end_time-start_time))
-print "INFO: Sent {:.2f} Mbps".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_SEND*8/((end_time-start_time)*1024*1024))
+print("INFO: Sent {} packets of type {} with _payload of {} bytes in {} seconds".format(PACKETS_TO_SEND,args.type,PAYLOAD_SIZE,end_time-start_time))
+print("INFO: Sent {} bytes in {}".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_SEND,end_time-start_time))
+print("INFO: Sent {} packets per second".format(PACKETS_TO_SEND/(end_time-start_time)))
+print("INFO: Sent {:.2f} Mbps".format((HEADER_SIZE[args.type]+PAYLOAD_SIZE)*PACKETS_TO_SEND*8/((end_time-start_time)*1024*1024)))

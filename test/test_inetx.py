@@ -49,8 +49,8 @@ class iNetXTest(unittest.TestCase):
 
     def test_unpackiNetFromPcap(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "inetx_test.pcap"))
-        p.readGlobalHeader()
-        mypcaprecord = p.readAPacket()
+        mypcaprecord = p[0]
+        p.close()
         e = SimpleEthernet.Ethernet()
         e.unpack(mypcaprecord.packet)
         ip =  SimpleEthernet.IP()
@@ -60,13 +60,13 @@ class iNetXTest(unittest.TestCase):
         # Now I have a _payload that will be an inetx packet
         i = inetx.iNetX()
         i.unpack(u.payload)
-        self.assertEquals(i.inetxcontrol,0x11000000)
-        self.assertEquals(i.streamid,0xca)
-        self.assertEquals(i.sequence,1011)
-        self.assertEquals(i.packetlen,72)
-        self.assertEquals(i.ptptimeseconds,0x2f3)
-        self.assertEquals(i.ptptimenanoseconds,0x2cb4158c)
-        self.assertEquals(i.pif,0)
+        self.assertEqual(i.inetxcontrol,0x11000000)
+        self.assertEqual(i.streamid,0xca)
+        self.assertEqual(i.sequence,1011)
+        self.assertEqual(i.packetlen,72)
+        self.assertEqual(i.ptptimeseconds,0x2f3)
+        self.assertEqual(i.ptptimenanoseconds,0x2cb4158c)
+        self.assertEqual(i.pif,0)
 
     def test_unpackMultiplePackets(self):
         sequencenum = 1011
@@ -82,8 +82,9 @@ class iNetXTest(unittest.TestCase):
             inetxpacket = inetx.iNetX()             # Create an iNetx object
             inetxpacket.unpack(udppacket.payload)   # Unpack the UDP _payload into this iNetX object
             #print "INETX: StreamID ={:08X} Sequence = {:8d} PTP Seconds = {}".format(inetxpacket.streamid,inetxpacket.sequence,inetxpacket.ptptimeseconds)
-            self.assertEquals(inetxpacket.sequence,sequencenum)
+            self.assertEqual(inetxpacket.sequence,sequencenum)
             sequencenum += 1
+        mypcap.close()
 
 
 

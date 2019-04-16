@@ -78,15 +78,14 @@ class CH10UDPTest(unittest.TestCase):
         #self.full._payload = struct.pack(">II", 33, 44)
         full_payload = getEthernetPacket(self.full.pack())
         self.pcapw = pcap.Pcap("test_ch10.pcap", mode="w")
-        self.pcapw.writeGlobalHeader()
+        self.pcapw.write_global_header()
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
-        self.assertIsNone(self.pcapw.writeARecord(self.rec))
+        self.assertIsNone(self.pcapw.write(self.rec))
         #self.seg._payload = struct.pack(">II", 55, 66)
         seg_payload = getEthernetPacket(self.seg.pack())
         self.rec.payload = seg_payload
-        self.assertIsNone(self.pcapw.writeARecord(self.rec))
-
+        self.assertIsNone(self.pcapw.write(self.rec))
         self.pcapw.close()
 
     def test_ch10_eq(self):
@@ -131,6 +130,7 @@ class CH10UDPTest(unittest.TestCase):
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
         self.assertIsNone(self.pcapw.write(self.rec))
+        self.pcapw.close()
 
     def test_ch10_comp(self):
         ref = ch10.Chapter10()
@@ -150,7 +150,7 @@ class CH10UDPTest(unittest.TestCase):
         c.chapter10.datatype = 4
         c.chapter10.ts_source = "ieee1588"
         c.chapter10.ptptimeseconds = 101
-        c.chapter10.ptptimenanoseconds = 200e6
+        c.chapter10.ptptimenanoseconds = int(200e6)
         c.chapter10.relativetimecounter = 0x0
         c.chapter10.payload = struct.pack(">QQ", 33, 44)
         full_payload = getEthernetPacket(c.pack())
@@ -159,10 +159,12 @@ class CH10UDPTest(unittest.TestCase):
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
         self.assertIsNone(self.pcapw.write(self.rec))
+        self.pcapw.close()
 
     def test_arinc_payload(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_arinc.pcap"))
         mypcaprecord = p[0]
+        p.close()
         e = SimpleEthernet.Ethernet()
         e.unpack(mypcaprecord.packet)
         ip = SimpleEthernet.IP()
@@ -190,7 +192,7 @@ class CH10UDPTest(unittest.TestCase):
         arinc2 = ch10.ARINC429DataPacket()
         self.assertTrue(arinc2.unpack(arinc_p.pack()))
         self.assertTrue(arinc_p == arinc2)
-        print arinc2
+        #print(arinc2)
 
 
 class Ch10UARTTest(unittest.TestCase):
@@ -242,9 +244,11 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertEqual(len(uart), 1)
         (b1,b2) = struct.unpack_from("<BB", uart[0].payload)
         self.assertEqual(b1, 0xd5)
+        p.close()
         for idx, uartdw in enumerate(uart):
             for s_idx in range(len(uartdw.payload)):
-                print "{}:{}:{}".format(idx,s_idx,0)
+                pass
+                #print("{}:{}:{}".format(idx,s_idx,0))
 
 if __name__ == '__main__':
     unittest.main()

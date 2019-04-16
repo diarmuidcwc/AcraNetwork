@@ -20,14 +20,14 @@ sys.path.append("../AcraNetwork")
 
 # -- Project information -----------------------------------------------------
 
-project = u'AcraNetwork'
-copyright = u'2018, Diarmuid Collins'
-author = u'Diarmuid Collins'
+project = 'AcraNetwork'
+copyright = '2018, Diarmuid Collins'
+author = 'Diarmuid Collins'
 
 # The short X.Y version
-version = u''
+version = ''
 # The full version, including alpha/beta/rc tags
-release = u'0.12.2'
+release = '0.12.2'
 
 autodoc_default_flags = ['members']
 autodoc_member_order = 'groupwise'
@@ -69,7 +69,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -134,8 +134,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'AcraNetwork.tex', u'AcraNetwork Documentation',
-     u'Diarmuid Collins', 'manual'),
+    (master_doc, 'AcraNetwork.tex', 'AcraNetwork Documentation',
+     'Diarmuid Collins', 'manual'),
 ]
 
 
@@ -144,7 +144,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'acranetwork', u'AcraNetwork Documentation',
+    (master_doc, 'acranetwork', 'AcraNetwork Documentation',
      [author], 1)
 ]
 
@@ -155,7 +155,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'AcraNetwork', u'AcraNetwork Documentation',
+    (master_doc, 'AcraNetwork', 'AcraNetwork Documentation',
      author, 'AcraNetwork', 'One line description of project.',
      'Miscellaneous'),
 ]

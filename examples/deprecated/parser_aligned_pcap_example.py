@@ -49,7 +49,7 @@ def main():
         try:
             pcapfile = pcap.Pcap(pcapfilename)
         except IOError:
-            print "ERROR: File {} not found".format(pcapfilename)
+            print("ERROR: File {} not found".format(pcapfilename))
             exit()
 
 
@@ -74,7 +74,7 @@ def main():
                     # What string do we want outputted to the screen. The output format is defined in the coloredop class
                     outstring =output_format.format(readablemac ,ip_packet.srcip, udp_packet.dstport,inetx_packet.streamid,inetx_packet.sequence)
                     # Print out one line and the dropped packet info
-                    print outstring
+                    print(outstring)
 
                     # We have a parser aligned block
                     if inetx_packet.streamid == 0x11121314: # This specific streamid is a parser aligned block
@@ -84,7 +84,7 @@ def main():
                         # Loop through all the blocks in the packet and spit them out
                         for pblock in parser_aligned_packet.parserblocks:
                             (payload_data,) =struct.unpack('>I',pblock.payload)
-                            print "Quadb={:5} Msgcnt={:5} BusId={:4} Elapsed={:20}".format(pblock.quadbytes,pblock.messagecount,pblock.busid,pblock.elapsedtime,payload_data)
+                            print("Quadb={:5} Msgcnt={:5} BusId={:4} Elapsed={:20}".format(pblock.quadbytes,pblock.messagecount,pblock.busid,pblock.elapsedtime,payload_data))
 
 
                 packet_count += 1
@@ -94,7 +94,7 @@ def main():
                 pass
             except IOError:
                 # We are at the end of the file so lets jump to the next file
-                print ( "End of file reached. Packets Per Second ={:5.1f}".format(packet_count/(time.time()-start_of_run)))
+                print(( "End of file reached. Packets Per Second ={:5.1f}".format(packet_count/(time.time()-start_of_run))))
                 break
 
 

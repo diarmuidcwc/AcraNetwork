@@ -80,16 +80,16 @@ def parse_ts_file(tsfile):
 
         if nal.type == mpegts.NAL_TYPES["SEI"]:
             if nal.sei.unregdata:
-                print "Timestamp={} byte offset={} count ={}".format(datetime.datetime.strftime(nal.sei.time,"%d %b %Y %H:%M:%S.%f"),nal.offset,timestamp_count)
+                print("Timestamp={} byte offset={} count ={}".format(datetime.datetime.strftime(nal.sei.time,"%d %b %Y %H:%M:%S.%f"),nal.offset,timestamp_count))
                 timestamp_count += 1
 
         else:
             pass
 
-    print "\n----- SUMMARY -----"
+    print("\n----- SUMMARY -----")
     for type in nal_counts:
-        print "{} {} NALs in input".format(nal_counts[type],mpegts.NAL_TYPES_INV[type])
-    print "{} STANAG Timestamps".format(timestamp_count)
+        print("{} {} NALs in input".format(nal_counts[type],mpegts.NAL_TYPES_INV[type]))
+    print("{} STANAG Timestamps".format(timestamp_count))
 
 
 def main():

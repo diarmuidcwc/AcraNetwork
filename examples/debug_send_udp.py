@@ -35,9 +35,9 @@ args = parser.parse_args()
 UDP_IP = "192.168.28.100"
 UDP_PORT = 4444
 
-print "UDP target IP:", UDP_IP
-print "UDP target port:", UDP_PORT
-print "Rate = {} Hz".format(args.rate)
+print("UDP target IP:", UDP_IP)
+print("UDP target port:", UDP_PORT)
+print("Rate = {} Hz".format(args.rate))
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #sock.mcast_add(UDP_IP)
@@ -83,7 +83,7 @@ while True:
     tftp_req = struct.pack(">H4s6s",1,bytes("/0/c"), bytes("octet."))
     sock.sendto(tftp_req, (UDP_IP, UDP_PORT))
     if packet_count % 100 == 0:
-        print "100 packets sent"
+        print("100 packets sent")
         packet_count = 1
     else:
         packet_count += 1
