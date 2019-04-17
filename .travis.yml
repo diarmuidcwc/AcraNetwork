@@ -7,9 +7,9 @@ python:
 # command to run tests
 # Install the codecov pip dependency
 install:
-  - pip install --user codecov
+  - pip install codecov
 script:
-  - sh -c 'cd test && coverage run -m unittest discover'
+  - sh -c 'cd test && coverage run -m unittest discover && coverage'
 # Push the results back to codecov
 after_success:
   - codecov
