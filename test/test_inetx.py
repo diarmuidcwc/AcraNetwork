@@ -8,6 +8,7 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
 import os
+import copy
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,9 +36,9 @@ class iNetXTest(unittest.TestCase):
         self.assertEqual(i.pack(),expected_payload)
 
     def test_unpackiNet(self):
-        expected_payload = struct.pack(inetx.iNetX.INETX_HEADER_FORMAT,inetx.iNetX.DEF_CONTROL_WORD,0xdc,2,30,1,1,0) + struct.pack('H',0x5)
-        i = inetx.iNetX()
-        i.unpack(expected_payload)
+        expected_payload = struct.pack(inetx.iNetX.INETX_HEADER_FORMAT,inetx.iNetX.DEF_CONTROL_WORD, 0xdc, 2, 30, 1, 1, 0) + \
+                           struct.pack('H',0x5)
+        i = inetx.iNetX(expected_payload)
         self.assertEqual(i.sequence,2)
         self.assertEqual(i.streamid,0xdc)
         self.assertEqual(i.ptptimeseconds,1)
@@ -46,6 +47,9 @@ class iNetXTest(unittest.TestCase):
         self.assertEqual(i.pif,0)
         self.assertEqual(i.payload,struct.pack('H',0x5))
         self.assertEqual(repr(i), "STREAMID=0XDC SEQ=2 LEN=30 PTPS=1 PTPNS=1")
+        i2 = copy.copy(i)
+        self.assertEqual(i, i2)
+        self.assertEqual(len(i), 28+2)
 
     def test_unpackiNetFromPcap(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "inetx_test.pcap"))

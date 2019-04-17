@@ -332,6 +332,7 @@ class AFDX(object):
     MIN_PAYLOAD_LEN = 42
 
     def __init__(self, buf=None):
+        raise Exception("No working")
         self.type =None
         self.networkID = None
         self.equipmentID = None
@@ -351,29 +352,40 @@ class AFDX(object):
         self.payload = buf[AFDX.HEADERLEN:-1]
         self.sequencenum = struct.unpack('B',buf[-1])
 
-    def unpacksrcmac(self,mac):
+    def unpacksrcmac(self, mac):
         srcconstantf = mac >> 24
         #if srcconstantf != AFDX.SRCMAC_CONST:
         #    raise ValueError('Expected constant field of {:#x} in SrcMac Address'.format(AFDX.SRCMAC_CONST))
         #(self.networkID,self.equipmentID,self.interfaceID) = struct.unpack_from('BBB',mac[:3])
         #self.interfaceID = self.interfaceID >> 5
 
-    def set_dstmac(self,mac):
-        (dstconstantf,vlink) = struct.unpack_from('>IH',mac)
+    def set_dstmac(self, mac):
+        (dstconstantf, vlink) = struct.unpack_from('>IH',mac)
         #if dstconstantf != AFDX.DSTMAC_CONST:
         #    raise ValueError('Expected constant field of {:#x} in DestMac Address'.format(AFDX.DSTMAC_CONST))
         self.vlink = vlink
 
     def pack(self):
 
-        if (len(self.payload) < AFDX.MIN_PAYLOAD_LEN):
+        if len(self.payload) < AFDX.MIN_PAYLOAD_LEN:
             raise ValueError('Minimum Payload of {} bytes'.format(AFDX.MIN_PAYLOAD_LEN))
 
-        afdx_header = struct.pack('>IHHBBBBH',AFDX.DSTMAC_CONST,self.vlink,(AFDX.SRCMAC_CONST>>8),0,self.networkID,self.equipmentID,(self.interfaceID<<5),self.type)
+        afdx_header = struct.pack('>IHHBBBBH',AFDX.DSTMAC_CONST, self.vlink, (AFDX.SRCMAC_CONST >> 8), 0, self.networkID,
+                                  self.equipmentID, (self.interfaceID << 5), self.type)
+
         packet = afdx_header + self.payload + struct.pack('>B',self.sequencenum)
 
         return packet
 
+    def __eq__(self, other):
+        if not isinstance(other, AFDX):
+            return False
+
+        for attr in ["type", "networkID", "interfaceID", "equipmentID", "vlink", "sequencenum", "payload"]:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        return True
 
 class ICMP(object):
     """

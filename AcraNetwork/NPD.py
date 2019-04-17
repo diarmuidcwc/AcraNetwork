@@ -320,13 +320,15 @@ class NPD(object):
         self._index = 0
         return self
 
-    def __next__(self):
+    def next(self):
         if self._index < len(self.segments):
             _dw = self.segments[self._index]
             self._index += 1
             return _dw
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.segments)

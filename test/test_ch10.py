@@ -9,6 +9,8 @@ import AcraNetwork.Chapter10 as ch10
 import struct
 import os
 import random
+import copy
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,6 +41,21 @@ def wrap_in_udp_and_pcap(mybuffer, pcapf, mode="w"):
     pcapw.write(rec)
     pcapw.close()
     return True
+
+arinc_packet="""ARINCPayload: MessageCount=11
+  ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=4000 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3900 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3600 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=4100 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=4000 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3700 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3600 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=4000 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3600 FormatError=False ParityError=False BusSpeed=0 Bus=23
+  ARINCData: GapTime=3900 FormatError=False ParityError=False BusSpeed=0 Bus=23
+"""
+
 
 class CH10UDPTest(unittest.TestCase):
     def setUp(self):
@@ -192,9 +209,15 @@ class CH10UDPTest(unittest.TestCase):
         arinc2 = ch10.ARINC429DataPacket()
         self.assertTrue(arinc2.unpack(arinc_p.pack()))
         self.assertTrue(arinc_p == arinc2)
-        #print(arinc2)
 
+        self.assertEqual(repr(arinc2), arinc_packet)
+        for idx, aw in enumerate(arinc2):
+            if idx == 2:
+                self.assertEqual(repr(aw), "ARINCData: GapTime=3900 FormatError=False ParityError=False BusSpeed=0 Bus=23")
 
+uart_pkt="""UARTPayload: UARTDataWordCount=1
+  UARTDataWord: PTPSec=201450103 PTPNSec=10 ParityError=False DataLen=508 SubChannel=8191
+"""
 class Ch10UARTTest(unittest.TestCase):
     def setUp(self):
 
@@ -246,9 +269,14 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertEqual(b1, 0xd5)
         p.close()
         for idx, uartdw in enumerate(uart):
-            for s_idx in range(len(uartdw.payload)):
-                pass
+            if idx == 0:
+                dw2 = copy.copy(uartdw)
+                self.assertEqual(dw2, uartdw)
                 #print("{}:{}:{}".format(idx,s_idx,0))
+
+        uart2 = copy.copy(uart)
+        self.assertEqual(uart, uart2)
+        self.assertEqual(repr(uart2),uart_pkt)
 
 if __name__ == '__main__':
     unittest.main()

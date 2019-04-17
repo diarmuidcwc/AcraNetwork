@@ -19,7 +19,8 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
 import os
-import random
+from copy import copy
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,7 +46,13 @@ def get_udp_packet(pcapfilename):
 
     return udp_pkt
 
-
+ienq_q="""IENAQ: KEY=0XDC SEQ=2 TIMEUS=0 NUM_QPARAM=5
+ Q-Param #0:ParamID=0XA Dataset Length=15
+ Q-Param #1:ParamID=0XB Dataset Length=16
+ Q-Param #2:ParamID=0XC Dataset Length=17
+ Q-Param #3:ParamID=0XD Dataset Length=18
+ Q-Param #4:ParamID=0XE Dataset Length=19
+"""
 class IENATest(unittest.TestCase):
 
     def setUp(self):
@@ -99,6 +106,8 @@ class IENATest(unittest.TestCase):
         i.keystatus = 2
         i.status = 3
         i.sequence = 10
+        self.assertEqual(i.key, i.streamid)
+        self.assertEqual(i.status, i.n2)
         i.setPacketTime(time.mktime(datetime.datetime(datetime.datetime.today().year, 1, 2, 0, 0, 0,0).timetuple()),0)
         i.payload = struct.pack('H',0x5)
         # size = 9. Time = midnight Jan 02 = 86400s 0us = 0x14dd760000
@@ -120,6 +129,8 @@ class IENATest(unittest.TestCase):
         self.assertEqual(i.timeusec,0x1d102f800)
         self.assertEqual(i.endfield,0xdead)
         self.assertEqual(len(i), 48)
+        i2 = copy(i)
+        self.assertTrue(i2 == i)
 
     def test_unpack_IENAM(self):
         '''Read all the IENA packets in a pcap file and check each field'''
@@ -129,6 +140,7 @@ class IENATest(unittest.TestCase):
         self.assertEqual(i.key,0x1a)
         for mparam in i:
             self.assertEqual(mparam.paramid, 0xDC)
+            self.assertEqual(repr(mparam), "ParamID=0XDC Delay=16 Dataset Length=26")
         #print(i)
         self.assertEqual(repr(i), "IENAM: KEY=0X1A SEQ=195 TIMEUS=7801600000 NUM_MPARAM=1\n M-Param #0:ParamID=0XDC Delay=16 Dataset Length=26\n")
 
@@ -142,6 +154,9 @@ class IENATest(unittest.TestCase):
         self.assertListEqual(param_1.dwords, [0x10])
         self.assertEqual(repr(i), "IENAN: KEY=0X1A SEQ=195 TIMEUS=7801600000 NUM_DPARAM=8")
         self.assertEqual(len(i), 8)
+        for idx, n in enumerate(i):
+            if idx == 0:
+                self.assertEqual(n.paramid, 220)
 
     def test_unpack_IENAD(self):
         # Decode as IENA-N
@@ -155,6 +170,11 @@ class IENATest(unittest.TestCase):
         self.assertListEqual(param_1.dwords, [0xfed1, 0x7cfe])
         self.assertEqual(repr(i), "IENAD: KEY=0X2CFA SEQ=0 TIMEUS=1837 NUM_DPARAM=11")
         self.assertEqual(len(i), 11)
+        for id,p in enumerate(i):
+            if id == 0:
+                self.assertEqual(p.paramid, 0xFFFF)
+        self.assertEqual(i[0].paramid, 0xffff)
+
 
     def test_corrupt_IENAD(self):
         udp_pkt = get_udp_packet("corrupt_ienad.pcap")
@@ -189,10 +209,15 @@ class IENATest(unittest.TestCase):
         i.keystatus = 0
         i.sequence = 2
         i.n2 = 0
-        for idx in range(10,15):
-            qparam = iena.QParameter(paramid=idx, dataset=os.urandom(idx+5))
-            i.parameters.append(qparam)
 
+        for idx in range(10,15):
+            qparam = iena.QParameter(paramid=idx, dataset=struct.pack(">{}B".format(idx+5), *range(idx+5)))
+            if idx == 10:
+                #print repr(qparam)
+                self.assertEqual(repr(qparam), "ParamID=0XA Dataset Length=15")
+
+            i.parameters.append(qparam)
+        self.assertEqual(repr(i), ienq_q)
         buf = i.pack()
         b = iena.IENAQ()
         b.unpack(buf)

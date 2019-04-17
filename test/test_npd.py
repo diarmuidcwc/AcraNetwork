@@ -29,6 +29,11 @@ def getEthernetPacket(data=""):
     return e.pack()
 
 
+test_npd_exp="""NPD: DataType=2 Seq=10 DataSrcID=1 MCastAddr=235.0.0.1
+\tNPD Segment. TimeDelta=3 Segment Len=18 ErrorCode=0 Flags=1
+\tNPD Segment. TimeDelta=3 Segment Len=22 ErrorCode=0 Flags=1
+\tNPD Segment. TimeDelta=3 Segment Len=26 ErrorCode=0 Flags=1
+\tNPD Segment. TimeDelta=3 Segment Len=30 ErrorCode=0 Flags=1"""
 class testNPD(unittest.TestCase):
 
     def  setUp(self):
@@ -109,8 +114,13 @@ class testNPD(unittest.TestCase):
     def test_unpack(self):
         n = NPD.NPD()
         n.unpack(self.readnpd_payload)
-        self.assertEqual(len(n.segments),4)
+        self.assertEqual(len(n),4)
         self.assertEqual(n.segments[3].segmentlen, 30)
+        #print repr(n)
+        self.assertEqual(repr(n), test_npd_exp)
+        for i,s in enumerate(n):
+            if i == 1:
+                self.assertEqual(s.timedelta, 3)
 
     def test_unpackwrap(self):
         pcapr = pcap.Pcap(os.path.join(THIS_DIR, "wrapped_ethernet.pcap"), mode="r")
@@ -153,6 +163,7 @@ class testNPD(unittest.TestCase):
         n2= NPD.NPD()
         n2.unpack(self.n.pack())
         self.assertEqual(self.n, n2)
+        self.assertEqual(repr(n2[0]), "RS232 NPD Segment. TimeDelta=3 Segment Len=63 ErrorCode=0X0 Flags=0X1 Block_Status=0X840 DataLen=53")
 
 
 if __name__ == '__main__':

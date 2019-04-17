@@ -181,6 +181,20 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertTrue(i.unpack(e.payload))
         p.close()
 
-
+    @unittest.skip("AFDX broken")
+    def test_afdx(self):
+        af = SimpleEthernet.AFDX()
+        af.type = 1
+        af.networkID = 2
+        af.equipmentID = 3
+        af.interfaceID = 4
+        af.vlink = 5
+        af.sequencenum = 0
+        af.payload = struct.pack(">50B", * range(50))
+        self.assertEqual(len(af.pack()), 65)
+        b = af.pack()
+        af2 = SimpleEthernet.AFDX()
+        af2.unpack(b)
+        self.assertTrue(af == af2)
 if __name__ == '__main__':
     unittest.main()

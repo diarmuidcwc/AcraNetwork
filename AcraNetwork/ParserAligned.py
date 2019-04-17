@@ -68,13 +68,15 @@ class ParserAlignedPacket(object):
         self._index = 0
         return self
 
-    def __next__(self):
+    def next(self):
         if self._index < len(self.parserblocks):
             _block = self.parserblocks[self._index]
             self._index += 1
             return _block
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.parserblocks)
@@ -85,7 +87,7 @@ class ParserAlignedPacket(object):
     def __repr__(self):
         rep = ""
         for idx, b in enumerate(self.parserblocks):
-            rep += "Block {}: {}".format(idx, repr(b))
+            rep += "Block {}: {}\n".format(idx, repr(b))
         return rep
 
 
@@ -160,6 +162,9 @@ class ParserAlignedBlock(object):
         return "QuadBytes={} Error={} ErrorCode={} BusID={} MessageCount={} ElapsedTime={}".format(
             self.quadbytes, self.error, self.errorcode, self.busid, self.messagecount, self.elapsedtime
         )
+
+    def __len__(self):
+        return len(self.payload) + struct.calcsize(self.format)
 
 
 class ARINC429(object):

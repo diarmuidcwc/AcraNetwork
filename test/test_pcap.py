@@ -27,21 +27,21 @@ class PcapBasicTest(unittest.TestCase):
         self.assertRaises(TypeError,lambda: pcap.Pcap())
 
     def test_missingreadfile(self):
-        self.assertRaises(IOError,lambda: pcap.Pcap(os.path.join(THIS_DIR, "nofile.pcap")))
+        self.assertRaises(IOError, lambda: pcap.Pcap(os.path.join(THIS_DIR, "nofile.pcap")))
 
     def test_defaultMagicNumber(self):
-        p = pcap.Pcap("_tmp.pcap",mode='w')
-        self.assertEqual(p.magic,0xa1b2c3d4)
+        p = pcap.Pcap("_tmp.pcap", mode='w')
+        self.assertEqual(p.magic, 0xa1b2c3d4)
         p.close()
 
     def test_defaultVersionMaj(self):
-        p = pcap.Pcap("_tmp.pcap",mode='w')
-        self.assertEqual(p.versionmaj,2)
+        p = pcap.Pcap("_tmp.pcap", mode='w')
+        self.assertEqual(p.versionmaj, 2)
         p.close()
 
     def test_defaultVersionMin(self):
-        p = pcap.Pcap("_tmp.pcap",mode='w')
-        self.assertEqual(p.versionmin,4)
+        p = pcap.Pcap("_tmp.pcap", mode='w')
+        self.assertEqual(p.versionmin, 4)
         p.close()
 
     def test_readTestFile(self):
@@ -53,8 +53,12 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(p.versionmaj,2)
         self.assertEqual(p.versionmin,4)
         self.assertEqual(p.zone,0)
-        self.assertEqual(p.filesize,704)
-        p.close()
+        self.assertEqual(p.filesize, 704)
+        for idx, rec in enumerate(p):
+            if id == 3:
+                self.assertEqual(len(rec), 66)
+
+
 
     def test_readARecord(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "test_input.pcap"))

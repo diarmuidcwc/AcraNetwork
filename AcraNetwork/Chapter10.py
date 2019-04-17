@@ -437,13 +437,15 @@ class ARINC429DataPacket(object):
         self._index = 0
         return self
 
-    def __next__(self):
+    def next(self):
         if self._index < len(self.arincwords):
             _dw = self.arincwords[self._index]
             self._index += 1
             return _dw
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __len__(self):
         return len(self.arincwords)
@@ -601,7 +603,7 @@ class UARTDataPacket(object):
         if not isinstance(other, UARTDataPacket):
             return False
 
-        _match_att = ("uartwords")
+        _match_att = ["uartwords"]
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -724,7 +726,7 @@ class UARTDataWord(object):
         if not isinstance(other, UARTDataWord):
             return False
 
-        _match_att = ( "ptptimeseconds", "ptptimenanoseconds", "parity_error", "subchannel", "datalength", "payload")
+        _match_att = ["ptptimeseconds", "ptptimenanoseconds", "parity_error", "subchannel", "datalength", "payload"]
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
