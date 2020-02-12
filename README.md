@@ -11,6 +11,7 @@ A collection of classes that can be used to decom network or PCM based FTI traff
 sufficient for the network systems used in the KAM500 networks
 * Pcap : Class and helper methods for reading pcap files
 * McastSocket : Class to bind to ports to capture multicast packets
+* Chapter10 : Chapter10 support
 
 #Install
 Install using the standard setuptools install method
