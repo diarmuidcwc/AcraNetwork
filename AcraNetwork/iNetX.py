@@ -39,7 +39,7 @@ class iNetX (object):
     :type ptptimeseconds: int
     :type ptptimenanoseconds: int
     :type pif: int
-    :type payload: str
+    :type payload: bytes
     """
 
     DEF_CONTROL_WORD = 0x11000000 #:(Object Constant) The default iNetX control word.
@@ -66,7 +66,7 @@ class iNetX (object):
         """
         Pack the packet into a binary format and return as a string
         
-        :rtype: str
+        :rtype: bytes
         """
 
         for attr in iNetX.REQ_ATTR:
@@ -84,7 +84,7 @@ class iNetX (object):
         Accepts a buffer to unpack as the required argument
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -99,7 +99,6 @@ class iNetX (object):
         self.payload = buf[iNetX.INETX_HEADER_LENGTH:]
 
         return True
-
 
     def setPacketTime(self,utctimestamp, nanoseconds=0):
         """

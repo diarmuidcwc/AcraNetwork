@@ -69,6 +69,7 @@ class PcapBasicTest(unittest.TestCase):
         self.assertEqual(mypcaprecord.orig_len,70)
         self.assertEqual(mypcaprecord.incl_len,70)
         self.assertEqual(repr(mypcaprecord), "LEN:70 SEC:1419678111 USEC:811463")
+        p.close()
 
     def test_writeARecord(self):
         p = pcap.Pcap("_tmp.pcap",mode='w')

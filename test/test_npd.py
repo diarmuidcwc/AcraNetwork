@@ -29,11 +29,13 @@ def getEthernetPacket(data=""):
     return e.pack()
 
 
-test_npd_exp="""NPD: DataType=2 Seq=10 DataSrcID=1 MCastAddr=235.0.0.1
-\tNPD Segment. TimeDelta=3 Segment Len=18 ErrorCode=0 Flags=1
-\tNPD Segment. TimeDelta=3 Segment Len=22 ErrorCode=0 Flags=1
-\tNPD Segment. TimeDelta=3 Segment Len=26 ErrorCode=0 Flags=1
-\tNPD Segment. TimeDelta=3 Segment Len=30 ErrorCode=0 Flags=1"""
+test_npd_exp="""NPD: DataType=0X2 Seq=10 DataSrcID=0X1 MCastAddr=235.0.0.1
+\tNPD Segment. TimeDelta=3 Segment Len=18 ErrorCode=0 Flags=0X1
+\tNPD Segment. TimeDelta=3 Segment Len=22 ErrorCode=0 Flags=0X1
+\tNPD Segment. TimeDelta=3 Segment Len=26 ErrorCode=0 Flags=0X1
+\tNPD Segment. TimeDelta=3 Segment Len=30 ErrorCode=0 Flags=0X1"""
+
+
 class testNPD(unittest.TestCase):
 
     def  setUp(self):
@@ -58,7 +60,7 @@ class testNPD(unittest.TestCase):
 
     def test_npds_print(self):
         self.ns.payload = struct.pack(">II", 2, 3)
-        self.assertEqual(repr(self.ns), "NPD Segment. TimeDelta=3 Segment Len=16 ErrorCode=0 Flags=1")
+        self.assertEqual(repr(self.ns), "NPD Segment. TimeDelta=3 Segment Len=16 ErrorCode=0 Flags=0X1")
 
     def test_npds_eq(self):
         self.ns.payload = struct.pack(">II", 2, 3)
@@ -122,14 +124,17 @@ class testNPD(unittest.TestCase):
             if i == 1:
                 self.assertEqual(s.timedelta, 3)
 
+    @unittest.skip("no pcap")
     def test_unpackwrap(self):
-        pcapr = pcap.Pcap(os.path.join(THIS_DIR, "wrapped_ethernet.pcap"), mode="r")
+        pcapr = pcap.Pcap(os.path.join(THIS_DIR, "npd_pcm.pcap"), mode="r")
         rec = pcapr[0]
         readnpd_payload = rec.payload[(14+20+8):]
         n = NPD.NPD()
         n.unpack(readnpd_payload)
-        self.assertEqual(len(n.segments),1)
-        self.assertEqual(n.segments[0].segmentlen, 12)
+        self.assertEqual(len(n.segments),2)
+        self.assertEqual(n.segments[0].segmentlen, 34)
+        print(repr(n))
+        self.assertEqual(n.segments[0].sfid, 0x0)
         pcapr.close()
 
     def test_rs232(self):

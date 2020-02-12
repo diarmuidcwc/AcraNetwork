@@ -13,7 +13,7 @@ pcapf = "../test/inetx_test.pcap"
 streamid = 0xca
 csv_output = "ts.csv"
 
-csvfile = open(csv_output, 'wb')
+csvfile = open(csv_output, 'w')
 csvwriter = csv.writer(csvfile)
 csvwriter.writerow(["Packet Number", "Seconds", "Nanoseconds"])
 

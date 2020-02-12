@@ -80,7 +80,7 @@ while True:
     myinetx.sequence += 1
     myinetx.setPacketTime(currenttime)
 
-    tftp_req = struct.pack(">H4s6s",1,bytes("/0/c"), bytes("octet."))
+    tftp_req = struct.pack(">H4s6s", 1, bytes("/0/c", 'utf8'), bytes("octet.", 'utf8'))
     sock.sendto(tftp_req, (UDP_IP, UDP_PORT))
     if packet_count % 100 == 0:
         print("100 packets sent")

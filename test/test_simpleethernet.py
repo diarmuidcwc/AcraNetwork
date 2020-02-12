@@ -19,7 +19,7 @@ class SimpleEthernetTest(unittest.TestCase):
         e = SimpleEthernet.Ethernet()
         self.assertEqual(e.dstmac,None)
         self.assertEqual(e.srcmac,None)
-        self.assertEqual(e.type,None)
+        self.assertEqual(e.type, SimpleEthernet.Ethernet.TYPE_IP)
         self.assertEqual(e.payload,None)
 
     def test_basicEthernet(self):
@@ -42,6 +42,17 @@ class SimpleEthernetTest(unittest.TestCase):
         '''Try and create an empty ethernet frame'''
         e = SimpleEthernet.Ethernet()
         self.assertRaises(ValueError,lambda: e.pack())
+
+    def test_non_def_type(self):
+        e = SimpleEthernet.Ethernet()
+        e.type = SimpleEthernet.Ethernet.TYPE_PAUSE
+        e.dstmac = 0x0180c2000001
+        e.srcmac = 0x1
+        e.payload = struct.pack(">HH", 0x1, 0x2)
+        e2 = SimpleEthernet.Ethernet()
+        e2.unpack(e.pack())
+        self.assertEqual(e, e2)
+        self.assertEqual("SRCMAC=00:00:00:00:00:01 DSTMAC=01:80:C2:00:00:01 TYPE=0X8808", repr(e))
 
     ######################
     # IP
@@ -129,6 +140,30 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(i.version, 4)
         #print i
         self.assertEqual(repr(i), "SRCIP=213.199.179.165 DSTIP=192.168.1.110 PROTOCOL=TCP LEN=56")
+
+    def test_ipv4fragment(self):
+        p = pcap.Pcap(os.path.join(THIS_DIR, "ipv4frags.pcap"))
+        pw = pcap.Pcap(os.path.join(THIS_DIR, "combined.pcap"), mode="w")
+        pw.write_global_header()
+        r = pcap.PcapRecord()
+        e = SimpleEthernet.Ethernet()
+        e.unpack(p[0].packet)
+        i1 = SimpleEthernet.IP()
+        i1.unpack(e.payload)
+        e.unpack(p[1].packet)
+        p.close()
+        i2 = SimpleEthernet.IP()
+        i2.unpack(e.payload)
+        self.assertEqual(i1.id, i2.id)
+        combined = SimpleEthernet.combine_ip_fragments([i1,i2])
+        e.payload = combined.pack()
+        self.assertEqual(1428, len(combined.pack()))
+        r.payload = e.pack()
+        pw.write(r)
+        pw.close()
+
+
+
 
     # Write an ICMP
     def test_writeICMP(self):

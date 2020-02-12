@@ -24,7 +24,7 @@ def unpack48(x):
     Unpack a 48bit string returning an integer
 
     :param x: 6 byte buffer
-    :type x: str
+    :type x: bytes
 
     :rtype: int 
     """
@@ -68,6 +68,41 @@ def ip_calc_checksum(pkt):
     return s & 0xffff
 
 
+def combine_ip_fragments(packets):
+    """
+    Combine the lists of fragmented IP packets into one IP packet
+
+    :type packets: list[IP]
+    :rtype: IP
+    """
+    ident = None
+    # Check first the we have the correct imput
+    for packet in packets:
+        if not isinstance(packet, IP):
+            raise Exception("packet is not of type IP")
+        if ident is not None:
+            if packet.id != ident:
+                raise Exception("All packets should have the same ID field")
+        ident = packet.id
+
+    # Create the IP packet we will return
+    combined_ip = IP()
+    combined_ip.flags = 0x0
+    combined_ip.fragment_offset = 0x0
+    combined_ip.payload = bytes()
+    # Create the header from the first fragment. Order the packets via the fragment offsets
+    # I don't verify the offsets but blindly combine them. TODO: Improve
+    for idx, packet in enumerate(sorted(packets, key=lambda x: x.fragment_offset)):
+        if idx == 0:
+            for attr in ["srcip", "dstip", "protocol", "version", "ihl", "dscp", "id", "ttl"]:
+                setattr(combined_ip, attr, getattr(packet, attr))
+        # Add the payload
+        combined_ip.payload += packet.payload
+
+    # Return the IP packet
+    return combined_ip
+
+
 class Ethernet(object):
     """
     This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI
@@ -85,14 +120,17 @@ class Ethernet(object):
     :type type: int
     :type srcmac: int
     :type dstmac: int
-    :type payload: str
+    :type payload: bytes
     
     """
     HEADERLEN = 14
+    HEADERLEN_VLAN = 18
     TYPE_IP = 0x800
     TYPE_IPv4 = 0x800  #:(Object Constant) IPv4 Type Constant
     TYPE_IPv6 = 0x86DD  #:(Object Constant) IPv6 Type Constant
     TYPE_ARP = 0x806   #:(Object Constant) ARP Type Constant
+    TYPE_PAUSE = 0x8808   #:(Object Constant) PAUSE Type Constant
+    TYPE_VLAN = 0x8100
 
     def __init__(self, buf=None):
 
@@ -100,13 +138,15 @@ class Ethernet(object):
         Create an Ethernet packet object. 
 
         :param buf: If a buffer is passed in to the init method, it will be unpacked as a Ethernet packet
-        :type buf: str
+        :type buf: bytes
 
         """
-        self.type = None #: The Ethertype field. Assign using the TYPE_* constants. https://en.wikipedia.org/wiki/EtherType
+        self.type = Ethernet.TYPE_IP #: The Ethertype field. Assign using the TYPE_* constants. https://en.wikipedia.org/wiki/EtherType
         self.srcmac = None #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
         self.dstmac = None #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
         self.payload = None #: The Ethernet payload. Typically an IP packet.
+        self.vlan = False
+        self.vlantag = 0xFFFF
 
         if buf is not None:
             self.unpack(buf)
@@ -116,7 +156,7 @@ class Ethernet(object):
         Unpack a raw byte stream to an Ethernet object
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -130,17 +170,29 @@ class Ethernet(object):
         """
         Pack the Ethernet object into a buffer
         
-        :rtype: str
+        :rtype: bytes
         """
 
         if self.dstmac == None or self.srcmac == None or self.type == None or self.payload == None:
-            raise ValueError("All thre required Ethernet fields are not complete")
-        header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff),0x0800)
+            raise ValueError("All three required Ethernet fields are not complete")
+        if self.vlan:
+            header = struct.pack('>HIHIHHH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), Ethernet.TYPE_VLAN, self.vlantag, self.type)
+        else:
+            header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), self.type)
         return header + self.payload
 
     def __repr__(self):
         return "SRCMAC={} DSTMAC={} TYPE={:#0X}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type)
 
+    def __eq__(self, other):
+        if not isinstance(other, Ethernet):
+            return False
+
+        for attr in ["type", "dstmac", "srcmac", "payload"]:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        return True
 
 class IP(object):
     """
@@ -156,7 +208,7 @@ class IP(object):
     :type len: int
     :type flags: int
     :type protocol: int
-    :type payload: str
+    :type payload: bytes
     :type version: int
     :type ihl: int
     :type dscp: int
@@ -169,6 +221,8 @@ class IP(object):
     PROTOCOL_IGMP = 0x02  #:(Object Constant) IGMP Protocol Constant
     PROTOCOL_TCP = 0x6  #:(Object Constant) TCP Protocol Constant
     PROTOCOL_UDP = 0x11  #:(Object Constant) UDP Protocol Constant
+    FLAG_DONT_FRAGMENT = 0x2
+    FLAG_MORE_FRAGMENTS = 0x1
 
     PROTOCOLS = {"ICMP":PROTOCOL_ICMP, "IGMP" : PROTOCOL_IGMP, "TCP":PROTOCOL_TCP, "UDP":PROTOCOL_UDP}  #:(Object Constant) Protocols available
     IP_HEADER_FORMAT = '>BBHHBBBBHII'
@@ -179,13 +233,14 @@ class IP(object):
         Create an IP packet object. Currently supports only IPv4
         
         :param buf: If a buffer is passed in to the init method, it will be unpacked as a IP packet
-        :type buf: str
+        :type buf: bytes
         
         """
         self.srcip = None #: Source IP Address
         self.dstip = None #: Destination IP Address
         self.len = None #: Total Length. This is calculated when packing the packet
         self.flags = 0x0 #: Three bit field identifying a flag
+        self.fragment_offset = None #: Fragment offset
         self.protocol = IP.PROTOCOL_UDP #: The type of the payload
         self.payload = None #: The IPv4 payload
         self.version = 4 #: IP version field
@@ -193,7 +248,7 @@ class IP(object):
         self.dscp = 0 #: Differentiated Services Code Point
         self.id = 0 #: Identification Field
         self.ttl = 20 #: Time to Live. In practice the hop count.
-
+		
         if buf is not None:
             self.unpack(buf)
 
@@ -202,13 +257,14 @@ class IP(object):
         Unpack a raw byte stream to an IP object
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
         if len(buf) < IP.IP_HEADER_SIZE:
             raise ValueError("Buffer too short for to be an IP packet")
         (na1, self.dscp, self.len, self.id, self.flags, na3, self.ttl, self.protocol, checksum, self.srcip, self.dstip) \
             = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
+        self.fragment_offset = ((self.flags & 0x1f) << 8) + na3
         self.flags = self.flags >> 5
         self.version = na1 >> 4
         self.ihl = na1 & 0xf
@@ -223,7 +279,7 @@ class IP(object):
         """
         Pack the IP object into a buffer
         
-        :rtype: str
+        :rtype: bytes
         """
 
         for word in [self.dscp,self.id,self.flags,self.ttl,self.protocol,self.srcip,self.dstip]:
@@ -242,6 +298,80 @@ class IP(object):
     def __repr__(self):
         protocol = ""
         for p,v in IP.PROTOCOLS.items():
+            if v == self.protocol:
+                protocol = p
+        return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
+
+
+class IPv6(object):
+    """
+    Create an IPv6 packet https://en.wikipedia.org/wiki/IPv6_packet
+
+    :type version
+    :type traffic_class
+    :type flow_label
+    :type len
+    :type next_header
+    :type hop_limit
+    :type srcip
+    :type dstip
+    
+    """
+
+    PROTOCOL_ICMP = 0x01  #:(Object Constant) ICMP Protocol Constant
+    PROTOCOL_IGMP = 0x02  #:(Object Constant) IGMP Protocol Constant
+    PROTOCOL_TCP = 0x6  #:(Object Constant) TCP Protocol Constant
+    PROTOCOL_UDP = 0x11  #:(Object Constant) UDP Protocol Constant
+    FLAG_DONT_FRAGMENT = 0x2
+    FLAG_MORE_FRAGMENTS = 0x1
+
+    PROTOCOLS = {"ICMP":PROTOCOL_ICMP, "IGMP" : PROTOCOL_IGMP, "TCP":PROTOCOL_TCP, "UDP":PROTOCOL_UDP}  #:(Object Constant) Protocols available
+    IP_HEADER_FORMAT = '>IHBBIIIIIIII'
+    IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
+
+    def __init__(self, buf=None):
+        """
+        
+        :param buf: If a buffer is passed in to the init method, it will be unpacked as a IP packet
+        :type buf: bytes
+        
+        """
+        self.version = 0x6 #: IP version field
+        self.traffic_class = 0x00
+        self.flow_label = 0x00000
+        self.len = None #: Total Length. This is calculated when packing the packet
+        self.next_header = 0x3B # 0x3B = No next header
+        self.hop_limit = 0x01
+        self.srcip = None #: Source IP Address
+        self.dstip = None #: Destination IP Address
+        self.payload = bytes()
+
+        if buf is not None:
+            self.unpack(buf)
+
+    def pack(self):
+        """
+        Pack the IP object into a buffer
+        
+        :rtype: bytes
+        """
+
+        for word in [self.srcip,self.dstip]:
+            if word is None:
+                raise ValueError("All required IP payloads not defined")
+
+        self.len = len(self.payload)
+        header = struct.pack(IPv6.IP_HEADER_FORMAT, ((self.version<<28)+(self.traffic_class<<24)+self.flow_label), self.len, self.next_header, self.hop_limit, self.srcip>>96, (self.srcip>>64)&0xFFFFFFFF,(self.srcip>>32)&0xFFFFFFFF, self.srcip&0xFFFFFFFF, self.dstip>>96, (self.dstip>>64)&0xFFFFFFFF,(self.dstip>>32)&0xFFFFFFFF, self.dstip&0xFFFFFFFF)
+
+        return header + self.payload
+
+    def unpack(self, buffer):
+        raise Exception("Not implemented")
+
+
+    def __repr__(self):
+        protocol = ""
+        for p,v in IPv6.PROTOCOLS.items():
             if v == self.protocol:
                 protocol = p
         return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
@@ -270,7 +400,7 @@ class UDP(object):
     :type srcport: int
     :type dstport: int
     :type len: int
-    :type payload: str
+    :type payload: bytes
     """
 
 
@@ -292,7 +422,7 @@ class UDP(object):
         Unpack a raw byte stream to a UDP object
 
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
 
@@ -307,7 +437,7 @@ class UDP(object):
         """
         Pack the UDP object into a buffer
         
-        :rtype: str
+        :rtype: bytes
         """
 
         if self.srcport == None or self.dstport == None or self.payload == None:
@@ -341,10 +471,10 @@ class AFDX(object):
 
         self.payload = None
         self.sequencenum = None
-        if buf != None:
+        if buf is not None:
             self.unpack(buf)
 
-    def unpack(self,buf):
+    def unpack(self, buf):
         self.set_dstmac(buf[:6])
         self.unpacksrcmac(unpack48(buf[6:12]))
 
@@ -387,6 +517,7 @@ class AFDX(object):
 
         return True
 
+
 class ICMP(object):
     """
     ICMP packets.
@@ -402,7 +533,7 @@ class ICMP(object):
         self.code = None
         self.request_id = None
         self.request_sequence = None
-        self.payload = ""
+        self.payload = bytes()
 
     def pack(self):
         """

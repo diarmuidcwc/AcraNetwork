@@ -184,6 +184,7 @@ class Pcap(object):
         self.sigfigs = 0 #: Set to 0
         self.snaplen = 65535 #: snapshot length. Typically unchanged
         self.network  = 1 #: Link-layer header type. http://www.tcpdump.org/linktypes.html
+        self._header_written = False
 
         if 'forreading' in kwargs:
             if kwargs['forreading']  == False:
@@ -207,6 +208,11 @@ class Pcap(object):
 
         else:
             self.fopen = open(filename,'wb')
+            self.write_global_header()
+
+    def flush(self):
+        return self.fopen.flush()
+
 
     def readGlobalHeader(self):
         warnings.warn("This method is no longer required", DeprecationWarning)
@@ -236,10 +242,13 @@ class Pcap(object):
         
         :rtype: None
         """
-
-        header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT, self.magic, self.versionmaj, self.versionmin,
-                             self.zone, self.sigfigs, self.snaplen, self.network)
-        return self.fopen.write(header)
+        if self._header_written:
+            return True
+        else:
+            self._header_written = True
+            header = struct.pack(Pcap.GLOBAL_HEADER_FORMAT, self.magic, self.versionmaj, self.versionmin,
+                                 self.zone, self.sigfigs, self.snaplen, self.network)
+            return self.fopen.write(header)
 
     def writeARecord(self, pcaprecord):
         warnings.warn("Replace with write", PendingDeprecationWarning)

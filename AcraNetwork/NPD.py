@@ -99,11 +99,34 @@ class NPDSegment(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={}".format(
+        return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={:#0X}".format(
             self.timedelta, self.segmentlen, self.errorcode, self.flags)
-    # def __repr__(self):
-        # return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={} Payload={}".format(
-            # self.timedelta, self.segmentlen, self.errorcode, self.flags, self.payload)
+
+
+
+class ACQSegment(NPDSegment):
+    """
+    PCM Segments
+    """
+    def __init__(self):
+        NPDSegment.__init__(self)
+        self.sfid = 0
+        self.cal = 0
+        self.words = []
+
+    def unpack(self, buffer):
+        remaining = NPDSegment.unpack(self, buffer)
+        (self.sfid, _cal, reserved) = struct.unpack_from(">BBH", self.payload)
+        self.cal = _cal >> 7
+        len_words = (len(self.payload) - 4 ) / 2
+        self.words = list(struct.unpack_from(">{}H".format(len_words), self.payload, 4))
+        return remaining
+
+    def __repr__(self):
+        return "PCM NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} sfid={:#0X} " \
+               "WordCnt={}" \
+               "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.sfid, len(self.words))
+
 
 class A429Segment(NPDSegment):
     pass
@@ -194,6 +217,26 @@ class RS232Segment(NPDSegment):
                "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.block_status, len(self.data))
 
 
+class MIL1553Segment(NPDSegment):
+    def __init__(self):
+        NPDSegment.__init__(self)
+        self.blockstatus = 0
+        self.gap1 = 0
+        self.gap2 = 0
+        self.data = ""
+
+    def unpack(self, buffer):
+        remaining = NPDSegment.unpack(self, buffer)
+        (self.blockstatus, self.gap2, self.gap2) = struct.unpack_from(">HBB", self.payload)
+        self.data = self.payload[4:]
+        return remaining
+
+    def __repr__(self):
+        return "MIL-STD-1553 Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} BlockStatus={:#0X} " \
+               "Gap1={} Gap2={}" \
+               "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.blockstatus, self.gap1,
+                         self.gap2)
+
 class NPD(object):
     """ 
     Class to pack and unpack NPD payloads. 
@@ -221,17 +264,18 @@ class NPD(object):
     :type datasrcid: int
     :type mcastaddr: str
     :type timestamp: int
-    :type segments: list[NPDSegment]
+    :type segments: list[NPDSegment|ACQSegment|RS232Segment|A429Segment]
     """
 
     NPD_HEADER_FORMAT = '>BBHBBHIII'
     NPD_HEADER_LENGTH = struct.calcsize(NPD_HEADER_FORMAT)
+    NPD_VERSION = 3
 
-    NPD_DT = { 0x50: RS232Segment, 0x38: A429Segment}
+    NPD_DT = { 0x50: RS232Segment, 0x38: A429Segment, 0xA1: ACQSegment, 0xD0: MIL1553Segment}
 
     def __init__(self):
         '''Creator method for a UDP class'''
-        self.version = 3  #: Version
+        self.version = NPD.NPD_VERSION #: Version
         self.hdrlen = NPD.NPD_HEADER_LENGTH//4  #: Header Length
         self.datatype = None  #: A unique identifier for the type of data collected in the packet
         self.packetlen = None  #: The number of 32-bit words in the data packet including the NPD header and data segments.
@@ -270,8 +314,8 @@ class NPD(object):
                 segment = NPDSegment()
             try:
                 remain_buf = segment.unpack(remain_buf)
-            except:
-                return False
+            except Exception as e:
+                raise Exception(e)
             else:
                 self.segments.append(segment)
 
@@ -296,7 +340,7 @@ class NPD(object):
         return hdr_buf + _payload
 
     def __repr__(self):
-        det = "NPD: DataType={} Seq={} DataSrcID={} MCastAddr={}".format(
+        det = "NPD: DataType={:#0X} Seq={} DataSrcID={:#0X} MCastAddr={}".format(
             self.datatype, self.sequence, self.datasrcid, self.mcastaddr)
         for seg in self.segments:
             det += "\n\t{}".format(repr(seg))

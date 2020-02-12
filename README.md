@@ -31,7 +31,7 @@ To read in a pcap file with multiple ethernet packets all containing an iNetX pa
 
 ```python
 import sys
-sys.path.append("..")
+#sys.path.append("..")
 
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.SimpleEthernet as SimpleEthernet
@@ -39,14 +39,7 @@ import AcraNetwork.Pcap as pcap
 
 import struct
 mypcap = pcap.Pcap("inetx_test.pcap")       # Read the pcap file
-mypcap.readGlobalHeader()
-while True:
-	# Loop through the pcap file reading one packet at a time
-	try:
-		mypcaprecord = mypcap.readAPacket()
-	except IOError:
-		# End of file reached
-		break
+for mypcaprecord in mypcap:
 
 	ethpacket = SimpleEthernet.Ethernet()   # Create an Ethernet object
 	ethpacket.unpack(mypcaprecord.packet)   # Unpack the pcap record into the eth object
@@ -56,7 +49,7 @@ while True:
 	udppacket.unpack(ippacket.payload)      # Unpack the IP payload into the UDP packet
 	inetxpacket = inetx.iNetX()             # Create an iNetx object
 	inetxpacket.unpack(udppacket.payload)   # Unpack the UDP payload into this iNetX object
-	print "INETX: StreamID ={:08X} Sequence = {:8d} PTP Seconds = {}".format(inetxpacket.streamid,inetxpacket.sequence,inetxpacket.ptptimeseconds)
+	print("INETX: StreamID ={:08X} Sequence = {:8d} PTP Seconds = {}".format(inetxpacket.streamid,inetxpacket.sequence,inetxpacket.ptptimeseconds))
 ```
 
 #To Make a Distribution

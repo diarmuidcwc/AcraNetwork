@@ -20,8 +20,11 @@ import sys
 
 NAL_HEADER = 0x00000001
 NAL_HEADER_LEN = 4
-NAL_TYPES = { "SEI":6, "Unspecified" : 0, "Coded IDR" : 5, "SPS" : 7, "PPS" : 8, "AUD" : 9,
-              "EOS" : 10, "DPS" : 16}
+NAL_TYPES = { "Unspecified" : 0, "Coded non-IDR": 1, "Coded partition A": 2, "Coded partition B": 3,
+              "Coded partition C": 4,
+              "Coded IDR": 5, "SEI": 6, "SPS": 7, "PPS": 8, "AUD": 9, "EOSeq": 10, "EOStream": 11,
+              "Filler": 12, "SES": 13, "Prefix NAL": 14, "SSPS": 15, "Reserved": 16
+              }
 # Invert it to go from integer to more useful name
 NAL_TYPES_INV = {v: k for k, v in list(NAL_TYPES.items())}
 SEI_UNREG_DATA = 5
@@ -198,10 +201,14 @@ class NAL(object):
         # First 4 bytes are the NAL_HEADER, then forbidden + type
         (self.type,) = struct.unpack_from(">B", buf, NAL_HEADER_LEN)
         self.type = self.type & 0x1F
+        self.size = len(buf)
         if self.type == NAL_TYPES["SEI"]:
             sei = STANAG4609_SEI()
             sei.unpack(buf[(NAL_HEADER_LEN+1):])
             self.sei = sei
+
+    def __len__(self):
+        return self.size
 
 
 class STANAG4609_SEI(object):

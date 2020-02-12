@@ -94,7 +94,7 @@ def parse_ts_file(tsfile):
 
 def main():
     # Read in a TS file and print out some useful information
-    parse_ts_file("frompcap_0x1001.ts")
+    parse_ts_file("../test/stanag_sample.ts")
 
 
 if __name__ == "__main__":

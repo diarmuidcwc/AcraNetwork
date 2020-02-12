@@ -85,15 +85,15 @@ class MPEGTSBasicTest(unittest.TestCase):
         h264_data = MPEGTS.H264()
         self.assertTrue(h264_data.unpack(ts_file.read()))
         ts_file.close()
-        self.assertEqual(677, len(h264_data.nals))
+        self.assertEqual(len(h264_data.nals),5062)
         nal_counts ={}
         for nal in h264_data.nals:
             if not nal.type in nal_counts:
                 nal_counts[nal.type] = 1
             else:
                 nal_counts[nal.type] += 1
-        self.assertEqual(92, nal_counts[0])
-        self.assertEqual(184, nal_counts[6])
+        self.assertEqual(nal_counts[0], 687)
+        self.assertEqual(nal_counts[6], 1374)
 
 if __name__ == '__main__':
     unittest.main()
