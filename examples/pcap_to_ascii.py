@@ -84,9 +84,9 @@ def main():
                     output_byte_count[inetx_packet.streamid] = 1
 
                 # Go thorough each byte in the _payload. Not particularly efficient
-                for byte in inetx_packet.payload:
+                for offset in range(len(inetx_packet.payload)):
                     # Unpack the _payload as an unsigned integer
-                    (byte_in_ascii,) =struct.unpack('B',byte)
+                    (byte_in_ascii,) =struct.unpack_from('B', inetx_packet.payload, offset)
 
                     # Write the output depending on what you want
                     if args.hex == True:

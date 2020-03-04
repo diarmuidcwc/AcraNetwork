@@ -4,6 +4,7 @@ from pstats import Stats
 import cProfile
 import random
 import logging
+import timeit
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +26,11 @@ class GolayTestCase(unittest.TestCase):
         dec = g.decode(s)
         self.assertEqual(v, dec)
 
+    def test_decode(self):
+        g = Golay.Golay()
+        v = 0x1007B408A722
+        print(repr(g.decode(v)))
+
     def test_with_error(self):
         g = Golay.Golay()
         for attempt in range(6):
@@ -45,6 +51,7 @@ class GolayTestCase(unittest.TestCase):
                 else:
                     self.assertNotEqual(input, decoded)
 
+
 class GolayProfile(unittest.TestCase):
 
     def setUp(self):
@@ -54,7 +61,7 @@ class GolayProfile(unittest.TestCase):
     def tearDown(self):
         p = Stats(self.pr)
         p.sort_stats('cumtime')
-        #p.print_stats()
+        p.print_stats()
 
 
     def test_profile(self):
@@ -62,8 +69,17 @@ class GolayProfile(unittest.TestCase):
         val = 100
         g = Golay.Golay()
         g2 = Golay.Golay()
-        # print("{:0X}".format(g2.decode(g.encode(raw))))
+        #print("{:0X}".format(g2.decode(g.encode(raw))))
         self.assertEqual(val, g2.decode(g.encode(val)))
+
+    def test_bits(self):
+        error = 0x3
+        size = 24
+        for code in [0x0, 0x1, 0x37, 0xFFFFFF]:
+            self.assertEqual(Golay.Golay._onesincode_old(code, size), Golay.Golay._onesincode(code, size))
+
+        #print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode(0x2, 24)', number=10000)
+        #print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode2(0x2, 24)', number=10000)
 
 if __name__ == '__main__':
     unittest.main()

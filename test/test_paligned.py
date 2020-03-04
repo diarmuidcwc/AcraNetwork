@@ -8,6 +8,7 @@ import AcraNetwork.ParserAligned as paligned
 import AcraNetwork.Pcap as pcap
 import struct
 import os
+import copy
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -103,11 +104,11 @@ class TestParserAligned(unittest.TestCase):
         mypcaprecord = p[0]
         p.close()
         # Now I have a _payload that will be an inetx packet
-        i = inetx.iNetX()
-        i.unpack(mypcaprecord.payload[0x2a:-4])
-        self.assertEqual(i.streamid, 0xa00)
+        inetxp = inetx.iNetX()
+        inetxp.unpack(mypcaprecord.payload[0x2a:-4])
+        self.assertEqual(inetxp.streamid, 0xa00)
         p = paligned.ParserAlignedPacket()
-        p.unpack(i.payload)
+        p.unpack(inetxp.payload)
         self.assertEqual(len(p), 83)
         self.assertEqual(repr(p), expected_p)
         for i, b in enumerate(p):
@@ -115,7 +116,12 @@ class TestParserAligned(unittest.TestCase):
                 self.assertEqual(len(b), 12)
                 self.assertEqual(repr(b), "QuadBytes=3 Error=False ErrorCode=0 BusID=16 MessageCount=3 ElapsedTime=10000")
 
+        p2 = paligned.ParserAlignedPacket()
+        for b in p:
+            blk = copy.copy(b)
+            p2.parserblocks.append(blk)
 
+        self.assertEqual(p2.pack(), inetxp.payload)
 
 
 if __name__ == '__main__':

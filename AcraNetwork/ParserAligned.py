@@ -60,9 +60,13 @@ class ParserAlignedPacket(object):
         return True
 
     def pack(self):
-        """Not implemented"""
+        """Convert a ParserPacket to a buffer"""
 
-        raise NotImplementedError("Ask Diarmuid to implement")
+        buf = bytes()
+        for b in self.parserblocks:
+            buf += b.pack()
+
+        return buf
 
     def __iter__(self):
         self._index = 0
@@ -90,6 +94,20 @@ class ParserAlignedPacket(object):
             rep += "Block {}: {}\n".format(idx, repr(b))
         return rep
 
+    def __eq__(self, other):
+        if not isinstance(other, ParserAlignedPacket):
+            return False
+        if len(other) != len(self):
+            return False
+        blk_cnt = len(other)
+        for idx in range(blk_cnt):
+            if other.parserblocks[idx] != self.parserblocks[idx]:
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class ParserAlignedBlock(object):
     """
@@ -154,9 +172,15 @@ class ParserAlignedBlock(object):
         return self.quadbytes*4
 
     def pack(self):
-        """Not implemented"""
-
-        raise NotImplementedError("Ask Diarmuid to implement it")
+        """
+        Convert a ParserAlignedBlock into a buffer
+        :return:
+        """
+        if len(self.payload) % 4 != 0:
+            raise Exception("Length of payload is not aligned to quadbytes (32b)")
+        self.quadbytes = 2 + len(self.payload) // 4
+        error_and_quad = (self.error << 15) + ((self.errorcode & 0x3f) << 9) + self.quadbytes
+        return struct.pack(self.format, error_and_quad, self.messagecount, self.busid, self.elapsedtime) + self.payload
 
     def __repr__(self):
         return "QuadBytes={} Error={} ErrorCode={} BusID={} MessageCount={} ElapsedTime={}".format(
@@ -165,6 +189,18 @@ class ParserAlignedBlock(object):
 
     def __len__(self):
         return len(self.payload) + struct.calcsize(self.format)
+
+    def __eq__(self, other):
+        if not isinstance(other, ParserAlignedBlock):
+            return False
+        for attr in ["quadbytes", "error", "errorcode", "busid", "messagecount", "elapsedtime", "payload"]:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class ARINC429(object):

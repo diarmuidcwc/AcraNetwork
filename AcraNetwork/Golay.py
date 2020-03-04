@@ -105,9 +105,15 @@ class Golay():
 
     @staticmethod
     def _onesincode(code, size):
+        """Optimised version of the code below. Runs 2x"""
+        return bin(code)[2:size+2].count('1')
+
+    @staticmethod
+    def _onesincode_old(code, size):
         ret = 0
+
         for t in range(size):
-            if (code >> 1) & 1:
+            if (code >> t) & 1:
                 ret += 1
 
         return ret

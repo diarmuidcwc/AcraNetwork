@@ -57,7 +57,7 @@ def datapkts_to_pdfr(eth_ch10_packets, pdfr_len=500, streamid=0x1):
     Generator that will take a generator for ethernet packet aligned payloads
     and return the PTFRs encapsulating the payload
 
-    :type eth_ch10_packets: collections.Iterable[bytes]
+    :type eth_ch10_packets: collections.Iterable[bytes, bool]
     :param pdfr_len: Length of the PDFR frame
     :type pdfr_len: int
     :rtype: collections.Iterable[PDFR]
@@ -67,7 +67,7 @@ def datapkts_to_pdfr(eth_ch10_packets, pdfr_len=500, streamid=0x1):
     for ptdp in datapkts_to_ptdp(eth_ch10_packets):
         # Encapsulate the data in PTDP packets
         # Add the payload to the PDFR frame. IF we get a remainder then this from is full
-        remainder = pdfr.add_payload(ptdp.pack())
+        remainder = pdfr.add_payload(ptdp.pack(), ptdp.low_latency)
         while remainder != bytes():
             # Spit out the full frame
             yield pdfr
@@ -93,12 +93,14 @@ def datapkts_to_ptdp(eth_ch10_packets):
     and return the PTDPs encapsulating the payload
 
     :param eth_ch10_packets:
+    :type eth_ch10_packets: collections.Iterable[bytes, bool]
     :rtype: collections.Iterable[PTDP]
     """
-    for buffer in eth_ch10_packets:
+    for buffer, llp in eth_ch10_packets:
         # The packet fits in one PTDP
         if len(buffer) <= PTDP_MAX_LEN:
             ptdp_pkt = PTDP()
+            ptdp_pkt.low_latency = llp
             ptdp_pkt.fragment = PTDP_FRAGMENT_COMPLETE
             ptdp_pkt.content = PTDP_CONTENT_MAC
             ptdp_pkt.payload = buffer
@@ -109,6 +111,7 @@ def datapkts_to_ptdp(eth_ch10_packets):
             number_of_packets = int(math.ceil(float(len(buffer)) / PTDP_MAX_LEN))
             for i in range(number_of_packets):
                 ptdp_pkt = PTDP()
+                ptdp_pkt.low_latency = llp
                 ptdp_pkt.content = PTDP_CONTENT_MAC  # Assume it's Ethernet for the moment
                 # Label the fragments
                 if i == 0:
@@ -128,6 +131,7 @@ def datapkts_to_ptdp(eth_ch10_packets):
 class PTDP(object):
     def __init__(self):
         self.payload = ""
+        self.low_latency = False
         self.length = 0
         self.content = PTDP_CONTENT_FILL
         self.fragment = PTDP_FRAGMENT_COMPLETE
@@ -198,7 +202,8 @@ class PTDP(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "PTDP: Len={} Content={} Fragment={}".format(self.length, PTDP_CONTENT_TEXT[self.content], PTDP_FRAGMENT_TEXT[self.fragment])
+        return "PTDP: Len={} Content={} Fragment={} LowLatency={}".format(
+            self.length, PTDP_CONTENT_TEXT[self.content], PTDP_FRAGMENT_TEXT[self.fragment], self.low_latency)
 
 
 class PDFR(object):
@@ -220,18 +225,38 @@ class PDFR(object):
             raise Exception("Length of payload ({}) is larger than length field ({})".format(len(val), self.length))
         self._payload += val
 
-    def add_payload(self, buffer):
+    def add_payload(self, buffer, is_llp=False):
         """
-        Add the buffer to the payload ensureing not to go over the length field
+        Add the buffer to the payload ensuring not to go over the length field
         :param buffer:
         :return:
         """
-        if len(buffer) + len(self._payload) > self.length:
-            len_to_take = self.length-len(self._payload)
-            self._payload += buffer[:len_to_take]
-            return buffer[len_to_take:]
+        if is_llp and len(self._payload) > 0 and self.llp:
+            logging.debug("Adding an LLP buffer to some existing llp payload. Shifting original data and adding llp at "
+                          "start. len={}".format(len(buffer) + 1))
+            self.ptdp_offset += (len(buffer) + 1)
+            self._payload = buffer + struct.pack(">B", 0xFF) + self._payload
+            self.llp = True
+        elif is_llp and len(self._payload) > 0 and not self.llp:
+            logging.debug("Adding an LLP buffer to a payload with high latency data. Shifting the data and adding the "
+                          "offset. len={}".format(len(buffer) + 1))
+            self.ptdp_offset = (len(buffer) + 1)
+            self._payload = buffer + struct.pack(">B", 0x0) + self._payload
+            self.llp = True
+        elif is_llp and len(self.payload) == 0:
+            logging.debug("Adding first LLP buffer len={}".format(len(buffer)+1))
+            self.llp = True
+            self._payload = buffer + struct.pack(">B", 0xFF)
         else:
+            logging.debug("Adding a normal PTDP buffer len={}".format(len(buffer)))
             self._payload += buffer
+
+        if len(self._payload) > self.length:
+            len_to_take = self.length-len(self._payload)
+            remainder = self.payload[len_to_take:]
+            self._payload = self.payload[:len_to_take]
+            return remainder
+        else:
             return bytes()
 
     def pack(self):
@@ -264,7 +289,7 @@ class PDFR(object):
         # Protected field
         g = Golay.Golay()
         protected_field = g.decode(buffer[1:4])
-        self.llp = (protected_field >> 11) & 0x1
+        self.llp = bool((protected_field >> 11) & 0x1)
         self.ptdp_offset = protected_field & 0x7FF
         self.payload = buffer[4:]
 
@@ -278,8 +303,13 @@ class PDFR(object):
         :rtype: Tuple[PTDP, bytes, str]
         """
         aligned = True
+        # The PTFR decides what is low latency initially
+        is_llp = self.llp
 
-        if remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x3ff:
+        if is_llp:
+            logging.debug("LLP flag set. First packet should be LLP")
+            buf = self.payload
+        elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x3ff:
             buf = self.payload[self.ptdp_offset:]
             logging.debug("No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
         else:
@@ -292,8 +322,22 @@ class PDFR(object):
             except Exception as e:
                 aligned = False
                 yield (None, buf, e)
-                logging.debug("Failed to unpack buffer of length {}bytes. Error={}".format(len(buf), e))
+                logging.debug("Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(len(buf), e, self.ptdp_offset))
             else:
+                # Pass the low latency flag
+                p.low_latency = is_llp
+                if is_llp:  # If this is a low latency packet
+                    # Remove the last byte
+                    (next_llp, ) = struct.unpack_from(">B", buf)
+
+                    # Check if the next PTDP is low latency before yielding
+                    if next_llp == 0xFF:
+                        is_llp = True
+                        buf = buf[1:]
+                    else:
+                        is_llp = False
+                        buf = remainder + buf[1:]  # The remainder is only added after all the llp packets are removed
+
                 yield (p, bytes(), "")
 
     def __eq__(self, other):
@@ -310,4 +354,5 @@ class PDFR(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "PTFR: Length={} StreamID={:#0X} Offset={}\n".format(self.length, self.streamid, self.ptdp_offset)
+        return "PTFR: Length={} StreamID={:#0X} Offset={} LowLatency={}\n".format(
+            self.length, self.streamid, self.ptdp_offset, self.llp)

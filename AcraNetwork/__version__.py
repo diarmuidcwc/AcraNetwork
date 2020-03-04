@@ -27,5 +27,7 @@
 # 0.13.2 - Added NPD Segments for RS232
 # 0.13.3 - Parser aligned printout
 # 0.14.0 - Made compatiable with python3
-# 0 15.0 - Added ch7 and updated all unit test to pass in both py3 py2
-__version__ = '0.15.0'
+# 0.15.0 - Added ch7 and updated all unit test to pass in both py3 py2
+# 0.15.1 - Added unpack to ParserAligned
+# 0.15.2 - Fixd the ascii example
+__version__ = '0.15.2'
