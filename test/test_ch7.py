@@ -127,7 +127,7 @@ class TestRealEthernet(unittest.TestCase):
         :rtype:  collections.Iterable[bytes, bool]
         """
 
-        pf = pcap.Pcap(THIS_DIR+"\generated_eth.pcap", mode="w")
+        pf = pcap.Pcap(THIS_DIR+"/generated_eth.pcap", mode="w")
         r = pcap.PcapRecord()
         for i in range(1, count + 1):
             e = eth.Ethernet()
@@ -161,7 +161,7 @@ class TestRealEthernet(unittest.TestCase):
         pf.close()
 
     def test_eth_in_packets(self):
-        pf = pcap.Pcap(THIS_DIR+"\gen.pcap", mode="w")
+        pf = pcap.Pcap(THIS_DIR+"/gen.pcap", mode="w")
         r = pcap.PcapRecord()
         remainder = bytes()
         eth_p = bytes()
@@ -191,7 +191,7 @@ class TestRealEthernet(unittest.TestCase):
 
     def test_eth_in_packets_low_latency(self):
         #logging.basicConfig(level=logging.DEBUG)
-        pf = pcap.Pcap(THIS_DIR+"\captured_llp.pcap", mode="w")
+        pf = pcap.Pcap(THIS_DIR+"/captured_llp.pcap", mode="w")
         r = pcap.PcapRecord()
         remainder = bytes()
         eth_p = bytes()
@@ -241,7 +241,7 @@ class TestRealEthernet(unittest.TestCase):
         logging.basicConfig(level=logging.WARN)
         remainder = b""
         for i in range(3, 6):
-            f = open(THIS_DIR+"\ptfr_{}.bin".format(i), "rb")
+            f = open(THIS_DIR+"/ptfr_{}.bin".format(i), "rb")
             ptfr_data = f.read()
             f.close()
 
