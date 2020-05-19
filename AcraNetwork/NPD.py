@@ -292,7 +292,7 @@ class NPD(object):
         Unpack a string buffer into an NPD object
         
         :param buffer: A string buffer representing an NPD packet
-        :type buffer: str
+        :type buffer: bytes
         :rtype: None
         """
         (_ver_hdr, self.datatype, self.packetlen, self.cfgcnt, self.flags, self.sequence, self.datasrcid,

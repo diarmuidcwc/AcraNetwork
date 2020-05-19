@@ -128,7 +128,7 @@ class Chapter10UDP(object):
         self.sourceid_len = None  #: Format 3 Source ID length
         self.sourceid = 0  #: Format 3 Source ID
         self.offset_pkt_start = None  #: Format 3 Offset to packet start in bytes
-        self.payload = ""
+        self.payload = b""
         self.chapter10 = Chapter10() #: The encapsulated Chapter10 packet. :class:`Chapter10`
 
     def unpack(self, buffer):
@@ -136,7 +136,7 @@ class Chapter10UDP(object):
         Unpack a string buffer into an Chapter10UDP object
 
         :param buffer: A string buffer representing an Chapter10UDP packet
-        :type buffer: str
+        :type buffer: bytes
         :rtype: None
         """
         # Format 2 is big endian so check if this packet is format 2 first
@@ -1106,7 +1106,7 @@ class PCMMinorFrame(object):
         self.intra_packet_sec = 0
         self.intra_packet_nsec = 0
         self.intra_packet_data_header = 0x0
-        self.minor_frame_data = ""
+        self.minor_frame_data = b''
         self.syncword = None
         self.sfid = None
 
@@ -1174,7 +1174,7 @@ class PCMDataPacket(object):
     def unpack(self, buffer):
         """
         Convert a string buffer into a PCMDataPacket
-        :type buffer: str
+        :type buffer: bytes
         :rtype: bool
         """
 

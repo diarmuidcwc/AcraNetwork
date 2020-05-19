@@ -57,6 +57,7 @@ class PcapBasicTest(unittest.TestCase):
         for idx, rec in enumerate(p):
             if id == 3:
                 self.assertEqual(len(rec), 66)
+        p.close()
 
 
 

@@ -122,8 +122,6 @@ class Pcap(object):
     :param filename: The PCAP filename
     :type filename: str
     
-    :param \**kwargs:
-        See below
     
     :Keyword Arguments:
         * *mode* -- r: read w: write a: append

@@ -30,4 +30,6 @@
 # 0.15.0 - Added ch7 and updated all unit test to pass in both py3 py2
 # 0.15.1 - Added unpack to ParserAligned
 # 0.15.2 - Fixd the ascii example
-__version__ = '0.15.2'
+# 0.15.3 - Minor updates to Ch7 and unittest
+# 0.15.4 - Pcap comment removal
+__version__ = '0.15.4'

@@ -20,6 +20,8 @@ import math
 import logging
 
 
+ch7_logger = logging.getLogger(__name__)
+
 PTDP_CONTENT_FILL = 0X0
 PTDP_CONTENT_ASP = 0X1
 PTDP_CONTENT_TEST_CNT = 0X2
@@ -232,23 +234,23 @@ class PDFR(object):
         :return:
         """
         if is_llp and len(self._payload) > 0 and self.llp:
-            logging.debug("Adding an LLP buffer to some existing llp payload. Shifting original data and adding llp at "
+            ch7_logger.debug("Adding an LLP buffer to some existing llp payload. Shifting original data and adding llp at "
                           "start. len={}".format(len(buffer) + 1))
             self.ptdp_offset += (len(buffer) + 1)
             self._payload = buffer + struct.pack(">B", 0xFF) + self._payload
             self.llp = True
         elif is_llp and len(self._payload) > 0 and not self.llp:
-            logging.debug("Adding an LLP buffer to a payload with high latency data. Shifting the data and adding the "
+            ch7_logger.debug("Adding an LLP buffer to a payload with high latency data. Shifting the data and adding the "
                           "offset. len={}".format(len(buffer) + 1))
             self.ptdp_offset = (len(buffer) + 1)
             self._payload = buffer + struct.pack(">B", 0x0) + self._payload
             self.llp = True
         elif is_llp and len(self.payload) == 0:
-            logging.debug("Adding first LLP buffer len={}".format(len(buffer)+1))
+            ch7_logger.debug("Adding first LLP buffer len={}".format(len(buffer)+1))
             self.llp = True
             self._payload = buffer + struct.pack(">B", 0xFF)
         else:
-            logging.debug("Adding a normal PTDP buffer len={}".format(len(buffer)))
+            ch7_logger.debug("Adding a normal PTDP buffer len={}".format(len(buffer)))
             self._payload += buffer
 
         if len(self._payload) > self.length:
@@ -295,6 +297,16 @@ class PDFR(object):
 
         return True
 
+    def check_offsets(self, act_offset):
+        if act_offset != self.ptdp_offset:
+            ch7_logger.error(
+                "Offset of unpacked PTDP packet ({}) does not match the declared offset ({})".format(
+                    act_offset, self.ptdp_offset))
+        else:
+            ch7_logger.debug(
+                "Offset of unpacked PTDP packet ({}) matches the declared offset ({})".format(
+                    act_offset, self.ptdp_offset))
+
     def get_aligned_payload(self, remainder=bytes()):
         """
         Return the payload as PTDP packets with the final partial payload
@@ -307,36 +319,68 @@ class PDFR(object):
         is_llp = self.llp
 
         if is_llp:
-            logging.debug("LLP flag set. First packet should be LLP")
+            ch7_logger.debug("LLP flag set. First packet should be LLP")
             buf = self.payload
-        elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x3ff:
+        elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x7ff:
             buf = self.payload[self.ptdp_offset:]
-            logging.debug("No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
+            ch7_logger.debug("No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
         else:
             buf = remainder + self.payload
-            logging.debug("Buffer length={}. Ignoring offset={}".format(len(buf), self.ptdp_offset))
+            ch7_logger.debug("Buffer length={}. Ignoring offset={} Remainder length={}".format(
+                len(buf), self.ptdp_offset, len(remainder)))
+
+        if is_llp:
+            byte_offset = 0
+        else:
+            byte_offset = -1 * len(remainder)
+        do_offset_check = True
+        offset_check_count = 0
         while aligned:
             p = PTDP()
             try:
                 buf = p.unpack(buf)
             except Exception as e:
                 aligned = False
+                ch7_logger.debug("Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(len(buf), e,
+                                                                                                       self.ptdp_offset))
+                if not is_llp and byte_offset > 0 and do_offset_check:
+                    self.check_offsets(byte_offset)
+
                 yield (None, buf, e)
-                logging.debug("Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(len(buf), e, self.ptdp_offset))
             else:
+                if not is_llp and do_offset_check and byte_offset >= 0:
+                    self.check_offsets(byte_offset)
+                    do_offset_check = False
+                    offset_check_count += 1
+                elif not is_llp and not do_offset_check and offset_check_count < 1:
+                    do_offset_check = True
+                    byte_offset += len(p)
+                elif not is_llp:
+                    byte_offset += len(p)
+
                 # Pass the low latency flag
                 p.low_latency = is_llp
                 if is_llp:  # If this is a low latency packet
                     # Remove the last byte
                     (next_llp, ) = struct.unpack_from(">B", buf)
-
                     # Check if the next PTDP is low latency before yielding
                     if next_llp == 0xFF:
                         is_llp = True
                         buf = buf[1:]
+                        byte_offset += (len(p) + 1)
                     else:
                         is_llp = False
-                        buf = remainder + buf[1:]  # The remainder is only added after all the llp packets are removed
+                        if remainder == bytes() and self.ptdp_offset > 0:
+                            ch7_logger.debug( "LLP Packets extracted, jumping to offset")
+                            buf = self.payload[self.ptdp_offset:]
+                            do_offset_check = False
+                            byte_offset = self.ptdp_offset
+                            offset_check_count = 1
+                        else:
+                            buf = remainder + buf[1:]  # The remainder is only added after all the llp packets are removed
+                            byte_offset += (len(p) + 1 - len(remainder))
+                            if len(remainder) > 0:
+                                do_offset_check = False
 
                 yield (p, bytes(), "")
 

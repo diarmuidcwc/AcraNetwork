@@ -122,6 +122,7 @@ class TestParserAligned(unittest.TestCase):
             p2.parserblocks.append(blk)
 
         self.assertEqual(p2.pack(), inetxp.payload)
+        self.assertTrue(p2==p)
 
 
 if __name__ == '__main__':

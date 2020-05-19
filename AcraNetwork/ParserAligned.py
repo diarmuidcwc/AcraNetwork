@@ -47,7 +47,7 @@ class ParserAlignedPacket(object):
         unpack all the fields. Returns a list of parserblocks
     
         :param buf: The string buffer to unpack
-        :type buf: str
+        :type buf: bytes
         :rtype: bool
         """
         fullbufferlen = len(buf)

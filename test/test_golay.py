@@ -52,6 +52,7 @@ class GolayTestCase(unittest.TestCase):
                     self.assertNotEqual(input, decoded)
 
 
+
 class GolayProfile(unittest.TestCase):
 
     def setUp(self):
@@ -61,8 +62,7 @@ class GolayProfile(unittest.TestCase):
     def tearDown(self):
         p = Stats(self.pr)
         p.sort_stats('cumtime')
-        p.print_stats()
-
+        #p.print_stats()
 
     def test_profile(self):
 
