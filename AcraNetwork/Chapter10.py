@@ -938,7 +938,7 @@ class UARTDataPacket(object):
         (ch_spec_word,) = struct.unpack_from("<I", mybuffer)
         ts_present = bool(ch_spec_word >> 31)
         offset = 4
-        while offset < len(mybuffer):
+        while abs(offset - len(mybuffer)) > 4:
             udw = UARTDataWord()
             offset += udw.unpack(mybuffer[offset:], ts_present)
             self.uartwords.append(udw)

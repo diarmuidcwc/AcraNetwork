@@ -307,9 +307,12 @@ class PDFR(object):
                 "Offset of unpacked PTDP packet ({}) matches the declared offset ({})".format(
                     act_offset, self.ptdp_offset))
 
-    def get_aligned_payload(self, remainder=bytes()):
+    def get_aligned_payload(self, remainder=None):
         """
         Return the payload as PTDP packets with the final partial payload
+        The remainder is the bytes from the end of the previous PTFR. IF this is the middle of a 
+        capture set it to None so that false positive messages about offsets is triggered
+        
         :type remainder: bytes
         :param remainder: Optional partial payload from previous frame
         :rtype: Tuple[PTDP, bytes, str]
@@ -321,6 +324,9 @@ class PDFR(object):
         if is_llp:
             ch7_logger.debug("LLP flag set. First packet should be LLP")
             buf = self.payload
+        elif remainder is None and self.ptdp_offset > 0 and self.ptdp_offset < 0x7ff:
+            buf = self.payload[self.ptdp_offset:]
+            ch7_logger.debug("Start of analysis. Could be in the middle of a packet offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
         elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x7ff:
             buf = self.payload[self.ptdp_offset:]
             ch7_logger.debug("No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
@@ -331,6 +337,8 @@ class PDFR(object):
 
         if is_llp:
             byte_offset = 0
+        elif remainder is None:  # Fake the offset if we have jumped into the middle of a data stream
+            byte_offset = self.ptdp_offset
         else:
             byte_offset = -1 * len(remainder)
         do_offset_check = True
