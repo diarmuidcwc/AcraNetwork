@@ -46,6 +46,14 @@ PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
 PTDP_MAX_LEN = 0x800
 
 
+class PTDPLengthError(Exception):
+    pass
+
+
+class PTDPRemainingData(Exception):
+    pass
+
+
 def _new_pdfr(pdfr_len, streamid=0x1):
     """Return a new PDFR object initialised with some useful values"""
     pdfr = PDFR()
@@ -172,7 +180,7 @@ class PTDP(object):
         """
 
         if len(buffer) < 6:
-            raise Exception("Can't unpack less than the header length")
+            raise PTDPRemainingData("Can't unpack less than the header length")
 
         g = Golay.Golay()
         lsw = g.decode(buffer[:3])
@@ -181,8 +189,10 @@ class PTDP(object):
         self.length = msw + ((lsw & 0xF) << 12)
         self.fragment = (lsw >> 4) & 0x3
         self.content = (lsw >> 6) & 0xF
-        if len(buffer[6:]) < self.length:
-            raise Exception("Buffer length={} GolayHdr=len={} fragment={} content={}".format(
+        if self.length > PTDP_MAX_LEN:
+            raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
+        elif len(buffer[6:]) < self.length:
+            raise PTDPRemainingData("Buffer length={} GolayHdr=len={} fragment={} content={}".format(
                 len(buffer[6:]), self.length, self.fragment, self.content))
         self.payload = buffer[6:self.length+6]
 
@@ -347,7 +357,12 @@ class PDFR(object):
             p = PTDP()
             try:
                 buf = p.unpack(buf)
-            except Exception as e:
+            except PTDPLengthError as e:
+                aligned = False
+                ch7_logger.warning("Looks like we got an illegal PTDP length. Resetting. {}bytes. Message={} Offset={}".format(len(buf), e,
+                                                                                                       self.ptdp_offset))
+                yield (None, None, e)
+            except PTDPRemainingData as e:
                 aligned = False
                 ch7_logger.debug("Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(len(buf), e,
                                                                                                        self.ptdp_offset))

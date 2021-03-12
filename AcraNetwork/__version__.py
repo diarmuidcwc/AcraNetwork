@@ -33,4 +33,5 @@
 # 0.15.3 - Minor updates to Ch7 and unittest
 # 0.15.4 - Pcap comment removal
 # 0.15.5 - Handled padding for UART data words in chapter 10
-__version__ = '0.15.5'
+# 0.15.6 - Optimisations on Golay encoding
+__version__ = '0.15.6'
