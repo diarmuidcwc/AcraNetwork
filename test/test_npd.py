@@ -133,7 +133,7 @@ class testNPD(unittest.TestCase):
         n.unpack(readnpd_payload)
         self.assertEqual(len(n.segments),2)
         self.assertEqual(n.segments[0].segmentlen, 34)
-        print(repr(n))
+        #print(repr(n))
         self.assertEqual(n.segments[0].sfid, 0x0)
         pcapr.close()
 
