@@ -31,7 +31,7 @@ class GolayTestCase(unittest.TestCase):
     def test_decode(self):
         g = Golay.Golay()
         v = 0x1007B408A722
-        print(repr(g.decode(v)))
+        #print(repr(g.decode(v)))
 
     def test_with_error(self):
         g = Golay.Golay()
@@ -64,7 +64,7 @@ class GolayProfile(unittest.TestCase):
     def tearDown(self):
         p = Stats(self.pr)
         p.sort_stats('cumtime')
-        p.print_stats()
+        #p.print_stats()
 
     def test_profile(self):
 

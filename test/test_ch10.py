@@ -135,8 +135,8 @@ class CH10UDPTest(unittest.TestCase):
 
         full_unpack = ch10.Chapter10UDP()
         self.assertTrue(full_unpack.unpack(self.full.pack()))
-        print(len(self.full.payload))
-        print(len(full_unpack.payload))
+        #print(len(self.full.payload))
+        #print(len(full_unpack.payload))
 
         self.assertTrue(full_unpack == self.full)
         self.assertFalse(full_unpack == self.seg)
@@ -357,7 +357,7 @@ class Ch10UARTTest(unittest.TestCase):
         ch10pkt = ch10.Chapter10UDP()
         ch10pkt.unpack(mypcaprecord.payload[0x2a:-4])  # FCS
         self.assertEqual(ch10pkt.format, 1)
-        print(repr(ch10pkt.chapter10))
+        #print(repr(ch10pkt.chapter10))
 
 
 class Time_Test(unittest.TestCase):
@@ -382,12 +382,12 @@ class Time_Test(unittest.TestCase):
         t.milliseconds = 980
         t.datetime = datetime.datetime.fromtimestamp(1558366884)
 
-        print(repr(t))
+        #print(repr(t))
         t2 = ch10.TimeDataFormat1()
         t2.unpack(t.pack())
         self.assertTrue(t == t2)
-        print(repr(t))
-        print(repr(t2))
+        #print(repr(t))
+        #print(repr(t2))
 
     def test_time_pkt_2(self):
         t = ch10.TimeDataFormat2()
@@ -397,9 +397,9 @@ class Time_Test(unittest.TestCase):
         t2 = ch10.TimeDataFormat2()
         t2.unpack(t.pack())
         self.assertTrue(t2 == t)
-        print(repr(t))
+        #print(repr(t))
         #self.assertEqual("TimeFormat2 ChannelSpecificWord=0X11 Time=16:41:24 05/20/19 20-May 2019 NanoSeconds=999999999", repr(t))
-        print(repr(t2))
+        #print(repr(t2))
 
     def test_time_to_pcap(self):
         pcapw = pcap.Pcap("test_ch10_time.pcap", mode="w")
@@ -431,13 +431,13 @@ class Time_Test(unittest.TestCase):
         c.unpack(mypcaprecord.payload[0x2a:])
         t = ch10.TimeDataFormat1()
         t.unpack(c.chapter10.payload)
-        print(t.datetime.strftime("%c"))
+        #print(t.datetime.strftime("%c"))
         mypcaprecord = p.next()
         c = ch10.Chapter10UDP()
         c.unpack(mypcaprecord.payload[0x2a:])
         t = ch10.TimeDataFormat2()
         t.unpack(c.chapter10.payload)
-        print(t.datetime.strftime("%c"))
+        #print(t.datetime.strftime("%c"))
         self.assertEqual(t.datetime, datetime.datetime.fromtimestamp(1561535306))
 
 

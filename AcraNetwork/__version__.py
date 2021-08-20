@@ -34,4 +34,5 @@
 # 0.15.4 - Pcap comment removal
 # 0.15.5 - Handled padding for UART data words in chapter 10
 # 0.15.6 - Optimisations on Golay encoding
-__version__ = '0.15.6'
+# 0.15.7 - Minor updates
+__version__ = '0.15.7'

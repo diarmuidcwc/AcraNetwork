@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import socket
 import struct
@@ -76,7 +77,7 @@ def main(args):
             print ("INFO: Received {} packets in {:4.0f} seconds. Error Count={}".format(pkt_count, cur_time - start_time, err_cnt))
             for stream, seq in sequence_count.iteritems():
                 print ("INFO: StreamID={:#0X} CurSeq={}".format(stream, seq))
-            
+
 
             sys.stdout.flush()
 
