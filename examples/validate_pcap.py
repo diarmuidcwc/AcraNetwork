@@ -36,7 +36,7 @@ for file in all_files:
     for r in p:
         if len(r.payload) >= (18+0x24):  # For short packets don't try to decode them as inets
             # pull out the key fields
-            (dst_port,udp_len, checksum, control, stream_id, seq) = struct.unpack_from(">HHHIII", r.payload, 0x24)
+            (dst_port, udp_len, checksum, control, stream_id, seq) = struct.unpack_from(">HHHIII", r.payload, 0x24)
 
             if dst_port == udp_port:
                 if stream_id in stream_ids:
@@ -47,7 +47,7 @@ for file in all_files:
                 data_count_bytes += len(r.payload)
 
     # The data rate at which we are validating
-    dr = data_count_bytes*60/(1e6 * (time.time() - start_t))
+    dr = data_count_bytes * 60/(1e6 * (time.time() - start_t))
 
     print("{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {}".format(inetx_pkts_validate, dr,
                                                                                      data_count_bytes/1e6, file))
