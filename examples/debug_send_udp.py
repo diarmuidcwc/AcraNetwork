@@ -25,11 +25,12 @@ import socket
 
 parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
 parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Hz")
+parser.add_argument('--ipaddress',required=False, type=str, default="192.168.0.26", help="Destination ?IP")
 args = parser.parse_args()
 
 # simple application that tests building and sending of iena and inetx packets
 
-UDP_IP = "192.168.0.26"
+UDP_IP = args.ipaddress
 UDP_PORT = 4444
 
 print("UDP target IP:", UDP_IP)
@@ -53,8 +54,9 @@ myinetx.setPacketTime(int(time.time()))
 packet_payload = myinetx.pack()
 pkt_size = len(packet_payload) + 8 + 20 + 14
 
+granularity = 50
 packet_count = 1
-dly = 600 / args.rate
+dly = granularity / 2/ args.rate
 delta_change = 1 / args.rate
 
 st = time.time()
@@ -62,12 +64,13 @@ while True:
     myinetx.sequence += 1
 
     sock.sendto(myinetx.pack(), (UDP_IP, UDP_PORT))
-    if packet_count % 1000 == 0:
+    if packet_count % granularity == 0:
         # Report some information
         data_vol = packet_count * pkt_size * 8
         rate = data_vol / (time.time() - st) / 1000 / 1000
         pps = packet_count / (time.time() - st)
-        print("1000 packets sent. Rate = {:.0f} Mbps {:.0f} pps".format(rate, pps))
+        if packet_count % args.rate == 0:
+            print("Rate = {:.0f} Mbps {:.0f} pps".format(rate, pps))
         # Tweak the delay so we converge to the required pps
         if pps > args.rate:
             dly += delta_change
