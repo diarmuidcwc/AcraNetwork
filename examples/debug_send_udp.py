@@ -63,8 +63,12 @@ print("UDP target IP:", UDP_IP)
 print("UDP target port:", UDP_PORT)
 print("Rate = {} Hz".format(pps_rate))
 print("Rate = {} Mbps".format(args.rate))
+SEQ_ROLL_OVER = pow(2, 64)
 
 while True:
+    # Sequence rollover will never happen. At 1million pkts / s
+    # it would still take a million years
+    #myinetx.sequence = (myinetx.sequence + 1) % SEQ_ROLL_OVER
     myinetx.sequence += 1
 
     sock.sendto(myinetx.pack(), (UDP_IP, UDP_PORT))

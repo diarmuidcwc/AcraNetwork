@@ -17,12 +17,7 @@ import argparse
 
 VERSION = "0.1.1"
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)-6'
-                                               'ls'
-                                               ''
-                                               ''
-                                               ''
-                                               's %(asctime)-15s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)-6s %(asctime)-15s %(message)s')
 
 
 def create_parser():
