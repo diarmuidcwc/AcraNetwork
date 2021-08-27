@@ -24,7 +24,7 @@ import argparse
 import socket
 
 parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
-parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Hz")
+parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Mbps")
 parser.add_argument('--ipaddress',required=False, type=str, default="192.168.0.26", help="Destination ?IP")
 args = parser.parse_args()
 
@@ -32,10 +32,6 @@ args = parser.parse_args()
 
 UDP_IP = args.ipaddress
 UDP_PORT = 4444
-
-print("UDP target IP:", UDP_IP)
-print("UDP target port:", UDP_PORT)
-print("Rate = {} Hz".format(args.rate))
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #sock.mcast_add(UDP_IP)
@@ -55,11 +51,19 @@ packet_payload = myinetx.pack()
 pkt_size = len(packet_payload) + 8 + 20 + 14
 
 granularity = 100
+pps_rate = int(((args.rate * 1024 * 1024) / (pkt_size * 8)) / 100) * 100
+
 packet_count = 1
-dly = granularity / 2/ args.rate
-delta_change = 1 / args.rate
+dly = granularity / 2 / pps_rate
+delta_change = 1 / pps_rate
 
 st = time.time()
+
+print("UDP target IP:", UDP_IP)
+print("UDP target port:", UDP_PORT)
+print("Rate = {} Hz".format(pps_rate))
+print("Rate = {} Mbps".format(args.rate))
+
 while True:
     myinetx.sequence += 1
 
@@ -69,12 +73,12 @@ while True:
         data_vol = packet_count * pkt_size * 8
         rate = data_vol / (time.time() - st) / 1000 / 1000
         pps = packet_count / (time.time() - st)
-        if packet_count % args.rate == 0:
+        if packet_count % pps_rate == 0:
             print("Rate = {:.0f} Mbps {:.0f} pps".format(rate, pps))
         # Tweak the delay so we converge to the required pps
-        if pps > args.rate:
+        if rate > args.rate:
             dly += delta_change
-        elif pps < args.rate:
+        elif rate < args.rate:
             dly -= delta_change
         if dly >= 0:
             time.sleep(dly)
