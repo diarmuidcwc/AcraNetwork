@@ -45,14 +45,15 @@ myinetx.inetxcontrol = inetx.iNetX.DEF_CONTROL_WORD
 myinetx.pif = 0
 myinetx.streamid = 0xdc
 myinetx.sequence = 0
-myinetx.payload = payload * 700
+myinetx.payload = payload * 715
 myinetx.setPacketTime(int(time.time()))
 packet_payload = myinetx.pack()
 pkt_size = len(packet_payload) + 8 + 20 + 14
 
 granularity = 100
 pps_rate = int(((args.rate * 1024 * 1024) / (pkt_size * 8)) / 100) * 100
-
+if pps_rate < 1:
+    pps_rate = 1
 packet_count = 1
 dly = granularity / 2 / pps_rate
 delta_change = 1 / pps_rate
@@ -64,27 +65,26 @@ print("UDP target port:", UDP_PORT)
 print("Rate = {} Hz".format(pps_rate))
 print("Rate = {} Mbps".format(args.rate))
 SEQ_ROLL_OVER = pow(2, 64)
-
+pkt_count = 0
 while True:
-    # Sequence rollover will never happen. At 1million pkts / s
-    # it would still take a million years
-    #myinetx.sequence = (myinetx.sequence + 1) % SEQ_ROLL_OVER
-    myinetx.sequence += 1
 
-    sock.sendto(myinetx.pack(), (UDP_IP, UDP_PORT))
+    # Faster way to build an inetx packet instead of packing the whole header
+    mypayload = packet_payload[:8] + struct.pack(">I", pkt_count) + packet_payload[12:]
+    pkt_count += 1
+    sock.sendto(mypayload, (UDP_IP, UDP_PORT))
     if packet_count % granularity == 0:
         # Report some information
         data_vol = packet_count * pkt_size * 8
         rate = data_vol / (time.time() - st) / 1000 / 1000
         pps = packet_count / (time.time() - st)
         if packet_count % pps_rate == 0:
-            print("Rate = {:.0f} Mbps {:.0f} pps".format(rate, pps))
+            print("Rate = {:.0f} Mbps {:.0f} pps Dly={:.6f}".format(rate, pps, dly))
         # Tweak the delay so we converge to the required pps
         if rate > args.rate:
             dly += delta_change
-        elif rate < args.rate:
+        elif rate < args.rate and dly > 0:
             dly -= delta_change
-        if dly >= 0:
+        if dly > 0:
             time.sleep(dly)
     packet_count += 1
 
