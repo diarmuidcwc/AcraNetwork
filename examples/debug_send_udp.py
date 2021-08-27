@@ -55,8 +55,8 @@ pps_rate = int(((args.rate * 1024 * 1024) / (pkt_size * 8)) / 100) * 100
 if pps_rate < 1:
     pps_rate = 1
 packet_count = 1
-dly = granularity / 2 / pps_rate
-delta_change = 1 / pps_rate
+dly = float(granularity) / pps_rate
+delta_change = 10.0 / pps_rate
 
 st = time.time()
 
@@ -64,6 +64,8 @@ print("UDP target IP:", UDP_IP)
 print("UDP target port:", UDP_PORT)
 print("Rate = {} Hz".format(pps_rate))
 print("Rate = {} Mbps".format(args.rate))
+print("DLY = {} s".format(dly))
+
 SEQ_ROLL_OVER = pow(2, 64)
 pkt_count = 0
 while True:
