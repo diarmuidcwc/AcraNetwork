@@ -9,7 +9,7 @@ Send UDP packets at a specific rate
 """
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
@@ -25,7 +25,7 @@ import socket
 
 parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
 parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Mbps")
-parser.add_argument('--ipaddress',required=False, type=str, default="192.168.0.26", help="Destination ?IP")
+parser.add_argument('--ipaddress',required=False, type=str, default="192.168.0.26", help="Destination IP")
 args = parser.parse_args()
 
 # simple application that tests building and sending of iena and inetx packets
