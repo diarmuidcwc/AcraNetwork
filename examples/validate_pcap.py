@@ -15,14 +15,20 @@ import time
 import logging
 import argparse
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)-6'
+                                               'ls'
+                                               ''
+                                               ''
+                                               ''
+                                               's %(asctime)-15s %(message)s')
 
 
 def create_parser():
     # Argument parser
     parser = argparse.ArgumentParser(description='Validate inetx sequence numbers quickly in a pcap file')
     # Common
-    parser.add_argument('--port',  type=int, required=False, default=8888, help='UDP port to listen to')
     parser.add_argument('--dir',  type=str, required=True, default=None, help='directory to parser for pcap files')
     parser.add_argument('--verbose', required=False, action='store_true', default=False,    help="verbose mode")
     parser.add_argument('--control', type=int, required=False, default=0x11000000, help='control field value')
@@ -33,30 +39,33 @@ def create_parser():
 # recorder data
 # tcpdump -i eth0 -W 999 -C 1000 -n -K -s 2000 -w rec.pcap.
 
+
 def main(args):
     roll_over = pow(2, 32)
 
     # Find all the files and sort by extension
     all_files = glob.glob(os.path.join(args.dir, "*.pcap*"))
-    all_files.sort(key=lambda f: os.path.splitext(f)[1])
+    all_files.sort()
 
     # For recording the data
     stream_ids = {}
     inetx_pkts_validate = 0
     data_count_bytes = 0
     start_t = time.time()
+    loss_count = 0
 
-    for file in all_files:
-        p = pcap.Pcap(file)
-        for r in p:
+    for pfile in all_files:
+        p = pcap.Pcap(pfile)
+        for i, r in enumerate(p):
             if len(r.payload) >= (18+0x24):  # For short packets don't try to decode them as inets
                 # pull out the key fields
                 (dst_port, udp_len, checksum, control, stream_id, seq) = struct.unpack_from(">HHHIII", r.payload, 0x24)
-
-                if dst_port == args.port and control == args.control:
+                if control == args.control:
                     if stream_id in stream_ids:
                         if seq != (stream_ids[stream_id] + 1) % roll_over:
-                            print("ERROR: Sequence number drop on streamID={:#0X} Prev={} Cur={}".format(stream_id, stream_ids[stream_id], seq))
+                            loss = seq - ((stream_ids[stream_id] + 1) % roll_over)
+                            logging.error("File={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(pfile, i, stream_id, stream_ids[stream_id], seq, loss))
+                            loss_count += loss
                     stream_ids[stream_id] = seq
                     inetx_pkts_validate += 1
                     data_count_bytes += len(r.payload)
@@ -64,10 +73,12 @@ def main(args):
         # The data rate at which we are validating
         dr = data_count_bytes * 60/(1e6 * (time.time() - start_t))
 
-        print("{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {}".format(inetx_pkts_validate, dr,
-                                                                                         data_count_bytes/1e6, file))
+        sids = ""
         for s in stream_ids:
-            print("Found StreamID={:#0X}".format(s))
+            sids += "{:#05X} ".format(s)
+        logging.info("{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {} Lost={} IDs={}".format(
+            inetx_pkts_validate, dr,  data_count_bytes/1e6, pfile, loss_count, sids))
+
 
 if __name__ == '__main__':
     parser = create_parser()

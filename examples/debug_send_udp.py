@@ -54,7 +54,7 @@ myinetx.setPacketTime(int(time.time()))
 packet_payload = myinetx.pack()
 pkt_size = len(packet_payload) + 8 + 20 + 14
 
-granularity = 50
+granularity = 100
 packet_count = 1
 dly = granularity / 2/ args.rate
 delta_change = 1 / args.rate
