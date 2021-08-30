@@ -34,8 +34,8 @@ class PcapRecord(object):
     def __init__(self):
         self.sec = 0 #: Second timestamp of the record. Epoch time
         self.usec = 0 #: Microsecond timestamp of the record
-        self.incl_len = None #: The number of bytes captured and saved in the file
-        self.orig_len = None #: The number of bytesas appearded on the network when captured
+        self.incl_len = None  #: The number of bytes captured and saved in the file
+        self.orig_len = None  #: The number of bytesas appearded on the network when captured
         self._packet = None
 
     # Use a property on packet so that the length is triggered on it changing
@@ -44,7 +44,7 @@ class PcapRecord(object):
         """
         The payload within the pcap record. Payload is more accurate
 
-        :rtype: str
+        :rtype: bytes
         """
         return self._packet
 
@@ -59,7 +59,7 @@ class PcapRecord(object):
         """
         The payload within the pcap record.
         
-        :rtype: str
+        :rtype: bytes
         """
         return self._packet
 
@@ -73,7 +73,7 @@ class PcapRecord(object):
         """
         Unpack the pcap header. Pass in a buffer containing the header
         
-        :type buf: str
+        :type buf: bytes
         """
 
         if struct.calcsize(Pcap.RECORD_HEADER_FORMAT) != len(buf):
@@ -84,7 +84,7 @@ class PcapRecord(object):
         """
         Pack a PcapRecord into a buffer
         
-        :rtype: str
+        :rtype: bytes
         
         """
         if self.sec is None or self.usec is None or self.incl_len is None or self.orig_len is None or self.packet is None:
@@ -211,7 +211,6 @@ class Pcap(object):
     def flush(self):
         return self.fopen.flush()
 
-
     def readGlobalHeader(self):
         warnings.warn("This method is no longer required", DeprecationWarning)
         pass
@@ -274,7 +273,6 @@ class Pcap(object):
         self.fopen.close()
 
     def readAPacket(self):
-
         warnings.warn("Replace with the iterator", PendingDeprecationWarning)
         return next(self)
 

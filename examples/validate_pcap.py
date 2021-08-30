@@ -66,7 +66,7 @@ def main(args):
                     data_count_bytes += len(r.payload)
 
         # The data rate at which we are validating
-        dr = data_count_bytes * 60/(1e6 * (time.time() - start_t))
+        dr = data_count_bytes/(1e6 * (time.time() - start_t))
 
         sids = ""
         for s in stream_ids:
