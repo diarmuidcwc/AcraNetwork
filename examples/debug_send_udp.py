@@ -22,10 +22,12 @@ import struct
 import AcraNetwork.iNetX as inetx
 import argparse
 import socket
+import random
 
 parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
 parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Mbps")
 parser.add_argument('--ipaddress',required=False, type=str, default="192.168.0.26", help="Destination IP")
+parser.add_argument('--sidcount',required=False, type=int, default=1, help="number of stream ids to send")
 args = parser.parse_args()
 
 # simple application that tests building and sending of iena and inetx packets
@@ -41,22 +43,24 @@ myinetx = inetx.iNetX()
 
 payload = struct.pack(">H",0xa5)
 
-myinetx.inetxcontrol = inetx.iNetX.DEF_CONTROL_WORD
-myinetx.pif = 0
-myinetx.streamid = 0xdc
-myinetx.sequence = 0
-myinetx.payload = payload * 715
-myinetx.setPacketTime(int(time.time()))
-packet_payload = myinetx.pack()
-pkt_size = len(packet_payload) + 8 + 20 + 14
+payload_pkts = []
+for idx in range(args.sidcount):
+    myinetx.inetxcontrol = inetx.iNetX.DEF_CONTROL_WORD
+    myinetx.pif = 0
+    myinetx.streamid = 0xdc00 + idx
+    myinetx.sequence = 0
+    myinetx.payload = payload * random.randint(20, 715)
+    myinetx.setPacketTime(int(time.time()))
+    packet_payload = myinetx.pack()
+    payload_pkts.append(packet_payload)
 
-granularity = 100
-pps_rate = int(((args.rate * 1024 * 1024) / (pkt_size * 8)) / 100) * 100
+granularity = 20
+pps_rate = int(((args.rate * 1024 * 1024) / (350 * 8)) / 100) * 100
 if pps_rate < 1:
     pps_rate = 1
 packet_count = 1
 dly = float(granularity) / pps_rate
-delta_change = 10.0 / pps_rate
+delta_change = 5.0 / pps_rate
 
 st = time.time()
 
@@ -67,12 +71,17 @@ print("Rate = {} Mbps".format(args.rate))
 print("DLY = {} s".format(dly))
 
 SEQ_ROLL_OVER = pow(2, 64)
-pkt_count = 0
-while True:
+pkt_count = {}
+for pay in payload_pkts:
+    len_pay = len(pay) + 8 + 20 + 14
+    pkt_count[len_pay] = 0
 
+while True:
+    random_payload = random.choice(payload_pkts)
+    pkt_size = len(random_payload) + 8 + 20 + 14
     # Faster way to build an inetx packet instead of packing the whole header
-    mypayload = packet_payload[:8] + struct.pack(">I", pkt_count) + packet_payload[12:]
-    pkt_count += 1
+    mypayload = random_payload[:8] + struct.pack(">I", pkt_count[pkt_size]) + random_payload[12:]
+    pkt_count[pkt_size] += 1
     sock.sendto(mypayload, (UDP_IP, UDP_PORT))
     if packet_count % granularity == 0:
         # Report some information
