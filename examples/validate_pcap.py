@@ -53,8 +53,16 @@ def main(args):
     loss_count = 0
 
     for pfile in all_files:
+        # To calculate the rate per pcap
+        first_pcap_time = None
+        last_pcap_time = None
+        packet_data_vol = 0
         p = pcap.Pcap(pfile)
         for i, r in enumerate(p):
+            if first_pcap_time is None:
+                first_pcap_time = r.sec + r.usec * 1e-6
+            last_pcap_time = r.sec + r.usec * 1e-6
+            packet_data_vol += len(r.payload)
             if len(r.payload) >= (18+0x24):  # For short packets don't try to decode them as inetx
                 # pull out the key fields
                 (dst_port, udp_len, checksum, control, stream_id, seq) = struct.unpack_from(">HHHIII", r.payload, 0x24)
@@ -76,10 +84,15 @@ def main(args):
                     data_count_bytes += len(r.payload)
 
         # The data rate at which we are validating
-        dr = data_count_bytes/(1e6 * (time.time() - start_t))
+        dr = (data_count_bytes * 8)/(1e6 * (time.time() - start_t))
+        try:
+            ave_rec_rate_mbps = (packet_data_vol * 8) /(last_pcap_time - first_pcap_time) / 1e6
+        except:
+            ave_rec_rate_mbps = 0
         sids_found = len(stream_ids)
-        info_str = "{} packets validated at {:.0f}MB/s. Total_data={:.1f}MB Completed file {} Lost={} StreamsFound={}".format(
-            inetx_pkts_validate, dr,  data_count_bytes/1e6, pfile, loss_count, sids_fo)
+        info_str = "{} packets validated. Total_data={:.1f}MB Completed file {} Lost={} StreamsFound={} " \
+                   "RecRate={:.1f}Mbps ValRate={:.1f}Mbps".format(inetx_pkts_validate,  data_count_bytes/1e6, pfile, loss_count, sids_found,
+                                       ave_rec_rate_mbps, dr)
         if loss_count > 0:
             logging.error(info_str)
         else:
