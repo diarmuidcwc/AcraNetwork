@@ -9,7 +9,7 @@ Send UDP packets at a specific rate
 """
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
-__version__ = "0.0.3"
+__version__ = "0.0.5"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
@@ -23,6 +23,9 @@ import AcraNetwork.iNetX as inetx
 import argparse
 import socket
 import random
+import threading
+import queue
+
 
 parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
 parser.add_argument('--rate',required=False, type=int, default=1, help="Packet rate in Mbps")
@@ -35,32 +38,50 @@ args = parser.parse_args()
 UDP_IP = args.ipaddress
 UDP_PORT = 4444
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def send_to_network(dataq):
+    """
+
+    :type dataq: queue.Queue
+    :return:
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setblocking(True)
+    while True:
+        payload = dataq.get(block=True, timeout=5)
+        sock.sendto(payload, (UDP_IP, UDP_PORT))
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 #sock.mcast_add(UDP_IP)
 
 # Create an inetx packet
 myinetx = inetx.iNetX()
 
 payload = struct.pack(">H",0xa5)
-
-payload_pkts = []
+sockets = {}
+payload_pkts = {}
+bsid = random.randint(0x0, 0xFF) << 8
 for idx in range(args.sidcount):
     myinetx.inetxcontrol = inetx.iNetX.DEF_CONTROL_WORD
     myinetx.pif = 0
-    myinetx.streamid = 0xdc00 + idx
+    myinetx.streamid = bsid + idx
     myinetx.sequence = 0
-    myinetx.payload = payload * random.randint(20, 715)
+    myinetx.payload = payload * int(715 * random.betavariate(3,1))
+    print("Sid={:#0X} Len={}".format(myinetx.streamid, len(myinetx.payload)))
     myinetx.setPacketTime(int(time.time()))
     packet_payload = myinetx.pack()
-    payload_pkts.append(packet_payload)
+    payload_pkts[myinetx.streamid] = {'payload': packet_payload, 'length': len(packet_payload) + 8 + 20 + 14}
+    pkt_len = len(packet_payload) + 8 + 20 + 14
 
-granularity = 20
+
+granularity = 1000
 pps_rate = int(((args.rate * 1024 * 1024) / (350 * 8)) / 100) * 100
 if pps_rate < 1:
     pps_rate = 1
 packet_count = 1
-dly = float(granularity) / pps_rate
-delta_change = 5.0 / pps_rate
+data_vol = 0
+dly_ms = int((float(granularity) * 1e3) / pps_rate)
+delta_change_ms = 1
 
 st = time.time()
 
@@ -68,35 +89,38 @@ print("UDP target IP:", UDP_IP)
 print("UDP target port:", UDP_PORT)
 print("Rate = {} Hz".format(pps_rate))
 print("Rate = {} Mbps".format(args.rate))
-print("DLY = {} s".format(dly))
+print("DLY = {} ms".format(dly_ms))
 
 SEQ_ROLL_OVER = pow(2, 64)
 pkt_count = {}
-for pay in payload_pkts:
-    len_pay = len(pay) + 8 + 20 + 14
-    pkt_count[len_pay] = 0
+for sid in payload_pkts.keys():
+    pkt_count[sid] = 0
 
 while True:
-    random_payload = random.choice(payload_pkts)
-    pkt_size = len(random_payload) + 8 + 20 + 14
+    random_sid = bsid + (packet_count % args.sidcount)
+    #random_sid = random.randint(0, args.sidcount-1) + bsid
+    random_payload = payload_pkts[random_sid]["payload"]
     # Faster way to build an inetx packet instead of packing the whole header
-    mypayload = random_payload[:8] + struct.pack(">I", pkt_count[pkt_size]) + random_payload[12:]
-    pkt_count[pkt_size] += 1
+    mypayload = random_payload[:8] + struct.pack(">I", pkt_count[random_sid]) + random_payload[12:]
+    pkt_count[random_sid] += 1
+    #payloadq.put(mypayload)
     sock.sendto(mypayload, (UDP_IP, UDP_PORT))
+    data_vol += (payload_pkts[random_sid]["length"] * 8)
     if packet_count % granularity == 0:
         # Report some information
-        data_vol = packet_count * pkt_size * 8
-        rate = data_vol / (time.time() - st) / 1000 / 1000
-        pps = packet_count / (time.time() - st)
-        if packet_count % pps_rate == 0:
-            print("Rate = {:.0f} Mbps {:.0f} pps Dly={:.6f}".format(rate, pps, dly))
+        ct = time.time()
+        rate = data_vol / (ct - st) / 1000 / 1000
+        pps = int(packet_count // (ct - st))
+        error_val = int(abs(rate - args.rate))
+        if packet_count % (granularity * 10) == 0:
+            print("Rate = {:5.0f} Mbps {:6d} pps Dly={:4d}ms Error={:4d}".format(rate, pps, dly_ms, error_val))
         # Tweak the delay so we converge to the required pps
         if rate > args.rate:
-            dly += delta_change
-        elif rate < args.rate and dly > 0:
-            dly -= delta_change
-        if dly > 0:
-            time.sleep(dly)
+            dly_ms += (delta_change_ms * error_val)
+        elif rate < args.rate and dly_ms > 0:
+            dly_ms -= (delta_change_ms * error_val)
+        if dly_ms > 0:
+            time.sleep(dly_ms/1e3)
     packet_count += 1
 
 
