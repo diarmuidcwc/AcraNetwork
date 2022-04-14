@@ -308,21 +308,21 @@ class PDFR(object):
         return True
 
     def check_offsets(self, act_offset):
-        if act_offset != self.ptdp_offset:
+        if (act_offset != self.ptdp_offset) and (self.ptdp_offset != 2047):
             ch7_logger.error(
                 "Offset of unpacked PTDP packet ({}) does not match the declared offset ({})".format(
                     act_offset, self.ptdp_offset))
-        else:
+        elif (self.ptdp_offset != 2047):
             ch7_logger.debug(
                 "Offset of unpacked PTDP packet ({}) matches the declared offset ({})".format(
                     act_offset, self.ptdp_offset))
 
-    def get_aligned_payload(self, remainder=None):
+    def get_aligned_payload(self, first_PTFR, remainder=None):
         """
         Return the payload as PTDP packets with the final partial payload
-        The remainder is the bytes from the end of the previous PTFR. IF this is the middle of a 
+        The remainder is the bytes from the end of the previous PTFR. IF this is the middle of a
         capture set it to None so that false positive messages about offsets is triggered
-        
+
         :type remainder: bytes
         :param remainder: Optional partial payload from previous frame
         :rtype: Tuple[PTDP, bytes, str]
@@ -340,6 +340,10 @@ class PDFR(object):
         elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x7ff:
             buf = self.payload[self.ptdp_offset:]
             ch7_logger.debug("No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf)))
+        elif remainder is None:
+            buf =  self.payload
+            ch7_logger.debug("Buffer length={}. Ignoring offset={} Remainder undefined".format(
+                len(buf), self.ptdp_offset))
         else:
             buf = remainder + self.payload
             ch7_logger.debug("Buffer length={}. Ignoring offset={} Remainder length={}".format(
@@ -381,8 +385,11 @@ class PDFR(object):
                 elif not is_llp:
                     byte_offset += len(p)
 
-                # Pass the low latency flag
+
+                # set the low latency flag on the current packet now we know if we are at the end of the LLP sequence.
                 p.low_latency = is_llp
+
+
                 if is_llp:  # If this is a low latency packet
                     # Remove the last byte
                     (next_llp, ) = struct.unpack_from(">B", buf)
@@ -393,12 +400,16 @@ class PDFR(object):
                         byte_offset += (len(p) + 1)
                     else:
                         is_llp = False
-                        if remainder == bytes() and self.ptdp_offset > 0:
+                        #if ((remainder == bytes()) or first_PTFR)  and self.ptdp_offset > 0:
+                        if ( ((remainder == bytes()) and self.ptdp_offset > 0) or first_PTFR):
                             ch7_logger.debug( "LLP Packets extracted, jumping to offset")
                             buf = self.payload[self.ptdp_offset:]
                             do_offset_check = False
                             byte_offset = self.ptdp_offset
                             offset_check_count = 1
+                        elif remainder is None:
+                            buf =  buf[1:]
+                            byte_offset += (len(p) + 1)
                         else:
                             buf = remainder + buf[1:]  # The remainder is only added after all the llp packets are removed
                             byte_offset += (len(p) + 1 - len(remainder))

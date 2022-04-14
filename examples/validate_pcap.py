@@ -87,14 +87,21 @@ def main(args):
         outf = ""
 
         if is_url:
+            CHUNK = 32 * 1024
             if not os.path.exists(tmp_folder):
                 mkdir(tmp_folder, 0o755)
             outf = os.path.join(tmp_folder , fnames[pfile])
             sd = time.time()
             with urlopen(pfile) as response, open(outf, 'wb') as out_file:
-                data = response.read()
-                out_file.write(data)
-                dlspeed = len(data) * 8 / (time.time() - sd) / 1e6
+                data_len = 0
+                while True:
+                    chunk = response.read(CHUNK)
+                    if not chunk:
+                        break
+                    data_len += len(chunk)
+                    out_file.write(chunk)
+
+                dlspeed = data_len * 8 / (time.time() - sd) / 1e6
                 logging.info("Downloaded {} at {:.1f}Mbps and wrote to {}".format(pfile, dlspeed, outf))
             p = pcap.Pcap(outf)
         else:
