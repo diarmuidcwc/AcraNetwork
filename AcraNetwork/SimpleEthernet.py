@@ -17,6 +17,7 @@ __status__ = "Production"
 import struct
 import socket
 import array
+from zlib import crc32
 
 
 def unpack48(x):
@@ -151,7 +152,7 @@ class Ethernet(object):
         if buf is not None:
             self.unpack(buf)
 
-    def unpack(self, buf):
+    def unpack(self, buf, fcs=False):
         """
         Unpack a raw byte stream to an Ethernet object
 
@@ -163,10 +164,18 @@ class Ethernet(object):
         self.dstmac = unpack48(buf[:6])
         self.srcmac = unpack48(buf[6:12])
         (self.type,) = struct.unpack_from('>H',buf,12)
+        if fcs:
+            self.payload = buf[Ethernet.HEADERLEN:-4]
+            _fcs_buf = buf[-4:]
+            exp_crc = crc32(buf[:-4])
+            (act_crc,) = struct.unpack("I", _fcs_buf)
+            if exp_crc != act_crc:
+                raise Exception("FCS is wrong. Exo={:#0X} Act={:#0X}".format(exp_crc, act_crc))
+        else:
         self.payload = buf[Ethernet.HEADERLEN:]
         return True
 
-    def pack(self):
+    def pack(self, fcs=False):
         """
         Pack the Ethernet object into a buffer
         
@@ -179,6 +188,11 @@ class Ethernet(object):
             header = struct.pack('>HIHIHHH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), Ethernet.TYPE_VLAN, self.vlantag, self.type)
         else:
             header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), self.type)
+
+        if fcs:
+            _crc = crc32(header + self.payload) & 0xffffffff
+            return header + self.payload + struct.pack("I", _crc)
+        else:
         return header + self.payload
 
     def __repr__(self):
@@ -264,7 +278,7 @@ class IP(object):
             raise ValueError("Buffer too short for to be an IP packet")
         (na1, self.dscp, self.len, self.id, self.flags, na3, self.ttl, self.protocol, checksum, self.srcip, self.dstip) \
             = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
-        self.fragment_offset = ((self.flags & 0x1f) << 8) + na3
+        self.fragment_offset = (((self.flags & 0x1f) << 8) + na3) * 8 
         self.flags = self.flags >> 5
         self.version = na1 >> 4
         self.ihl = na1 & 0xf

@@ -36,4 +36,6 @@
 # 0.15.6 - Optimisations on Golay encoding
 # 0.15.7 - Minor updates
 # 0.15.8 - Traffic generator update
-__version__ = '0.15.9'
+# 0.15.10 - Traffic generator update
+# 0.15.11 - Added FCS Support to ethernet packets
+__version__ = '0.15.11'
