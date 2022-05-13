@@ -38,4 +38,5 @@
 # 0.15.8 - Traffic generator update
 # 0.15.10 - Traffic generator update
 # 0.15.11 - Added FCS Support to ethernet packets
-__version__ = '0.15.11'
+# 0.15.12 - Indentation bugfix
+__version__ = '0.15.12'
