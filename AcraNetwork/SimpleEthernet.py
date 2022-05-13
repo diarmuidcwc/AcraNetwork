@@ -172,7 +172,7 @@ class Ethernet(object):
             if exp_crc != act_crc:
                 raise Exception("FCS is wrong. Exo={:#0X} Act={:#0X}".format(exp_crc, act_crc))
         else:
-        self.payload = buf[Ethernet.HEADERLEN:]
+            self.payload = buf[Ethernet.HEADERLEN:]
         return True
 
     def pack(self, fcs=False):
@@ -193,7 +193,7 @@ class Ethernet(object):
             _crc = crc32(header + self.payload) & 0xffffffff
             return header + self.payload + struct.pack("I", _crc)
         else:
-        return header + self.payload
+            return header + self.payload
 
     def __repr__(self):
         return "SRCMAC={} DSTMAC={} TYPE={:#0X}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type)
