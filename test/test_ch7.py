@@ -117,7 +117,6 @@ class TestRealEthernet(unittest.TestCase):
         p.sort_stats('cumtime')
         #p.print_stats()
 
-
     pkts_sent = []
     @staticmethod
     def eth_gen(count, low_latency_pkts=None, size_mult=128):
@@ -230,10 +229,6 @@ class TestRealEthernet(unittest.TestCase):
                         eth_p = bytes()
                     ptdp_idx += 1
         self.assertEqual(pkt_count, 20)
-
-
-                    #self.assertEqual(0, p.length % 128)
-                    #self.assertTrue(p.length <= 1024)
         pf.close()
 
     def test_llc(self):
