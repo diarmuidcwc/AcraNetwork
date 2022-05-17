@@ -54,6 +54,20 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(e, e2)
         self.assertEqual("SRCMAC=00:00:00:00:00:01 DSTMAC=01:80:C2:00:00:01 TYPE=0X8808", repr(e))
 
+    def test_ethernet_fcs(self):
+        e = SimpleEthernet.Ethernet()
+        e.type = SimpleEthernet.Ethernet.TYPE_IP
+        e.dstmac = 0x0180c2000001
+        e.srcmac = 0x1
+        e.payload = struct.pack(">HH", 0x1, 0x2)
+        ex_fcs = struct.pack(">I", 0x6ed798bf)
+        self.assertEqual(e.pack(fcs=True)[-4:], ex_fcs)
+        e2 = SimpleEthernet.Ethernet()
+        e2.unpack(e.pack(fcs=True), fcs=True)
+        self.assertEqual(e, e2)
+
+
+
     ######################
     # IP
     ######################
