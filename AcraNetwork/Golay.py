@@ -15,10 +15,7 @@ __status__ = "Production"
 
 # This is a direct porting of the C code from the IRIG106 starndard.
 import struct
-import pickle
-import os.path
-from tempfile import gettempdir
-
+from functools import lru_cache
 
 GOLAY_SIZE = 0x1000
 
@@ -43,26 +40,20 @@ class Golay():
         self.CorrectTable = [0] * GOLAY_SIZE
         self.ErrorTable = [0] * GOLAY_SIZE
 
+    
     @staticmethod
+    @lru_cache()
     def _init_Table():
-        pfname = os.path.join(gettempdir(), ".EncodeTable_{}.pickle".format(GOLAY_SIZE))
-        if os.path.exists(pfname):
-            ef = open(pfname, "rb")
-            EncodeTable = pickle.load(ef)
-            ef.close()
-        else:
-            EncodeTable = [0] * GOLAY_SIZE
-            for x in range(GOLAY_SIZE):
-                EncodeTable[x] = (x << 12)
-                for i in range(12):
-                    if (x >> (11 - i) & 1):
-                        EncodeTable[x] ^= G_P[i]
-            ef = open(pfname, mode='wb')
-            pickle.dump(EncodeTable, ef)
-            ef.close()
+        EncodeTable = [0] * GOLAY_SIZE
+        for x in range(GOLAY_SIZE):
+            EncodeTable[x] = (x << 12)
+            for i in range(12):
+                if (x >> (11 - i) & 1):
+                    EncodeTable[x] ^= G_P[i]
 
         return EncodeTable
 
+    @lru_cache(maxsize=20)
     def encode(self, raw, as_string=False):
         """
         Encode the value as a 24b code
@@ -79,7 +70,8 @@ class Golay():
             return struct.pack(">BH", encoded >> 16, encoded & 0xFFFF)
         else:
             return encoded
-
+            
+    @lru_cache(maxsize=20)
     def decode(self, encoded):
         """
         Decode a 24b number as a golay
@@ -131,39 +123,24 @@ class Golay():
 
         return ret
 
+    @lru_cache()
     def _initgolaydecode(self):
+        for x in range(GOLAY_SIZE):
+            self.SyndromeTable[x] = 0
+            for i in range(12):
+                if ( x >> (11-i)) & 1:
+                    self.SyndromeTable[x] ^= H_P[i]
+                    self.ErrorTable[x] = 4
+                    self.CorrectTable[x] = 0xFFF
 
-        sdf = os.path.join(gettempdir(), ".SyndromeTable_{}.pickle".format(GOLAY_SIZE))
-        erf = os.path.join(gettempdir(), ".ErrorTable_{}.pickle".format(GOLAY_SIZE))
-        ctf = os.path.join(gettempdir(), ".CorrectTable_{}.pickle".format(GOLAY_SIZE))
-        
-        if os.path.exists(sdf) and os.path.exists(erf) and os.path.exists(ctf):
-            for (f, att) in [(sdf, 'SyndromeTable'), (erf, 'ErrorTable'), (ctf, 'CorrectTable')]:
-                of = open(f, "rb")
-                setattr(self, att, pickle.load(of))
-                of.close()
-        else:
-            for x in range(GOLAY_SIZE):
-                self.SyndromeTable[x] = 0
-                for i in range(12):
-                    if ( x >> (11-i)) & 1:
-                        self.SyndromeTable[x] ^= H_P[i]
-                        self.ErrorTable[x] = 4
-                        self.CorrectTable[x] = 0xFFF
-
-            self.ErrorTable[0] = 0
-            self.CorrectTable[0] = 0
-            for i in range(24):
-                for j in range(24):
-                    for k in range(24):
-                        error = (1 << i) | (1 << j) | (1 << k)
-                        syndrom = self._syndrome(error)
-                        self.CorrectTable[syndrom] = (error >> 12) & 0xfff
-                        self.ErrorTable[syndrom] = Golay._onesincode(error, 24)
-            # Write it out to a cache
-            for (f, att) in [(sdf, 'SyndromeTable'), (erf, 'ErrorTable'), (ctf, 'CorrectTable')]:
-                of = open(f, mode='wb')
-                pickle.dump(getattr(self, att), of)
-                of.close()
+        self.ErrorTable[0] = 0
+        self.CorrectTable[0] = 0
+        for i in range(24):
+            for j in range(24):
+                for k in range(24):
+                    error = (1 << i) | (1 << j) | (1 << k)
+                    syndrom = self._syndrome(error)
+                    self.CorrectTable[syndrom] = (error >> 12) & 0xfff
+                    self.ErrorTable[syndrom] = Golay._onesincode(error, 24)
 
         return True

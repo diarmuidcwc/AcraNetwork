@@ -39,4 +39,6 @@
 # 0.15.10 - Traffic generator update
 # 0.15.11 - Added FCS Support to ethernet packets
 # 0.15.12 - Indentation bugfix
-__version__ = '0.15.12'
+# 0.15.13 - Renamed PDFR to PTFR
+# 0.15.14 - Massive perf improvements with Golay handling
+__version__ = '0.15.14'

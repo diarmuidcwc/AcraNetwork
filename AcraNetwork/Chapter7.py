@@ -54,47 +54,47 @@ class PTDPRemainingData(Exception):
     pass
 
 
-def _new_pdfr(pdfr_len, streamid=0x1):
-    """Return a new PDFR object initialised with some useful values"""
-    pdfr = PDFR()
-    pdfr.length = pdfr_len
-    pdfr.streamid = streamid
-    return pdfr
+def _new_ptfr(ptfr_len, streamid=0x1, golay=Golay.Golay()):
+    """Return a new PTFR object initialised with some useful values"""
+    ptfr = PTFR(golay)
+    ptfr.length = ptfr_len
+    ptfr.streamid = streamid
+    return ptfr
 
 
-def datapkts_to_pdfr(eth_ch10_packets, pdfr_len=500, streamid=0x1):
+def datapkts_to_ptfr(eth_ch10_packets, ptfr_len=500, streamid=0x1, golay=Golay.Golay()):
     """
     Generator that will take a generator for ethernet packet aligned payloads
     and return the PTFRs encapsulating the payload
 
     :type eth_ch10_packets: collections.Iterable[bytes, bool]
-    :param pdfr_len: Length of the PDFR frame
-    :type pdfr_len: int
-    :rtype: collections.Iterable[PDFR]
+    :param ptfr_len: Length of the PTFR frame
+    :type ptfr_len: int
+    :rtype: collections.Iterable[PTFR]
     """
     # Create a new frame
-    pdfr = _new_pdfr(pdfr_len, streamid)
+    ptfr = _new_ptfr(ptfr_len, streamid, golay)
     for ptdp in datapkts_to_ptdp(eth_ch10_packets):
         # Encapsulate the data in PTDP packets
-        # Add the payload to the PDFR frame. IF we get a remainder then this from is full
-        remainder = pdfr.add_payload(ptdp.pack(), ptdp.low_latency)
+        # Add the payload to the PTFR frame. IF we get a remainder then this from is full
+        remainder = ptfr.add_payload(ptdp.pack(), ptdp.low_latency)
         while remainder != bytes():
             # Spit out the full frame
-            yield pdfr
+            yield ptfr
             # Create anew frame
-            pdfr = _new_pdfr(pdfr_len, streamid)
-            # Maybe the  PTFP is bigger than one frame, then split it across PDFRs.
-            while len(remainder) > pdfr_len:
-                pdfr.ptdp_offset = 0x3ff  # Signifies that we have all PTDP payload
-                pdfr.add_payload(remainder[:pdfr_len])
-                yield pdfr  # Frame is full
-                remainder = remainder[pdfr_len:]  # If we have more data then save it for the next frame
-                pdfr = _new_pdfr(pdfr_len, streamid)
+            ptfr = _new_ptfr(ptfr_len, streamid, golay)
+            # Maybe the  PTFP is bigger than one frame, then split it across PTFRs.
+            while len(remainder) > ptfr_len:
+                ptfr.ptdp_offset = 0x3ff  # Signifies that we have all PTDP payload
+                ptfr.add_payload(remainder[:ptfr_len])
+                yield ptfr  # Frame is full
+                remainder = remainder[ptfr_len:]  # If we have more data then save it for the next frame
+                ptfr = _new_ptfr(ptfr_len, streamid, golay)
 
             # Point to the first offset of the frame.
-            pdfr.ptdp_offset = len(remainder)
+            ptfr.ptdp_offset = len(remainder)
             #Add the PTDS to the frame
-            remainder = pdfr.add_payload(remainder)
+            remainder = ptfr.add_payload(remainder)
 
 
 def datapkts_to_ptdp(eth_ch10_packets):
@@ -139,13 +139,14 @@ def datapkts_to_ptdp(eth_ch10_packets):
 
 
 class PTDP(object):
-    def __init__(self):
+    def __init__(self, golay=Golay.Golay()):
         self.payload = ""
         self.low_latency = False
         self.length = 0
         self.content = PTDP_CONTENT_FILL
         self.fragment = PTDP_FRAGMENT_COMPLETE
         self._payload = ""
+        self._golay = golay
 
     @property
     def payload(self):
@@ -164,12 +165,11 @@ class PTDP(object):
 
         :rtype: bytes
         """
-        g = Golay.Golay()
         self.length = len(self.payload)
         msw = self.length & 0xFFF
         lsw = (self.length >> 12) + (self.fragment << 4) + (self.content << 6)
 
-        return g.encode(lsw, as_string=True) + g.encode(msw, as_string=True) + self.payload
+        return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload
 
     def unpack(self, buffer):
         """
@@ -182,9 +182,8 @@ class PTDP(object):
         if len(buffer) < 6:
             raise PTDPRemainingData("Can't unpack less than the header length")
 
-        g = Golay.Golay()
-        lsw = g.decode(buffer[:3])
-        msw = g.decode(buffer[3:6])
+        lsw = self._golay.decode(buffer[:3])
+        msw = self._golay.decode(buffer[3:6])
 
         self.length = msw + ((lsw & 0xF) << 12)
         self.fragment = (lsw >> 4) & 0x3
@@ -218,14 +217,19 @@ class PTDP(object):
             self.length, PTDP_CONTENT_TEXT[self.content], PTDP_FRAGMENT_TEXT[self.fragment], self.low_latency)
 
 
-class PDFR(object):
-    def __init__(self):
+class PTFR(object):
+    """
+    Object to represent the PTFR frame
+    Pass in a Golay object as creation of one is expensive so sharing and caching speeds things up a lot
+    """
+    def __init__(self, golay=Golay.Golay()):
         self.version = 0x0
         self.streamid = 0x0
         self.llp = False
         self.ptdp_offset = 0x0
         self.length = 0
         self._payload = bytes()
+        self._golay = golay
 
     @property
     def payload(self):
@@ -273,25 +277,24 @@ class PDFR(object):
 
     def pack(self):
         """
-        Convert a PDFR object into a string for transmission. This will return the packed string and the remainder string
+        Convert a PTFR object into a string for transmission. This will return the packed string and the remainder string
         for any partial ptdp packet
 
-        :param previous_partial: If we have some partial data from the previous PDFR packet, add it here
+        :param previous_partial: If we have some partial data from the previous PTFR packet, add it here
         :rtype: (bytes, bytes)
         """
         if len(self.payload) != self.length:
             raise Exception("Payload length does not match the length field")
 
         buffer = struct.pack(">B", self.version + (self.streamid << 4))
-        g = Golay.Golay()
-        buffer += g.encode(self.ptdp_offset + (self.llp << 11), as_string=True)
+        buffer += self._golay.encode(self.ptdp_offset + (self.llp << 11), as_string=True)
         buffer += self.payload
 
         return buffer
 
     def unpack(self, buffer):
         """
-        Convert the PTFR data from one minor frame into a PDFR object
+        Convert the PTFR data from one minor frame into a PTFR object
         :param buffer:
         :return:
         """
@@ -299,8 +302,7 @@ class PDFR(object):
         self.version = byte_ & 0x3
         self.streamid = (byte_ >> 4) & 0xF
         # Protected field
-        g = Golay.Golay()
-        protected_field = g.decode(buffer[1:4])
+        protected_field = self._golay.decode(buffer[1:4])
         self.llp = bool((protected_field >> 11) & 0x1)
         self.ptdp_offset = protected_field & 0x7FF
         self.payload = buffer[4:]
@@ -358,7 +360,7 @@ class PDFR(object):
         do_offset_check = True
         offset_check_count = 0
         while aligned:
-            p = PTDP()
+            p = PTDP(self._golay)
             try:
                 buf = p.unpack(buf)
             except PTDPLengthError as e:
@@ -419,7 +421,7 @@ class PDFR(object):
                 yield (p, bytes(), "")
 
     def __eq__(self, other):
-        if not isinstance(other, PDFR):
+        if not isinstance(other, PTFR):
             return False
 
         for attr in ["version", "streamid", "llp", "ptdp_offset", "payload"]:
