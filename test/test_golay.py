@@ -67,11 +67,11 @@ class GolayProfile(unittest.TestCase):
         #p.print_stats()
 
     def test_profile(self):
-
-        for val in range(100, 120):
+        g = Golay.Golay()
+        g2 = Golay.Golay()
+        for val in range(100, 2000):
             #val = 100
-            g = Golay.Golay()
-            g2 = Golay.Golay()
+            
             #print("{:0X}".format(g2.decode(g.encode(raw))))
             self.assertEqual(val, g2.decode(g.encode(val)))
         # Original implementation

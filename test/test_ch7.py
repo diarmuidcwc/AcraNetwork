@@ -30,7 +30,7 @@ def buf_generator(count, llp_count=0):
 class TestCaseCh7(unittest.TestCase):
 
     def test_basic(self):
-        ch7_pkt = ch7.PDFR()
+        ch7_pkt = ch7.PTFR()
         ch7_pkt.length = 132
         ch7_pkt.llp = 0
         remainder = bytes()
@@ -47,13 +47,13 @@ class TestCaseCh7(unittest.TestCase):
         ch7_pkt_copy = copy.deepcopy(ch7_pkt)
         self.assertTrue(ch7_pkt==ch7_pkt_copy)
 
-        ch7_unpack = ch7.PDFR()
+        ch7_unpack = ch7.PTFR()
         ch7_unpack.length = 132
         self.assertTrue(ch7_unpack.unpack(buf))
         self.assertTrue(ch7_unpack==ch7_pkt)
 
     def test_partial_fill(self):
-        ch7_pkt = ch7.PDFR()
+        ch7_pkt = ch7.PTFR()
         ch7_pkt.length = 140
         ch7_pkt.llp = 0
         remainder = bytes()
@@ -65,7 +65,7 @@ class TestCaseCh7(unittest.TestCase):
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
             #print("Packet added")
         buf = ch7_pkt.pack()
-        ch7_unpack = ch7.PDFR()
+        ch7_unpack = ch7.PTFR()
         ch7_unpack.length = 140
         self.assertTrue(ch7_unpack.unpack(buf))
         #print(repr(ch7_pkt))
@@ -90,13 +90,13 @@ class TestGenerators(unittest.TestCase):
             #print(repr(ptdp_pkt))
             self.assertIsInstance(ptdp_pkt, ch7.PTDP)
 
-    def test_pdfr_geenerator(self):
+    def test_ptfr_geenerator(self):
         remainder = bytes()
-        for pdfr in ch7.datapkts_to_pdfr(buf_generator(5), pdfr_len=200):
-            #print(repr(pdfr))
-            ch7_pkt = ch7.PDFR()
+        for ptfr in ch7.datapkts_to_ptfr(buf_generator(5), ptfr_len=200):
+            #print(repr(ptfr))
+            ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 800
-            ch7_pkt.unpack(pdfr.pack())
+            ch7_pkt.unpack(ptfr.pack())
             for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
@@ -168,10 +168,10 @@ class TestRealEthernet(unittest.TestCase):
         remainder = bytes()
         eth_p = bytes()
         pkt_count = 1
-        for pdfr in ch7.datapkts_to_pdfr(TestRealEthernet.eth_gen(3), pdfr_len=200):
-            ch7_pkt = ch7.PDFR()
+        for ptfr in ch7.datapkts_to_ptfr(TestRealEthernet.eth_gen(3), ptfr_len=200):
+            ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 200
-            ch7_pkt.unpack(pdfr.pack())
+            ch7_pkt.unpack(ptfr.pack())
             for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
@@ -201,15 +201,15 @@ class TestRealEthernet(unittest.TestCase):
         ptfr_idx = 0
         ptdp_idx = 0
         pkt_size_mult = 16
-        for pdfr in ch7.datapkts_to_pdfr(TestRealEthernet.eth_gen(20, low_latency_pkts=[2, 4, 10], size_mult=8), pdfr_len=400):
-            ch7_pkt = ch7.PDFR()
+        for ptfr in ch7.datapkts_to_ptfr(TestRealEthernet.eth_gen(20, low_latency_pkts=[2, 4, 10], size_mult=8), ptfr_len=400):
+            ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 400
-            ch7_pkt.unpack(pdfr.pack())
+            ch7_pkt.unpack(ptfr.pack())
             #b = open("gen_llp_{}.bin".format(ptfr_idx), mode="wb")
             ptfr_idx += 1
-            #b.write(pdfr.pack())
+            #b.write(ptfr.pack())
             #b.close()
-            #print(repr(pdfr))
+            #print(repr(ptfr))
             for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
@@ -229,7 +229,7 @@ class TestRealEthernet(unittest.TestCase):
                         pf.write(r)
                         eth_p = bytes()
                     ptdp_idx += 1
-        self.assertEqual(pkt_count, 20)
+        self.assertEqual(pkt_count, 11)
 
 
                     #self.assertEqual(0, p.length % 128)
@@ -247,7 +247,7 @@ class TestRealEthernet(unittest.TestCase):
             ptfr_data = f.read()
             f.close()
 
-            ch7_pkt = ch7.PDFR()
+            ch7_pkt = ch7.PTFR()
             ch7_pkt.length = len(ptfr_data)
             eth_p = b""
             ch7_pkt.unpack(ptfr_data)
@@ -265,7 +265,7 @@ class TestRealEthernet(unittest.TestCase):
                         fill_count += 1
         #print("{} {} {}".format(llc_count, fill_count, mac_count))
         self.assertEqual(4, llc_count)
-        self.assertEqual(166, fill_count)
+        self.assertEqual(164, fill_count)
         self.assertEqual(4, mac_count)
 
 if __name__ == '__main__':
