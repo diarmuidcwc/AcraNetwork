@@ -164,6 +164,8 @@ def main(args):
     for s in sorted(stream_ids):
         logging.info("{:#07X} {:9d} {:9d} {:9d}".format(s, stream_ids[s], reset_count[s], packet_lengths[s]))
 
+    print("\nSUMMARY: RXPKTS={} RXBYTES={} LOSTPKTS={}".format(inetx_pkts_validate, data_count_bytes, loss_count))
+
 
 if __name__ == '__main__':
     parser = create_parser()
