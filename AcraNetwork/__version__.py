@@ -41,4 +41,6 @@
 # 0.15.12 - Indentation bugfix
 # 0.15.13 - Renamed PDFR to PTFR
 # 0.15.14 - Massive perf improvements with Golay handling
-__version__ = '0.15.14'
+# 0.15.15 - Added summary to the recorder
+# 0.15.16 - Added summary to validation script
+__version__ = '0.15.16'

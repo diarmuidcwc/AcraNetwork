@@ -2,11 +2,10 @@
 
 from distutils.core import setup
 import shutil
+from AcraNetwork.__version__ import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
-
-exec(open('AcraNetwork/__version__.py').read())
 
 setup(name='AcraNetwork',
       version=__version__,
