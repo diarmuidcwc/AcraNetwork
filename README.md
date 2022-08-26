@@ -54,5 +54,7 @@ for mypcaprecord in mypcap:
 
 #To Make a Distribution
 ```
-python setup.py sdist bdist_wininst upload
+pip  install --upgrade pip wheel setuptools twine
+python ./setup.py bdist_wheel
+twine upload dist/*
 ```
