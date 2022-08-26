@@ -154,8 +154,7 @@ def main(args):
             for s in sorted(stream_ids):
                 logging.info("{:#07X} {:9d} {:9d} {:9d}".format(s, stream_ids[s], reset_count[s], packet_lengths[s]))
         if is_url and loss == 0:
-            pass
-            #remove(outf)
+            remove(outf)
         elif is_url and not args.verbose:
             remove(outf)
 

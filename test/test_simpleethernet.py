@@ -245,5 +245,40 @@ class SimpleEthernetTest(unittest.TestCase):
         af2 = SimpleEthernet.AFDX()
         af2.unpack(b)
         self.assertTrue(af == af2)
+
+    def test_igmp(self):
+        #https://www.cloudshark.org/captures/b2e93fcea0c2
+        exp_b = struct.pack(">HHHHHHHH", 0x2200, 0xe338, 0x0, 0x1, 0x400, 0x0, 0xefc3, 0x702)
+        act_b = SimpleEthernet.IGMPv3.join_groups(["239.195.7.2"])
+        self.assertEqual(exp_b, act_b)
+        exp_b = struct.pack(">6I", 0x2200f33c, 0x2, 0x2000000, 0xefc30702, 0x2000000, 0xeffffffa)
+        act_b = SimpleEthernet.IGMPv3.join_groups(["239.195.7.2", "239.255.255.250"])
+        self.assertEqual(exp_b, act_b)
+
+    def test_writeIGMP(self):
+
+        p = pcap.Pcap("_igmp.pcap",mode='w')
+        r = pcap.PcapRecord()
+        act_b = SimpleEthernet.IGMPv3.join_groups(["239.195.7.2", "239.255.255.250"])
+
+        e = SimpleEthernet.Ethernet()
+        e.srcmac = 0x001122334455
+        e.dstmac = SimpleEthernet.IGMPv3.MAC_ADDR[SimpleEthernet.IGMPv3.IP_ADDR_JOIN]
+        e.type = SimpleEthernet.Ethernet.TYPE_IP
+
+        i = SimpleEthernet.IP()
+        i.dstip = SimpleEthernet.IGMPv3.IP_ADDR_JOIN
+        i.srcip = "192.168.1.1"
+        i.protocol = SimpleEthernet.IP.PROTOCOLS["IGMP"]
+        FCS_LEN = 4
+        pad_len = 64 - (len(act_b) + SimpleEthernet.Ethernet.HEADERLEN + SimpleEthernet.IP.IP_HEADER_SIZE + FCS_LEN)
+        i.payload = act_b + struct.pack(f">{pad_len}B", *([0] * pad_len))
+        e.payload = i.pack()
+        r.packet = e.pack(fcs=True)
+        p.write(r)
+        p.close()
+
+
+
 if __name__ == '__main__':
     unittest.main()
