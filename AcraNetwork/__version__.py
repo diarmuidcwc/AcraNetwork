@@ -43,4 +43,5 @@
 # 0.15.14 - Massive perf improvements with Golay handling
 # 0.15.15 - Added summary to the recorder
 # 0.15.16 - Added summary to validation script
-__version__ = '0.15.16'
+# 0.15.17 - Added IGMPv2 simplified packet generation
+__version__ = '0.15.17'

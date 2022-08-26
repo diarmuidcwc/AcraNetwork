@@ -16,7 +16,7 @@ __status__ = "Production"
 
 import struct
 import socket
-import array
+from functools import reduce
 from zlib import crc32
 
 
@@ -181,7 +181,6 @@ class Ethernet(object):
         
         :rtype: bytes
         """
-
         if self.dstmac == None or self.srcmac == None or self.type == None or self.payload == None:
             raise ValueError("All three required Ethernet fields are not complete")
         if self.vlan:
@@ -207,6 +206,7 @@ class Ethernet(object):
                 return False
 
         return True
+
 
 class IP(object):
     """
@@ -565,3 +565,69 @@ class ICMP(object):
 
     def unpack(self, buffer):
         raise NotImplementedError("Not implemented")
+
+
+MOD = 1 << 16
+
+
+def ones_comp_add16(num1,num2):
+    result = num1 + num2
+    return result if result < MOD else (result+1) % MOD
+
+
+class IGMPv3(object):
+    """
+    Simplified IGMP
+    """
+    TYPE_QUERY = 0x11
+    TYPE_MEMBERSHIP_REPORT = 0x22
+    TYPE_REC_CHG_TO_EXCL_MODE = 4
+    TYPE_REC_MODE_IS_EXCLUDE = 2
+
+    IP_ADDR_QUERY = "224.0.0.1"
+    IP_ADDR_JOIN = "224.0.0.22"
+    MAC_ADDR = {IP_ADDR_QUERY: 0x1005e000001, IP_ADDR_JOIN: 0x1005e000016}
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def membership_query():
+        """
+        Return a membership query
+        :return:
+        """
+        query_type = 0x11
+        max_resp_time_2p4s = 0x18
+        cksum = 0xecd3
+        mc_addr = "0.0.0.0"
+        sts = 0x2
+        qqic = 0x20
+        num_src = 0x0
+        return struct.pack(">BBH", query_type, max_resp_time_2p4s, cksum) + \
+                socket.inet_aton(mc_addr) + struct.pack(">BBH", sts, qqic, num_src)
+
+    @staticmethod
+    def join_groups(groups):
+        """
+        Join the specified groups
+        :param groups:
+        :return: bytes
+        """
+        if len(groups) == 1:
+           mode = IGMPv3.TYPE_REC_CHG_TO_EXCL_MODE
+        else:
+            mode = IGMPv3.TYPE_REC_MODE_IS_EXCLUDE
+
+        _nochecksum = struct.pack(">BBHHH", IGMPv3.TYPE_MEMBERSHIP_REPORT, 0, 0, 0, len(groups))
+        for _g in groups:
+            _nochecksum += struct.pack(">BBH", mode, 0, 0) + socket.inet_aton(_g)
+
+        all_16b_wds = struct.unpack(f">{len(_nochecksum)//2}H", _nochecksum)
+        checksum = ~reduce(ones_comp_add16, all_16b_wds) & 0xFFFF
+        return _nochecksum[:2] + struct.pack(">H", checksum) + _nochecksum[4:]
+
+
+
+
+
