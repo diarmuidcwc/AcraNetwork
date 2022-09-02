@@ -71,6 +71,7 @@ def main(args):
     # For recording the data
     stream_ids = {}
     reset_count = {}
+    lost_sid_count = {}
     packet_lengths = {}
     inetx_pkts_validate = 0
     data_count_bytes = 0
@@ -126,8 +127,10 @@ def main(args):
                                 logging.error("File={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
                                     pfile, i, stream_id, stream_ids[stream_id], seq, loss))
                                 loss_count += loss
+                                lost_sid_count[stream_id] += loss
                     if stream_id not in reset_count:
                         reset_count[stream_id] = 0
+                        lost_sid_count[stream_id] = 0
                         packet_lengths[stream_id]  = len(r.payload)
                     stream_ids[stream_id] = seq
                     inetx_pkts_validate += 1
@@ -150,18 +153,18 @@ def main(args):
             logging.info(info_str)
         if args.verbose:
             if len(stream_ids) > 0:
-                logging.info("{:>7s} {:>9s} {:>9s} {:>9s}".format("SID", "Seq", "RstCnt", "Length"))
+                logging.info("{:>7s} {:>9s} {:>9s} {:>9s} {:>9s}".format("SID", "Seq", "LostCount", "ResetCnt", "Length"))
             for s in sorted(stream_ids):
-                logging.info("{:#07X} {:9d} {:9d} {:9d}".format(s, stream_ids[s], reset_count[s], packet_lengths[s]))
+                logging.info("{:#07X} {:9d} {:9d} {:9d} {:9d}".format(s, stream_ids[s], lost_sid_count[s], reset_count[s], packet_lengths[s]))
         if is_url and loss == 0:
             remove(outf)
         elif is_url and not args.verbose:
             remove(outf)
 
     if len(stream_ids) > 0:
-        logging.info("{:>7s} {:>9s} {:>9s}".format("SID", "Seq", "RstCnt", "Length"))
+        logging.info("{:>7s} {:>9s} {:>9s} {:>9s} {:>9s}".format("SID", "Seq", "LostCount", "ResetCnt", "Length"))
     for s in sorted(stream_ids):
-        logging.info("{:#07X} {:9d} {:9d} {:9d}".format(s, stream_ids[s], reset_count[s], packet_lengths[s]))
+        logging.info("{:#07X} {:9d} {:9d} {:9d} {:9d}".format(s, stream_ids[s],  lost_sid_count[s], reset_count[s], packet_lengths[s]))
 
     print("\nSUMMARY: RXPKTS={} RXBYTES={} LOSTPKTS={}".format(inetx_pkts_validate, data_count_bytes, loss_count))
 

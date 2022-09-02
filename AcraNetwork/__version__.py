@@ -44,4 +44,5 @@
 # 0.15.15 - Added summary to the recorder
 # 0.15.16 - Added summary to validation script
 # 0.15.17 - Added IGMPv2 simplified packet generation
+# 0.15.18 - Updated validate and pkt generation script
 __version__ = '0.15.17'
