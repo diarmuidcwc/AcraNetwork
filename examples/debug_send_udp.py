@@ -57,7 +57,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 # Create an inetx packet
 myinetx = inetx.iNetX()
 
-payload = struct.pack(">H",0xa5)
+payload = struct.pack(">B",0xa5)
 sockets = {}
 payload_pkts = {}
 bsid = random.randint(0x0, 0xFF) << 8
@@ -66,22 +66,23 @@ for idx in range(args.sidcount):
     myinetx.pif = 0
     myinetx.streamid = bsid + idx
     myinetx.sequence = 0
-    myinetx.payload = payload * int(715 * random.betavariate(3,1))
+    myinetx.payload = payload * int(1430 * random.betavariate(3, 1))
     print("Sid={:#0X} Len={}".format(myinetx.streamid, len(myinetx.payload)))
     myinetx.setPacketTime(int(time.time()))
     packet_payload = myinetx.pack()
     payload_pkts[myinetx.streamid] = {'payload': packet_payload, 'length': len(packet_payload) + 8 + 20 + 14}
     pkt_len = len(packet_payload) + 8 + 20 + 14
 
+ave_pkt_len = 1000
 
-granularity = 1000
-pps_rate = int(((args.rate * 1024 * 1024) / (350 * 8)) / 100) * 100
+pps_rate = int(((args.rate * 1024 * 1024) / (ave_pkt_len * 8)) / 100) * 100
 if pps_rate < 1:
     pps_rate = 1
+burst_length = args.rate // 4
 packet_count = 1
 data_vol = 0
-dly_ms = int((float(granularity) * 1e3) / pps_rate)
-delta_change_ms = 1
+dly_ms = int((float(burst_length) * ave_pkt_len) / pps_rate)
+delta_change_ms = 5
 
 st = time.time()
 
@@ -106,21 +107,23 @@ while True:
     #payloadq.put(mypayload)
     sock.sendto(mypayload, (UDP_IP, UDP_PORT))
     data_vol += (payload_pkts[random_sid]["length"] * 8)
-    if packet_count % granularity == 0:
+    if packet_count % burst_length == burst_length-1:
         # Report some information
+        if dly_ms > 0:
+            time.sleep(dly_ms/1e3)
         ct = time.time()
         rate = data_vol / (ct - st) / 1000 / 1000
         pps = int(packet_count // (ct - st))
-        error_val = int(abs(rate - args.rate))
-        if packet_count % (granularity * 10) == 0:
-            print("Rate = {:5.0f} Mbps {:6d} pps Dly={:4d}ms Error={:4d}".format(rate, pps, dly_ms, error_val))
+        #granularity = pps_rate // 10
+        error_val = abs(rate - args.rate)
+        if packet_count % (burst_length*10) == burst_length-1:
+            print("Rate = {:5.1f} Mbps {:6d} pps Dly={:4d}ms Error={:4.1f}".format(rate, pps, dly_ms, error_val))
         # Tweak the delay so we converge to the required pps
         if rate > args.rate:
-            dly_ms += (delta_change_ms * error_val)
+            dly_ms += int(delta_change_ms * error_val)
         elif rate < args.rate and dly_ms > 0:
-            dly_ms -= (delta_change_ms * error_val)
-        if dly_ms > 0:
-            time.sleep(dly_ms/1e3)
+            dly_ms -= int(delta_change_ms * error_val)
+
     packet_count += 1
 
 
