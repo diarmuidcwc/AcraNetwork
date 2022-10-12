@@ -138,7 +138,12 @@ def main(args):
 
         p.close()
         # The data rate at which we are validating
-        dr = (data_count_bytes * 8)/(1e6 * (time.time() - start_t))
+
+        try:
+            dr = (data_count_bytes * 8)/(1e6 * (time.time() - start_t))
+        except:
+            dr = 100
+
         try:
             ave_rec_rate_mbps = (packet_data_vol * 8) /(last_pcap_time - first_pcap_time) / 1e6
         except:
