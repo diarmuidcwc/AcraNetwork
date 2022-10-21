@@ -19,9 +19,10 @@ import json
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from os import mkdir, remove
+import datetime
 
 
-VERSION = "0.1.4"
+VERSION = "0.1.5"
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)-6s %(asctime)-15s %(message)s')
 
@@ -32,6 +33,7 @@ def create_parser():
     # Common
     parser.add_argument('--folder',  type=str, required=True, default=None, help='folder to parser for pcap files. Can be a URL')
     parser.add_argument('--verbose', required=False, action='store_true', default=False,    help="verbose mode")
+    parser.add_argument('--summary', required=False, action='store_true', default=False,    help="only print summaries per file")
     parser.add_argument('--control', type=int, required=False, default=0x11000000, help='control field value')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(VERSION))
 
@@ -85,6 +87,7 @@ def main(args):
         packet_data_vol = 0
         tmp_folder = "httpdl"
         loss = 0
+        floss = 0
         outf = ""
 
         if is_url:
@@ -124,10 +127,12 @@ def main(args):
                                 reset_count[stream_id] += 1
                             else:
                                 loss = seq - ((stream_ids[stream_id] + 1) % roll_over)
-                                logging.error("File={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
-                                    pfile, i, stream_id, stream_ids[stream_id], seq, loss))
+                                if not args.summary:
+                                    logging.error("File={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
+                                        pfile, i, stream_id, stream_ids[stream_id], seq, loss))
                                 loss_count += loss
                                 lost_sid_count[stream_id] += loss
+                                floss += loss
                     if stream_id not in reset_count:
                         reset_count[stream_id] = 0
                         lost_sid_count[stream_id] = 0
@@ -135,7 +140,6 @@ def main(args):
                     stream_ids[stream_id] = seq
                     inetx_pkts_validate += 1
                     data_count_bytes += len(r.payload)
-
         p.close()
         # The data rate at which we are validating
 
@@ -149,9 +153,10 @@ def main(args):
         except:
             ave_rec_rate_mbps = 0
         sids_found = len(stream_ids)
-        info_str = "{} packets validated. Total_data={:.0f}MB Completed file {} Lost={} StreamsFound={} " \
-                   "RecordRate={:.0f}Mbps ValRate={:.0f}Mbps".format(inetx_pkts_validate,  data_count_bytes/1e6, pfile, loss_count, sids_found,
-                                       ave_rec_rate_mbps, dr)
+        file_stamp = datetime.datetime.fromtimestamp(first_pcap_time).strftime("%H:%M:%S %d %b")
+        info_str = f"In {os.path.basename(pfile)} starting at {file_stamp}, {inetx_pkts_validate:10} packets validated. " \
+                   f"Total_data={data_count_bytes/1e6:8.0f}MB  Lost={floss:5} StreamsFound={sids_found:5} " \
+                   f"RecordRate={ave_rec_rate_mbps:5.0f}Mbps ValRate={dr:5.0f}Mbps"
         if loss > 0:
             logging.error(info_str)
         else:
