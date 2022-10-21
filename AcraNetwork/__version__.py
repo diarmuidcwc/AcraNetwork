@@ -46,4 +46,5 @@
 # 0.15.17 - Added IGMPv2 simplified packet generation
 # 0.15.18 - Updated validate and pkt generation script
 # 0.15.19 - Fixed divide by error in validate_pcap script
-__version__ = '0.15.19'
+# 0.15.20 - Updated tx script to be much more accurate with timing
+__version__ = '0.15.20'
