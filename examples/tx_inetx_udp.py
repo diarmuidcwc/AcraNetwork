@@ -7,10 +7,24 @@
 =====
 
 Send UDP packets at a specific rate
+This can be customised by providing an ini file. Format:
+
+[inetxpayloadlength]
+min=1300
+max=1400
+[randomisation]
+#distribution=uniform
+distribution=beta
+alpha=3
+beta=1
+[tweaks]
+packetbuildtime=0.0000070
+
+
 """
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
@@ -26,6 +40,23 @@ import argparse
 import socket
 import random
 import signal
+import configparser
+from collections import namedtuple
+
+ConfigSetting = namedtuple("ConfigSetting", ['min', 'max', 'dist', 'alpha', 'beta', 'buildtime'])
+
+
+def get_default_settings(configfile: str) -> ConfigSetting:
+    config = configparser.ConfigParser()
+    config.read(configfile)
+    min = int(config.get('inetxpayloadlength', 'min', fallback='64'))
+    max = int(config.get('inetxpayloadlength', 'max', fallback='1400'))
+    dist = (config.get('randomisation', 'distribution', fallback='uniform'))
+    alpha = float(config.get('randomisation', 'alpha', fallback='3.0'))
+    beta = float(config.get('randomisation', 'beta', fallback='1.0'))
+    buildtime = float(config.get('tweaks', 'packetbuildtime', fallback='0.0000070'))
+    print(f"Payload Length= {min} to {max}, Distribution={dist} (alpha={alpha} beta={beta}) Tweak={buildtime}")
+    return ConfigSetting(min, max, dist, alpha, beta, buildtime)
 
 
 def create_parser():
@@ -33,6 +64,7 @@ def create_parser():
     parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
     parser.add_argument('--rate', required=False, type=int, default=1, help="Packet rate in Mbps")
     parser.add_argument('--ipaddress', required=False, type=str, default="192.168.0.26", help="Destination IP")
+    parser.add_argument('--config', required=False, type=str, default="", help="Destination IP")
     parser.add_argument('--sidcount', required=False, type=int, default=1, help="number of stream ids to send")
 
     return parser
@@ -47,6 +79,7 @@ def accurate_sleep(duration, get_now=time.perf_counter):
 
 def main(args):
     dst_udp_port = 4444
+    cfg = get_default_settings(args.config)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     # Create an inetx packet
@@ -59,7 +92,7 @@ def main(args):
     PREAMBLE = 8
     hdr_lens = eth.UDP.UDP_HEADER_SIZE + eth.IP.IP_HEADER_SIZE + eth.Ethernet.HEADERLEN + FCS_LEN + PREAMBLE
 
-    tx_pkt_overhead = 0.0000070
+    tx_pkt_overhead = cfg.buildtime
 
     total_vol_data = 0
     for idx in range(args.sidcount):
@@ -67,8 +100,10 @@ def main(args):
         myinetx.pif = 0
         myinetx.streamid = bsid + idx
         myinetx.sequence = 0
-        #myinetx.payload = struct.pack(">B", idx+1) * int(1430 * random.betavariate(3, 1))
-        myinetx.payload = struct.pack(">B", idx+1) * random.randint(1200, 1400)
+        if cfg.dist == "uniform":
+            myinetx.payload = struct.pack(">B", idx+1) * int((cfg.max - cfg.min) * random.betavariate(cfg.alpha, cfg.beta) + cfg.min)
+        else:
+            myinetx.payload = struct.pack(">B", idx+1) * random.randint(cfg.min, cfg.max)
 
         myinetx.setPacketTime(int(time.time()))
         packet_payload = myinetx.pack()
