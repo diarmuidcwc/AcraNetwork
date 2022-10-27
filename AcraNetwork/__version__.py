@@ -48,4 +48,5 @@
 # 0.15.19 - Fixed divide by error in validate_pcap script
 # 0.15.20 - Updated tx script to be much more accurate with timing
 # 0.15.21 - Added configparsed file for contol
-__version__ = '0.15.21'
+# 0.15.22 - Added timestamp to packets in validation script
+__version__ = '0.15.22'

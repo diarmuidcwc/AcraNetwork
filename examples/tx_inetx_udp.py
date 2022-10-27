@@ -62,9 +62,10 @@ def get_default_settings(configfile: str) -> ConfigSetting:
 def create_parser():
     # Argument parser
     parser = argparse.ArgumentParser(description='Send iNetX packets at a specified rate')
-    parser.add_argument('--rate', required=False, type=int, default=1, help="Packet rate in Mbps")
+    parser.add_argument('--rate', required=False, type=float, default=1.0, help="Packet rate in Mbps")
     parser.add_argument('--ipaddress', required=False, type=str, default="192.168.0.26", help="Destination IP")
     parser.add_argument('--config', required=False, type=str, default="", help="Destination IP")
+    parser.add_argument('--datavol', required=False, type=int, default=None, help="Stop after specified bytes")
     parser.add_argument('--sidcount', required=False, type=int, default=1, help="number of stream ids to send")
 
     return parser
@@ -100,7 +101,7 @@ def main(args):
         myinetx.pif = 0
         myinetx.streamid = bsid + idx
         myinetx.sequence = 0
-        if cfg.dist == "uniform":
+        if cfg.dist == "beta":
             myinetx.payload = struct.pack(">B", idx+1) * int((cfg.max - cfg.min) * random.betavariate(cfg.alpha, cfg.beta) + cfg.min)
         else:
             myinetx.payload = struct.pack(">B", idx+1) * random.randint(cfg.min, cfg.max)
@@ -136,7 +137,7 @@ def main(args):
     vol_data_sent = 0
 
     def signal_handler(*args):
-        print(f"Exiting. Sent {packet_count} packets and {vol_data_sent} bytes")
+        print(f"Exiting. Sent {packet_count:>12,} packets and {vol_data_sent:>15,} bytes")
         sys.exit()
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -154,7 +155,10 @@ def main(args):
         packet_count += 1
         if packet_count % (pps * 30) == 0:
             run_sec += 30
-            print(f"After {run_sec:8} seconds : {packet_count:12} packets sent. {vol_data_sent:18,} bytes send")
+            print(f"After {run_sec:>8} seconds : {packet_count:>12,} packets sent. {vol_data_sent:>18,} bytes send")
+            if args.datavol is not None:
+                if vol_data_sent > args.datavol:
+                    signal_handler()
 
 
 if __name__ == '__main__':

@@ -79,6 +79,7 @@ def main(args):
     data_count_bytes = 0
     start_t = time.time()
     loss_count = 0
+    total_pkt_count = 0
 
     for pfile in all_files:
         # To calculate the rate per pcap
@@ -115,12 +116,14 @@ def main(args):
                 first_pcap_time = r.sec + r.usec * 1e-6
             last_pcap_time = r.sec + r.usec * 1e-6
             packet_data_vol += len(r.payload)
-            if len(r.payload) >= (18+0x24):  # For short packets don't try to decode them as inetx
+            total_pkt_count += 1
+            if len(r.payload) >= (26+0x24):  # For short packets don't try to decode them as inetx
                 # pull out the key fields
-                (dst_port, udp_len, checksum, control, stream_id, seq) = struct.unpack_from(">HHHIII", r.payload, 0x24)
+                (dst_port, udp_len, checksum, control, stream_id, seq, _len, ptpsec) = struct.unpack_from(">HHHIIIII", r.payload, 0x24)
                 if control == args.control:
                     if stream_id in stream_ids:
                         if seq != (stream_ids[stream_id] + 1) % roll_over:
+                            pkt_ts = datetime.datetime.fromtimestamp(r.sec + r.usec * 1e-6).strftime("%H:%M:%S.%f %d %b")
                             if seq < stream_ids[stream_id]:
                                 logging.warning("Source Restarted. File={} PktNum={} StreamID={:#0X} PrevSeq={} "
                                                 "CurSeq={}".format(pfile, i, stream_id, stream_ids[stream_id], seq, ))
@@ -128,8 +131,8 @@ def main(args):
                             else:
                                 loss = seq - ((stream_ids[stream_id] + 1) % roll_over)
                                 if not args.summary:
-                                    logging.error("File={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
-                                        pfile, i, stream_id, stream_ids[stream_id], seq, loss))
+                                    logging.error("File={} TS={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
+                                        pfile, pkt_ts, i, stream_id, stream_ids[stream_id], seq, loss))
                                 loss_count += loss
                                 lost_sid_count[stream_id] += loss
                                 floss += loss
@@ -176,7 +179,7 @@ def main(args):
     for s in sorted(stream_ids):
         logging.info("{:#07X} {:9d} {:9d} {:9d} {:9d}".format(s, stream_ids[s],  lost_sid_count[s], reset_count[s], packet_lengths[s]))
 
-    print("\nSUMMARY: RXPKTS={} RXBYTES={} LOSTPKTS={}".format(inetx_pkts_validate, data_count_bytes, loss_count))
+    print(f"\nSUMMARY: RXPKTS={total_pkt_count:>15,} RXINETX={inetx_pkts_validate:>15,} RXBYTES={data_count_bytes:>15,} LOSTPKTS={loss_count:>15,}")
 
 
 if __name__ == '__main__':
