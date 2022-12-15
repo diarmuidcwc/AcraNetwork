@@ -272,7 +272,7 @@ class SimpleEthernetTest(unittest.TestCase):
         i.protocol = SimpleEthernet.IP.PROTOCOLS["IGMP"]
         FCS_LEN = 4
         pad_len = 64 - (len(act_b) + SimpleEthernet.Ethernet.HEADERLEN + SimpleEthernet.IP.IP_HEADER_SIZE + FCS_LEN)
-        i.payload = act_b + struct.pack(f">{pad_len}B", *([0] * pad_len))
+        i.payload = act_b + struct.pack(">{}B".format(pad_len), *([0] * pad_len))
         e.payload = i.pack()
         r.packet = e.pack(fcs=True)
         p.write(r)

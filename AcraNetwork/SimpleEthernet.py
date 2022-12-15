@@ -167,7 +167,7 @@ class Ethernet(object):
         if fcs:
             self.payload = buf[Ethernet.HEADERLEN:-4]
             _fcs_buf = buf[-4:]
-            exp_crc = crc32(buf[:-4])
+            exp_crc = crc32(buf[:-4]) & 0xffffffff
             (act_crc,) = struct.unpack("I", _fcs_buf)
             if exp_crc != act_crc:
                 raise Exception("FCS is wrong. Exo={:#0X} Act={:#0X}".format(exp_crc, act_crc))
@@ -623,7 +623,7 @@ class IGMPv3(object):
         for _g in groups:
             _nochecksum += struct.pack(">BBH", mode, 0, 0) + socket.inet_aton(_g)
 
-        all_16b_wds = struct.unpack(f">{len(_nochecksum)//2}H", _nochecksum)
+        all_16b_wds = struct.unpack(">{}H".format(int(len(_nochecksum)/2)), _nochecksum)
         checksum = ~reduce(ones_comp_add16, all_16b_wds) & 0xFFFF
         return _nochecksum[:2] + struct.pack(">H", checksum) + _nochecksum[4:]
 
