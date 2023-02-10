@@ -147,10 +147,22 @@ def main(args):
             p = pcap.Pcap(outf)
         else:
             p = pcap.Pcap(pfile)
+        prev_rec_ts = None
         for i, r in enumerate(p):
+
             if first_pcap_time is None:
                 first_pcap_time = r.sec + r.usec * 1e-6
+
             last_pcap_time = r.sec + r.usec * 1e-6
+
+            # Do a check on the record timestamp
+            if prev_rec_ts is not None:
+                if prev_rec_ts > last_pcap_time:
+                    delta = prev_rec_ts - last_pcap_time
+                    logging.warning(
+                        f"Record={i + 1} Record timestamp negative jump {delta}s")
+            prev_rec_ts = last_pcap_time
+
             packet_data_vol += len(r.payload)
             total_pkt_count += 1
             if len(r.payload) >= (
@@ -224,9 +236,12 @@ def main(args):
         except:
             ave_rec_rate_mbps = 0
         sids_found = len(stream_ids)
-        file_stamp = datetime.datetime.fromtimestamp(first_pcap_time).strftime(
-            "%H:%M:%S %d %b"
-        )
+        if first_pcap_time is not None:
+            file_stamp = datetime.datetime.fromtimestamp(first_pcap_time).strftime(
+                "%H:%M:%S %d %b"
+            )
+        else:
+            file_stamp = "unknown"
         info_str = (
             f"In {os.path.basename(pfile)} starting at {file_stamp}, {inetx_pkts_validate:10} packets validated. "
             f"Total_data={data_count_bytes/1e6:8.0f}MB  Lost={floss:5} StreamsFound={sids_found:5} "
