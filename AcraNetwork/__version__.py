@@ -50,4 +50,5 @@
 # 0.15.21 - Added configparsed file for contol
 # 0.15.22 - Added timestamp to packets in validation script
 # 0.15.23 - Fixed compatibility with python2 and reduced size of test input
-__version__ = '0.15.23'
+# 0.15.24 - Added rec time check on validate script
+__version__ = '0.15.24'

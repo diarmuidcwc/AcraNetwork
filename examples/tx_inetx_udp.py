@@ -121,6 +121,10 @@ def main(args):
     if gap_per_pkt <= 0:
         gap_per_pkt = 0
 
+    if args.datavol is None:
+        expected_end_time = "unknown"
+    else:
+        expected_end_time = int(args.datavol * 8 / args.rate /60)
     pps = int(args.sidcount * chunk_count_ps)
     print("UDP target IP:", args.ipaddress)
     print("UDP target port:", dst_udp_port)
@@ -155,10 +159,12 @@ def main(args):
         packet_count += 1
         if packet_count % (pps * 30) == 0:
             run_sec += 30
-            print(f"After {run_sec:>8} seconds : {packet_count:>12,} packets sent. {vol_data_sent:>18,} bytes send")
             if args.datavol is not None:
+                expected_end_time = int((args.datavol - vol_data_sent) * 8 /(args.rate * 1e6) / 60)
                 if vol_data_sent > args.datavol:
                     signal_handler()
+            print(f"After {run_sec:>8} seconds : {packet_count:>12,} packets sent. {vol_data_sent:>18,} bytes send."
+                  f"End in {expected_end_time} minutes")
 
 
 if __name__ == '__main__':
