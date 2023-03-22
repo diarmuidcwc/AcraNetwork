@@ -18,6 +18,10 @@ import struct
 import socket
 from functools import reduce
 from zlib import crc32
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def unpack48(x):
@@ -163,16 +167,23 @@ class Ethernet(object):
 
         self.dstmac = unpack48(buf[:6])
         self.srcmac = unpack48(buf[6:12])
-        (self.type,) = struct.unpack_from('>H',buf,12)
+        (_type,) = struct.unpack_from('>H',buf,12)
+        if _type == Ethernet.TYPE_VLAN:
+            self.vlan = True
+            (self.vlantag, self.type) = struct.unpack_from(">HH", buf, 14)
+            hdr_len = Ethernet.HEADERLEN_VLAN
+        else:
+            self.type = _type    
+            hdr_len = Ethernet.HEADERLEN        
         if fcs:
-            self.payload = buf[Ethernet.HEADERLEN:-4]
+            self.payload = buf[hdr_len:-4]
             _fcs_buf = buf[-4:]
             exp_crc = crc32(buf[:-4]) & 0xffffffff
             (act_crc,) = struct.unpack("I", _fcs_buf)
             if exp_crc != act_crc:
                 raise Exception("FCS is wrong. Exo={:#0X} Act={:#0X}".format(exp_crc, act_crc))
         else:
-            self.payload = buf[Ethernet.HEADERLEN:]
+            self.payload = buf[hdr_len:]
         return True
 
     def pack(self, fcs=False):
@@ -195,14 +206,18 @@ class Ethernet(object):
             return header + self.payload
 
     def __repr__(self):
-        return "SRCMAC={} DSTMAC={} TYPE={:#0X}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type)
+        if self.vlan:
+            return "SRCMAC={} DSTMAC={} TYPE={:#0X} VLAN={}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type, self.vlantag)
+        else:
+            return "SRCMAC={} DSTMAC={} TYPE={:#0X}".format(mactoreadable(self.srcmac), mactoreadable(self.dstmac), self.type)
 
     def __eq__(self, other):
         if not isinstance(other, Ethernet):
             return False
 
-        for attr in ["type", "dstmac", "srcmac", "payload"]:
+        for attr in ["type", "dstmac", "srcmac", "payload", "vlan", "vlantag"]:
             if getattr(self, attr) != getattr(other, attr):
+                #print("Attribute {} does not match {}/{}".format(attr,  getattr(self, attr), getattr(other, attr) ))
                 return False
 
         return True

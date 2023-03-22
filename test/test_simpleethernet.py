@@ -7,6 +7,9 @@ import unittest
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -65,6 +68,24 @@ class SimpleEthernetTest(unittest.TestCase):
         e2 = SimpleEthernet.Ethernet()
         e2.unpack(e.pack(fcs=True), fcs=True)
         self.assertEqual(e, e2)
+
+    def test_vlan(self):
+        logging.getLogger('SimpleEthernet').setLevel(logging.DEBUG)
+        e = SimpleEthernet.Ethernet()
+        e.type = SimpleEthernet.Ethernet.TYPE_PAUSE
+        e.vlan = True
+        e.dstmac = 0x0180c2000001
+        e.srcmac = 0x1
+        e.payload = struct.pack(">HH", 0x1, 0x2)
+        e2 = SimpleEthernet.Ethernet()
+        e2.unpack(e.pack())
+        self.assertEqual(e, e2)
+        #p = pcap.Pcap("_vlan.pcap",mode='w')
+        #r = pcap.PcapRecord()
+        #r.setCurrentTime()
+        #r.payload = e.pack()
+        #p.write(r)
+        #p.close()
 
 
 

@@ -51,4 +51,5 @@
 # 0.15.22 - Added timestamp to packets in validation script
 # 0.15.23 - Fixed compatibility with python2 and reduced size of test input
 # 0.15.24 - Added rec time check on validate script
-__version__ = '0.15.24'
+# 0.15.25 - Fixed unpacking of vlan. Expanded SimpleEthernet to handle VLAN more completely
+__version__ = '0.15.25'
