@@ -9,6 +9,7 @@
 import sys
 
 sys.path.append("..")
+sys.path.append(".")
 import AcraNetwork.Pcap as pcap
 import glob
 import os.path
@@ -21,13 +22,57 @@ from urllib.parse import urlparse
 from urllib.request import urlopen
 from os import mkdir, remove
 import datetime
+from dataclasses import dataclass, field
+import typing
 
 
-VERSION = "0.1.6"
+VERSION = "0.2.0"
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)-6s %(asctime)-15s %(message)s"
 )
+
+
+@dataclass
+class Streams:
+    streamid: int
+    sequence: int
+    pkt_count: int
+    start_ts: float
+    end_ts: float
+    dropcnt: int
+    rstcnt: int
+    length: int
+    datavol: int
+    sequence_list: list[int] = field(default_factory=list)
+
+    def pps(self) -> int:
+        return int(self.pkt_count / (self.end_ts - self.start_ts))
+
+    def bitrate(self) -> int:
+        return int(self.length * 8 * self.pkt_count / (self.end_ts - self.start_ts))
+
+    def timelen(self) ->float:
+        return self.end_ts - self.start_ts
+
+    def drops_to_hist(self):
+        bins = 30
+        start_seq = self.sequence - self.pkt_count - self.dropcnt
+        bin_wdth = int((self.sequence - start_seq) / bins)
+        bin_cnt = [0] * bins
+        for i in range(bins):
+            for s in self.sequence_list:
+                #print(f"{i}:{start_seq}:{s}:{bin_wdth}")
+                if (start_seq + bin_wdth * i) <= s < (start_seq + bin_wdth * (i + 1)):
+                    bin_cnt[i] += 1
+        rstring = "|"
+        for cnt in bin_cnt:
+            if cnt == 0:
+                rstring += " "
+            else:
+                rstring += f"{cnt}"
+        rstring += "|"
+        return rstring
 
 
 def create_parser():
@@ -103,10 +148,7 @@ def main(args):
     all_files.sort()
 
     # For recording the data
-    stream_ids = {}
-    reset_count = {}
-    lost_sid_count = {}
-    packet_lengths = {}
+    streams: typing.Dict[int, Streams] = {}
     inetx_pkts_validate = 0
     data_count_bytes = 0
     start_t = time.time()
@@ -166,7 +208,7 @@ def main(args):
             packet_data_vol += len(r.payload)
             total_pkt_count += 1
             if len(r.payload) >= (
-                26 + 0x24
+                26 + 0x28
             ):  # For short packets don't try to decode them as inetx
                 # pull out the key fields
                 (
@@ -178,27 +220,29 @@ def main(args):
                     seq,
                     _len,
                     ptpsec,
-                ) = struct.unpack_from(">HHHIIIII", r.payload, 0x24)
+                    ptpnsec
+                ) = struct.unpack_from(">HHHIIIIII", r.payload, 0x24)
                 if control == args.control:
-                    if stream_id in stream_ids:
-                        if seq != (stream_ids[stream_id] + 1) % roll_over:
+                    if stream_id in streams:
+                        stream = streams[stream_id]
+                        if seq != (stream.sequence + 1) % roll_over:
                             pkt_ts = datetime.datetime.fromtimestamp(
                                 r.sec + r.usec * 1e-6
                             ).strftime("%H:%M:%S.%f %d %b")
-                            if seq < stream_ids[stream_id]:
+                            if seq < stream.sequence:
                                 logging.warning(
                                     "Source Restarted. File={} PktNum={} StreamID={:#0X} PrevSeq={} "
                                     "CurSeq={}".format(
                                         pfile,
                                         i,
                                         stream_id,
-                                        stream_ids[stream_id],
+                                        stream.sequence,
                                         seq,
                                     )
                                 )
-                                reset_count[stream_id] += 1
+                                stream.rstcnt += 1
                             else:
-                                loss = seq - ((stream_ids[stream_id] + 1) % roll_over)
+                                loss = seq - ((stream.sequence + 1) % roll_over)
                                 if not args.summary:
                                     logging.error(
                                         "File={} TS={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
@@ -206,19 +250,24 @@ def main(args):
                                             pkt_ts,
                                             i,
                                             stream_id,
-                                            stream_ids[stream_id],
+                                            stream.sequence,
                                             seq,
                                             loss,
                                         )
                                     )
                                 loss_count += loss
-                                lost_sid_count[stream_id] += loss
+                                stream.dropcnt += loss
+                                stream.sequence_list.append(stream.sequence + 1)
                                 floss += loss
-                    if stream_id not in reset_count:
-                        reset_count[stream_id] = 0
-                        lost_sid_count[stream_id] = 0
-                        packet_lengths[stream_id] = len(r.payload)
-                    stream_ids[stream_id] = seq
+                        stream.sequence = seq
+                        stream.pkt_count += 1
+                        stream.end_ts = ptpsec + ptpnsec/1e9
+                        stream.datavol += len(r.payload)
+                    else:
+                        stream = Streams(stream_id, seq, 1, ptpsec + ptpnsec/1e9,
+                                         ptpsec + ptpnsec/1e6, 0, 0, len(r.payload),
+                                         len(r.payload), [])
+                        streams[stream_id] = stream
                     inetx_pkts_validate += 1
                     data_count_bytes += len(r.payload)
         p.close()
@@ -235,7 +284,7 @@ def main(args):
             )
         except:
             ave_rec_rate_mbps = 0
-        sids_found = len(stream_ids)
+        sids_found = len(streams)
         if first_pcap_time is not None:
             file_stamp = datetime.datetime.fromtimestamp(first_pcap_time).strftime(
                 "%H:%M:%S %d %b"
@@ -252,20 +301,20 @@ def main(args):
         else:
             logging.info(info_str)
         if args.verbose:
-            if len(stream_ids) > 0:
+            if len(streams) > 0:
                 logging.info(
                     "{:>7s} {:>9s} {:>9s} {:>9s} {:>9s}".format(
                         "SID", "Seq", "LostCount", "ResetCnt", "Length"
                     )
                 )
-            for s in sorted(stream_ids):
+            for sid, stream in streams.items():
                 logging.info(
                     "{:#07X} {:9d} {:9d} {:9d} {:9d}".format(
-                        s,
-                        stream_ids[s],
-                        lost_sid_count[s],
-                        reset_count[s],
-                        packet_lengths[s],
+                        sid,
+                        stream.sequence,
+                        stream.dropcnt,
+                        stream.rstcnt,
+                        stream.length,
                     )
                 )
         if is_url and loss == 0:
@@ -273,16 +322,19 @@ def main(args):
         elif is_url and not args.verbose:
             remove(outf)
 
-    if len(stream_ids) > 0:
+    if len(streams) > 0:
         logging.info(
-            "{:>7s} {:>9s} {:>9s} {:>9s} {:>9s}".format(
-                "SID", "Seq", "LostCount", "ResetCnt", "Length"
+            "{:>7s} {:>15s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s}".format(
+                "SID", "Cnt", "LostCount", "ResetCnt", "Length", "PPS", "Mbps", "Time",
+                "DataVol(MB)"
             )
         )
-    for s in sorted(stream_ids):
+    for sid, stream in sorted(streams.items()):
         logging.info(
-            "{:#07X} {:9d} {:9d} {:9d} {:9d}".format(
-                s, stream_ids[s], lost_sid_count[s], reset_count[s], packet_lengths[s]
+            "{:#07X} {:15,d} {:9d} {:9d} {:9d} {:9d} {:9.1f} {:9.1f}  {:9,.1f} {}".format(
+                sid, stream.pkt_count, stream.dropcnt, stream.rstcnt, stream.length,
+                stream.pps(), stream.bitrate()/1e6, stream.timelen(), stream.datavol/1e6,
+                stream.drops_to_hist()
             )
         )
 
