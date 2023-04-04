@@ -65,6 +65,7 @@ def create_parser():
     parser.add_argument('--rate', required=False, type=float, default=1.0, help="Packet rate in Mbps")
     parser.add_argument('--ipaddress', required=False, type=str, default="192.168.0.26", help="Destination IP")
     parser.add_argument('--config', required=False, type=str, default="", help="Destination IP")
+    parser.add_argument('--maxpps', required=False, type=int, default=None, help="Specify a max pps value")
     parser.add_argument('--datavol', required=False, type=int, default=None, help="Stop after specified bytes")
     parser.add_argument('--sidcount', required=False, type=int, default=1, help="number of stream ids to send")
 
@@ -126,6 +127,9 @@ def main(args):
     else:
         expected_end_time = int(args.datavol * 8 / args.rate /60)
     pps = int(args.sidcount * chunk_count_ps)
+    if args.maxpps is not None:
+        if pps > args.maxpps:
+            raise Exception(f"The specified combination has generated a pps of {pps}, creater than {args.maxpps}")
     print("UDP target IP:", args.ipaddress)
     print("UDP target port:", dst_udp_port)
     print("Rate = {} Mbps".format(args.rate))
