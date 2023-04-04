@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 import typing
 
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)-6s %(asctime)-15s %(message)s"
@@ -70,6 +70,8 @@ class Streams:
             if cnt == 0:
                 rstring += " "
             else:
+                if cnt > 9:
+                    cnt = "*"
                 rstring += f"{cnt}"
         rstring += "|"
         return rstring
@@ -108,6 +110,13 @@ def create_parser():
         required=False,
         default=0x11000000,
         help="control field value",
+    )
+    parser.add_argument(
+        "--histogram",
+        required=False,
+        action="store_true",
+        default=False,
+        help="print a rough histogram of where the drops happened",
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s {}".format(VERSION)
@@ -153,6 +162,7 @@ def main(args):
     data_count_bytes = 0
     start_t = time.time()
     loss_count = 0
+    loss_data = 0
     total_pkt_count = 0
 
     for pfile in all_files:
@@ -245,7 +255,7 @@ def main(args):
                                 loss = seq - ((stream.sequence + 1) % roll_over)
                                 if not args.summary:
                                     logging.error(
-                                        "File={} TS={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={}".format(
+                                        "File={} TS={} PktNum={} StreamID={:#0X} PrevSeq={} CurSeq={} Lost={} Lost={:,} bytes".format(
                                             pfile,
                                             pkt_ts,
                                             i,
@@ -253,9 +263,11 @@ def main(args):
                                             stream.sequence,
                                             seq,
                                             loss,
+                                            loss * stream.length
                                         )
                                     )
                                 loss_count += loss
+                                loss_data += (loss * stream.length)
                                 stream.dropcnt += loss
                                 stream.sequence_list.append(stream.sequence + 1)
                                 floss += loss
@@ -293,7 +305,7 @@ def main(args):
             file_stamp = "unknown"
         info_str = (
             f"In {os.path.basename(pfile)} starting at {file_stamp}, {inetx_pkts_validate:10} packets validated. "
-            f"Total_data={data_count_bytes/1e6:8.0f}MB  Lost={floss:5} StreamsFound={sids_found:5} "
+            f"Total_data={data_count_bytes/1e6:8.0f}KB  Lost={floss:5} StreamsFound={sids_found:5} "
             f"RecordRate={ave_rec_rate_mbps:5.0f}Mbps ValRate={dr:5.0f}Mbps"
         )
         if loss > 0:
@@ -321,25 +333,30 @@ def main(args):
             remove(outf)
         elif is_url and not args.verbose:
             remove(outf)
-
+    print("\n")
     if len(streams) > 0:
         logging.info(
-            "{:>7s} {:>15s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s}".format(
-                "SID", "Cnt", "LostCount", "ResetCnt", "Length", "PPS", "Mbps", "Time",
-                "DataVol(MB)"
+            "{:>7s} {:>15s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>18s} {:>12s} {:>12s}".format(
+                "SID", "Cnt", "LostCount", "ResetCnt", "Length", "PPS", "Mbps", "Elapsed Time(s)",
+                "DataVol(MB)", "DropVol(Bytes)"
             )
         )
     for sid, stream in sorted(streams.items()):
+        if args.histogram:
+            _hist = stream.drops_to_hist()
+        else:
+            _hist = ""
         logging.info(
-            "{:#07X} {:15,d} {:9d} {:9d} {:9d} {:9d} {:9.1f} {:9.1f}  {:9,.1f} {}".format(
+            "{:#07X} {:15,d} {:9d} {:9d} {:9d} {:9d} {:9.1f} {:18.1f} {:12,.1f} {:12,d} {}".format(
                 sid, stream.pkt_count, stream.dropcnt, stream.rstcnt, stream.length,
                 stream.pps(), stream.bitrate()/1e6, stream.timelen(), stream.datavol/1e6,
-                stream.drops_to_hist()
+                stream.dropcnt * stream.length, _hist
             )
         )
 
     print(
-        f"\nSUMMARY: RXPKTS={total_pkt_count:>15,} RXINETX={inetx_pkts_validate:>15,} RXBYTES={data_count_bytes:>15,} LOSTPKTS={loss_count:>15,}"
+        f"\nSUMMARY:  RXPKTS={total_pkt_count:>15,}  RXINETX={inetx_pkts_validate:>15,}  "
+        f"RXBYTES={data_count_bytes//1024:>15,.1f} KB LOSTPKTS={loss_count:>15,}  LOSTDATA={loss_data//1024:>15,.1f} KB"
     )
 
 
