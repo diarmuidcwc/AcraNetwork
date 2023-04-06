@@ -42,8 +42,27 @@ import random
 import signal
 import configparser
 from collections import namedtuple
+from dataclasses import dataclass
 
-ConfigSetting = namedtuple("ConfigSetting", ['min', 'max', 'dist', 'alpha', 'beta', 'buildtime'])
+
+ConfigSetting = namedtuple("ConfigSetting", ['min', 'max', 'dist', 'alpha', 'beta', 'buildtime', 'accuratets'])
+
+NANOSECS = int(1e9)
+
+
+@dataclass
+class TS:
+    sec: int
+    nsec: int
+
+    def add(self, gap):
+        ns = int(gap * 1e9)
+        _dlt = self.nsec + ns
+        self.nsec = (_dlt % NANOSECS)
+        self.sec += int(_dlt/NANOSECS)
+
+    def pack(self):
+        return struct.pack(">II", self.sec, self.nsec)
 
 
 def get_default_settings(configfile: str) -> ConfigSetting:
@@ -55,8 +74,9 @@ def get_default_settings(configfile: str) -> ConfigSetting:
     alpha = float(config.get('randomisation', 'alpha', fallback='3.0'))
     beta = float(config.get('randomisation', 'beta', fallback='1.0'))
     buildtime = float(config.get('tweaks', 'packetbuildtime', fallback='0.0000070'))
+    accuratets = int(config.get('tweaks', 'accuratetimestamp', fallback='0'))
     print(f"Payload Length= {min} to {max}, Distribution={dist} (alpha={alpha} beta={beta}) Tweak={buildtime}")
-    return ConfigSetting(min, max, dist, alpha, beta, buildtime)
+    return ConfigSetting(min, max, dist, alpha, beta, buildtime, accuratets)
 
 
 def create_parser():
@@ -97,6 +117,7 @@ def main(args):
     tx_pkt_overhead = cfg.buildtime
 
     total_vol_data = 0
+    timestamp = TS(int(time.time()), 0)
     for idx in range(args.sidcount):
         myinetx.inetxcontrol = inetx.iNetX.DEF_CONTROL_WORD
         myinetx.pif = 0
@@ -107,7 +128,7 @@ def main(args):
         else:
             myinetx.payload = struct.pack(">B", idx+1) * random.randint(cfg.min, cfg.max)
 
-        myinetx.setPacketTime(int(time.time()))
+        myinetx.setPacketTime(timestamp.sec)
         packet_payload = myinetx.pack()
         print("iNetX StreamID={:#0X} Length incl headers={}".format(myinetx.streamid, len(packet_payload) + hdr_lens))
         payload_pkts[myinetx.streamid] = {
@@ -154,8 +175,15 @@ def main(args):
     while True:
         random_sid = bsid + (packet_count % args.sidcount)
         random_payload = payload_pkts[random_sid]["payload"]
+        if cfg.accuratets:
+            mypayload = random_payload[:8] + struct.pack(">I", pkt_count[random_sid]) + \
+                        random_payload[12:16] + timestamp.pack() + random_payload[24:]
+            timestamp.add(gap_per_pkt)
+        else:
+            mypayload = random_payload[:8] + struct.pack(">I", pkt_count[random_sid]) + \
+                        random_payload[12:]
         # Faster way to build an inetx packet instead of packing the whole header
-        mypayload = random_payload[:8] + struct.pack(">I", pkt_count[random_sid]) + random_payload[12:]
+
         pkt_count[random_sid] = (pkt_count[random_sid] + 1) % sequence_roll_over
         sock.sendto(mypayload, (args.ipaddress, dst_udp_port))
         vol_data_sent += (len(mypayload) + hdr_lens)

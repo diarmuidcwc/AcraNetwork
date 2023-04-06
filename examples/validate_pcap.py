@@ -47,9 +47,13 @@ class Streams:
     sequence_list: list[int] = field(default_factory=list)
 
     def pps(self) -> int:
+        if self.end_ts - self.start_ts <= 0:
+            return 0
         return int(self.pkt_count / (self.end_ts - self.start_ts))
 
     def bitrate(self) -> int:
+        if self.end_ts - self.start_ts <= 0:
+            return 0
         return int(self.length * 8 * self.pkt_count / (self.end_ts - self.start_ts))
 
     def timelen(self) ->float:
