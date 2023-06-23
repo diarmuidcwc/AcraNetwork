@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 import typing
 
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)-6s %(asctime)-15s %(message)s"
@@ -44,7 +44,7 @@ class Streams:
     rstcnt: int
     length: int
     datavol: int
-    sequence_list: list[int] = field(default_factory=list)
+    sequence_list: typing.List[int] = field(default_factory=list)
 
     def pps(self) -> int:
         if self.end_ts - self.start_ts <= 0:
@@ -340,9 +340,9 @@ def main(args):
     print("\n")
     if len(streams) > 0:
         logging.info(
-            "{:>7s} {:>15s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>18s} {:>12s} {:>12s}".format(
+            "{:>7s} {:>15s} {:>9s} {:>9s} {:>9s} {:>9s} {:>9s} {:>18s} {:>12s} {:>12s} {:>12s}".format(
                 "SID", "Cnt", "LostCount", "ResetCnt", "Length", "PPS", "Mbps", "Elapsed Time(s)",
-                "DataVol(MB)", "DropVol(Bytes)"
+                "DataVol(MB)", "DropVol(Bytes)", "BitRate(Mbps)"
             )
         )
     for sid, stream in sorted(streams.items()):
@@ -351,10 +351,10 @@ def main(args):
         else:
             _hist = ""
         logging.info(
-            "{:#07X} {:15,d} {:9d} {:9d} {:9d} {:9d} {:9.1f} {:18.1f} {:12,.1f} {:12,d} {}".format(
+            "{:#07X} {:15,d} {:9d} {:9d} {:9d} {:9d} {:9.1f} {:18.1f} {:12,.1f} {:12,d} {:12,.1f} {}".format(
                 sid, stream.pkt_count, stream.dropcnt, stream.rstcnt, stream.length,
                 stream.pps(), stream.bitrate()/1e6, stream.timelen(), stream.datavol/1e6,
-                stream.dropcnt * stream.length, _hist
+                stream.dropcnt * stream.length, stream.datavol * 8 / (stream.timelen() * 1e6), _hist
             )
         )
 
