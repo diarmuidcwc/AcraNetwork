@@ -44,7 +44,7 @@ class Streams:
     rstcnt: int
     length: int
     datavol: int
-    sequence_list: list[int] = field(default_factory=list)
+    sequence_list: typing.List[int] = field(default_factory=list)
 
     def pps(self) -> int:
         if self.end_ts - self.start_ts <= 0:
