@@ -54,4 +54,5 @@
 # 0.15.25 - Fixed unpacking of vlan. Expanded SimpleEthernet to handle VLAN more completely
 # 0.15.26 - Validate script update
 # 0.15.27 - Added simple IENA packet generation script
-__version__ = '0.15.27'
+# 0.15.28 - Fixed line endings
+__version__ = '0.15.28'
