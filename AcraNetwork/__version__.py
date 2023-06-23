@@ -53,4 +53,5 @@
 # 0.15.24 - Added rec time check on validate script
 # 0.15.25 - Fixed unpacking of vlan. Expanded SimpleEthernet to handle VLAN more completely
 # 0.15.26 - Validate script update
-__version__ = '0.15.26'
+# 0.15.27 - Added simple IENA packet generation script
+__version__ = '0.15.27'
