@@ -17,16 +17,7 @@ import struct
 from functools import reduce
 from datetime import datetime
 import time
-
-
-
-DATA_TYPE_TIMEFMT_1 = 0X11
-DATA_TYPE_TIMEFMT_2 = 0X12
-DATA_TYPE_PCM_DATA_FMT1 = 0X9
-DATA_TYPE_MILSTD1553_FMT1 = 0X19
-DATA_TYPE_ARINC429_FMT0 = 0X38
-DATA_TYPE_UART_FMT0 = 0X50
-
+from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY
 
 def get_checksum_buf(buf):
     """
@@ -92,14 +83,9 @@ class Chapter10(object):
     CH10_OPT_HDR_FORMAT = "<IIHH"
     CH10_OPT_HDR_FORMAT_LEN = struct.calcsize(CH10_OPT_HDR_FORMAT)
 
-    TS_RTC = 0
-    TS_SECONDARY = 1
-    TS_CH4 = 0
-    TS_IEEE1558 = 1
-    TS_ERTC = 2
-
     TS_SOURCES = [TS_RTC, TS_SECONDARY] #:(Object Constant) Valid timesources, assign to :attr:`Chapter10.ts_source`
     TS_SECONDARY_SOURCES = [TS_CH4, TS_IEEE1558, TS_ERTC]
+
     PKT_FLAG_SECONDARY = 0x80  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
     PKT_FLAG_SEC_HDR_TIME = 0x40  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
     PKT_FLAG_RTC_SYNC_ERROR = 0x20  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
@@ -123,7 +109,7 @@ class Chapter10(object):
         self.relativetimecounter = 0  #:(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
         self.ptptimeseconds = None  #: PTP Timestamp seconds
         self.ptptimenanoseconds = None  #: PTP Timestamp nanoseconds
-        self.ts_source = Chapter10.TS_RTC #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
+        self.ts_source = TS_RTC #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
         self.payload = b""  #:The payload
         self.data_checksum_size = 0
         self.filler = b""
@@ -148,16 +134,16 @@ class Chapter10(object):
         if self._packetflag >> 7 == 1:
 
             if ((self._packetflag >> 2) & 0x3) == 0:
-                self.ts_source = Chapter10.TS_CH4
+                self.ts_source = TS_CH4
             elif ((self._packetflag >> 2) & 0x3) == 1:
-                self.ts_source = Chapter10.TS_IEEE1558
+                self.ts_source = TS_IEEE1558
             else:
                 raise Exception("Time format is illegal")
 
             self._secondary_header = True
         else:
             self._secondary_header = False
-            self.ts_source = Chapter10.TS_RTC
+            self.ts_source = TS_RTC
 
     def pack(self):
         """
@@ -167,7 +153,7 @@ class Chapter10(object):
         """
 
         if self._secondary_header:
-            if self.ts_source == Chapter10.TS_CH4:
+            if self.ts_source == TS_CH4:
                 raise Exception("Ch4 Timestamp in secondary header not supported")
 
             sec_hdr = struct.pack(Chapter10.CH10_OPT_HDR_FORMAT, self.ptptimenanoseconds, self.ptptimeseconds, 0, 0)
@@ -236,7 +222,7 @@ class Chapter10(object):
                 raise Exception("Ch4 Timestamp in secondary header not supported")
                 #print("Ch4 Timestamp in secondary header not supported")
             elif pkt_hdr_time == 1:
-                self.ts_source = Chapter10.TS_IEEE1558
+                self.ts_source = TS_IEEE1558
                 self.ptptimenanoseconds = ts_ns
                 self.ptptimeseconds = ts_s
             else:
@@ -246,7 +232,7 @@ class Chapter10(object):
         else:
             self._secondary_header = False
             self.payload = buffer[Chapter10.CH10_HDR_FORMAT_LEN:]
-            self.ts_source = Chapter10.TS_RTC
+            self.ts_source = TS_RTC
 
         return True
 
