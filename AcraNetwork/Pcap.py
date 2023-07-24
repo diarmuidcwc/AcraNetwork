@@ -32,11 +32,11 @@ class PcapRecord(object):
     :type _packet: str
     """
     def __init__(self):
-        self.sec = 0 #: Second timestamp of the record. Epoch time
+        self.sec= 0 #: Second timestamp of the record. Epoch time
         self.usec = 0 #: Microsecond timestamp of the record
-        self.incl_len = None #: The number of bytes captured and saved in the file
-        self.orig_len = None #: The number of bytesas appearded on the network when captured
-        self._packet = None
+        self.incl_len = 0 #: The number of bytes captured and saved in the file
+        self.orig_len = 0 #: The number of bytesas appearded on the network when captured
+        self._payload = b''
 
     # Use a property on packet so that the length is triggered on it changing
     @property
@@ -46,11 +46,11 @@ class PcapRecord(object):
 
         :rtype: bytes
         """
-        return self._packet
+        return self._payload
 
     @packet.setter
     def packet(self,p):
-        self._packet = p
+        self._payload = p
         self.incl_len = len(p)
         self.orig_len = self.incl_len
 
@@ -61,11 +61,11 @@ class PcapRecord(object):
         
         :rtype: bytes
         """
-        return self._packet
+        return self._payload
 
     @payload.setter
     def payload(self,p):
-        self._packet = p
+        self._payload = p
         self.incl_len = len(p)
         self.orig_len = self.incl_len
 
@@ -110,7 +110,7 @@ class PcapRecord(object):
         return "LEN:{} SEC:{} USEC:{}".format(self.orig_len, self.sec, self.usec)
 
     def __len__(self):
-        return len(self._packet)
+        return len(self._payload)
 
 
 class Pcap(object):
@@ -156,7 +156,6 @@ class Pcap(object):
     Write a Pcap File
     
     >>> p = Pcap("new.pcap", mode='w')
-    >>> p.write_global_header()
     >>> r = PcapRecord()
     >>> r.set_current_time()
     >>> r.payload = eth.pack()
