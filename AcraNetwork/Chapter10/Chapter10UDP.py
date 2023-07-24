@@ -1,5 +1,4 @@
 import struct
-from .Chapter10 import Chapter10
 
 
 class Chapter10UDP(object):

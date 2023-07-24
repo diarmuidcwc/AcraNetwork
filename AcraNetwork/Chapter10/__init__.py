@@ -1,13 +1,20 @@
 import struct
 from functools import reduce
-from .Chapter10 import Chapter10, DATA_TYPE_TIMEFMT_1, DATA_TYPE_TIMEFMT_2
-from .ARINC429 import ARINC429DataPacket, ARINC429DataWord
-from .Chapter10UDP import Chapter10UDP
-from .MILSTD1553 import MILSTD1553Message, MILSTD1553DataPacket
-from .PCM import PCMDataPacket, PCMMinorFrame
-from .TimeDataFormat import TimeDataFormat1, TimeDataFormat2, double_digits_to_bcd, bcd_to_int
-from .UART import UARTDataPacket, UARTDataWord
 
+
+DATA_TYPE_TIMEFMT_1 = 0X11
+DATA_TYPE_TIMEFMT_2 = 0X12
+DATA_TYPE_PCM_DATA_FMT1 = 0X9
+DATA_TYPE_MILSTD1553_FMT1 = 0X19
+DATA_TYPE_ARINC429_FMT0 = 0X38
+DATA_TYPE_UART_FMT0 = 0X50
+
+
+TS_RTC = 0
+TS_SECONDARY = 1
+TS_CH4 = 0
+TS_IEEE1558 = 1
+TS_ERTC = 2
 
 def buf_to_printable(buffer):
     pw = ""
