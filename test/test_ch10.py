@@ -11,12 +11,12 @@ import os
 import random
 import copy
 import datetime
-
+import tempfile
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+TMP_DIR = tempfile.gettempdir()
 
-
-def getEthernetPacket(data=""):
+def getEthernetPacket(data: bytes = b''):
     e = SimpleEthernet.Ethernet()
     e.srcmac = 0x001122334455
     e.dstmac = 0x998877665544
@@ -77,12 +77,14 @@ class CH10UDPTest(unittest.TestCase):
         self.full = ch10.Chapter10UDP()
         self.full.type = ch10.Chapter10UDP.TYPE_FULL
         self.full.sequence = 1
-        self.full.chapter10.channelID = 1
-        self.full.chapter10.datatypeversion = 2
-        self.full.chapter10.sequence = 3
-        self.full.chapter10.packetflag = 0 # No secondary
-        self.full.chapter10.datatype = 4
-        self.full.chapter10.relativetimecounter = 100
+        self.ch10 = ch10.Chapter10()
+        self.ch10.channelID = 1
+        self.ch10.datatypeversion = 2
+        self.ch10.sequence = 3
+        self.ch10.packetflag = 0 # No secondary
+        self.ch10.datatype = 4
+        self.ch10.relativetimecounter = 100
+        self.full.payload = self.ch10.pack()
 
         self.seg = ch10.Chapter10UDP()
         self.seg.sequence = 2
@@ -90,12 +92,14 @@ class CH10UDPTest(unittest.TestCase):
         self.seg.channelID = 0x232
         self.seg.channelsequence = 100
         self.seg.segmentoffset = 3
-        self.seg.chapter10.channelID = 1
-        self.seg.chapter10.datatypeversion = 2
-        self.seg.chapter10.sequence = 3
-        self.seg.chapter10.packetflag = 0 # No secondary
-        self.seg.chapter10.datatype = 4
-        self.seg.chapter10.relativetimecounter = 100
+        self.ch10seg = ch10.Chapter10()
+        self.ch10seg.channelID = 1
+        self.ch10seg.datatypeversion = 2
+        self.ch10seg.sequence = 3
+        self.ch10seg.packetflag = 0 # No secondary
+        self.ch10seg.datatype = 4
+        self.ch10seg.relativetimecounter = 100
+        self.seg.payload = self.ch10seg.pack()
 
         self.c = ch10.Chapter10()
         self.c.channelID = 1
@@ -108,7 +112,7 @@ class CH10UDPTest(unittest.TestCase):
     def test_ch10_to_pcap(self):
         #self.full._payload = struct.pack(">II", 33, 44)
         full_payload = getEthernetPacket(self.full.pack())
-        self.pcapw = pcap.Pcap("test_ch10.pcap", mode="w")
+        self.pcapw = pcap.Pcap(TMP_DIR + "/test_ch10.pcap", mode="w")
         self.pcapw.write_global_header()
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
@@ -123,6 +127,7 @@ class CH10UDPTest(unittest.TestCase):
         full = ch10.Chapter10UDP()
         full.type = ch10.Chapter10UDP.TYPE_FULL
         full.sequence = 1
+        full.payload = self.full.payload
         #full._payload = struct.pack(">II", 33, 44)
 
         #self.full._payload = struct.pack(">II", 33, 44)
@@ -148,6 +153,7 @@ class CH10UDPTest(unittest.TestCase):
         seg.channelID = 0x232
         seg.channelsequence = 100
         seg.segmentoffset = 3
+        seg.payload = self.ch10seg.pack()
         #seg._payload = struct.pack(">II", 33, 44)
 
         #self.seg._payload = struct.pack(">II", 33, 44)
@@ -158,7 +164,7 @@ class CH10UDPTest(unittest.TestCase):
         self.c.payload = struct.pack(">II", 33, 44)
         #self.full._payload = self.c.pack()
         full_payload = getEthernetPacket(self.full.pack())
-        self.pcapw = pcap.Pcap("test_ch10_2.pcap", mode="w")
+        self.pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_2.pcap", mode="w")
         self.pcapw.write_global_header()
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
@@ -176,18 +182,19 @@ class CH10UDPTest(unittest.TestCase):
         c = ch10.Chapter10UDP()
         c.type = ch10.Chapter10UDP.TYPE_FULL
         c.sequence = 1
-        c.chapter10.channelID = 1
-        c.chapter10.datatypeversion = 2
-        c.chapter10.sequence = 3
-        c.chapter10.packetflag = ch10.Chapter10.PKT_FLAG_SECONDARY
-        c.chapter10.datatype = 4
-        c.chapter10.ts_source = "ieee1588"
-        c.chapter10.ptptimeseconds = 101
-        c.chapter10.ptptimenanoseconds = int(200e6)
-        c.chapter10.relativetimecounter = 0x0
-        c.chapter10.payload = struct.pack(">QQ", 33, 44)
+        d = ch10.Chapter10()
+        d.channelID = 1
+        d.datatypeversion = 2
+        d.sequence = 3
+        d.packetflag = ch10.Chapter10.PKT_FLAG_SECONDARY
+        d.datatype = 4
+        d.ts_source = ch10.Chapter10.TS_IEEE1558
+        d.ptptimeseconds = 101
+        d.ptptimenanoseconds = int(200e6)
+        d.relativetimecounter = 0x0
+        d.payload = struct.pack(">QQ", 33, 44)
         full_payload = getEthernetPacket(c.pack())
-        self.pcapw = pcap.Pcap("test_ch10_3.pcap", mode="w")
+        self.pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_3.pcap", mode="w")
         self.pcapw.write_global_header()
         self.rec = pcap.PcapRecord()
         self.rec.payload = full_payload
@@ -195,7 +202,7 @@ class CH10UDPTest(unittest.TestCase):
         self.pcapw.close()
 
     def test_ch10_format2(self):
-        self.pcapw = pcap.Pcap("test_ch10_format2.pcap", mode="w")
+        self.pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_format2.pcap", mode="w")
         self.pcapw.write_global_header()
         self.rec = pcap.PcapRecord()
         c = ch10.Chapter10UDP()
@@ -204,7 +211,7 @@ class CH10UDPTest(unittest.TestCase):
         c.sequence = 10
         c.segmentoffset = 5000
         c.channelID = 20
-        c.chapter10 = get_ch10(16)
+        d = get_ch10(16)
         self.assertTrue(c.pack())
 
         full_payload = getEthernetPacket(c.pack())
@@ -218,7 +225,7 @@ class CH10UDPTest(unittest.TestCase):
 
 
     def test_ch10_format3(self):
-        pcapw = pcap.Pcap("test_ch10_format3.pcap", mode="w")
+        pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_format3.pcap", mode="w")
         pcapw.write_global_header()
         rec = pcap.PcapRecord()
         for len in range(5):
@@ -230,7 +237,7 @@ class CH10UDPTest(unittest.TestCase):
                 c.sourceid = 0x4
             c.offset_pkt_start = 4
             c.sequence = 0x15
-            c.chapter10 = get_ch10(16)
+            c.payload = get_ch10(16).pack()
             self.assertTrue(c.pack())
             c2 = ch10.Chapter10UDP()
             c2.unpack(c.pack())
@@ -254,18 +261,20 @@ class CH10UDPTest(unittest.TestCase):
         # Now I have a _payload that will be an inetx packet
         c = ch10.Chapter10UDP()
         self.assertTrue(c.unpack(u.payload))
+        d = ch10.Chapter10()
+        d.unpack(c.payload)
 
         # Check the Ch10 packets
-        self.assertEqual(c.chapter10.syncpattern, 0xeb25)
-        self.assertEqual(c.chapter10.channelID, 0x000080d6)
-        self.assertEqual(c.chapter10.datatypeversion, 0x44)
+        self.assertEqual(d.syncpattern, 0xeb25)
+        self.assertEqual(d.channelID, 0x000080d6)
+        self.assertEqual(d.datatypeversion, 0x44)
         # nanoseconds and seconds
-        self.assertEqual(c.chapter10.ptptimenanoseconds, 1237463)
-        self.assertEqual(c.chapter10.ptptimeseconds, 0)
+        self.assertEqual(d.ptptimenanoseconds, 1237463)
+        self.assertEqual(d.ptptimeseconds, 0)
 
-        self.assertEqual(repr(c), "CH10 UDP Full Packet: Format=1 Sequence=0 Payload=Chapter 10: ChannelID=32982 Sequence=0 DataLen=88")
+        self.assertEqual(repr(c), "CH10 UDP Full Packet: Format=1 Sequence=0")
         arinc_p = ch10.ARINC429DataPacket()
-        self.assertTrue(arinc_p.unpack(c.chapter10.payload))
+        self.assertTrue(arinc_p.unpack(d.payload))
         self.assertEqual(len(arinc_p.arincwords), 11)
         self.assertEqual(arinc_p.arincwords[0].payload, struct.pack(">I", 0x4bd91e2e))
 
@@ -278,6 +287,7 @@ class CH10UDPTest(unittest.TestCase):
             if idx == 2:
                 self.assertEqual(repr(aw), "ARINCData: GapTime=3900 FormatError=False ParityError=False BusSpeed=0 Bus=23")
 
+    @unittest.skip("No trying to guess format1")
     def test_format1_looks_like_2(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_format_1_looks_like2.pcap"))
         for r in p:
@@ -296,14 +306,16 @@ class Ch10UARTTest(unittest.TestCase):
         self.full = ch10.Chapter10UDP()
         self.full.type = ch10.Chapter10UDP.TYPE_FULL
         self.full.sequence = 10
-        self.full.chapter10.channelID = 23
-        self.full.chapter10.datatypeversion = 2
-        self.full.chapter10.sequence = 3
-        self.full.chapter10.packetflag = 0xC4  # Secondary time + PTP
-        self.full.chapter10.datatype = 0x50
-        self.full.chapter10.relativetimecounter = 100
-        self.full.chapter10.ptptimeseconds = 22
-        self.full.chapter10.ptptimenanoseconds = 250000
+        self.chfull = ch10.Chapter10()
+        self.chfull.channelID = 23
+        self.chfull.datatypeversion = 2
+        self.chfull.sequence = 3
+        self.chfull.packetflag = 0xC4  # Secondary time + PTP
+        self.chfull.datatype = 0x50
+        self.chfull.relativetimecounter = 100
+        self.chfull.ptptimeseconds = 22
+        self.chfull.ptptimenanoseconds = 250000
+        self.full.payload = self.chfull.pack()
 
     def test_basic_uart(self):
         udp = ch10.UARTDataPacket()
@@ -318,7 +330,7 @@ class Ch10UARTTest(unittest.TestCase):
 
             self.assertIsNone(udp.append(udw))
 
-        self.full.chapter10.payload = udp.pack()
+        self.chfull.payload = udp.pack()
         self.assertTrue(wrap_in_udp_and_pcap(self.full.pack(), "ch10_uart.pcap"))
 
         # Test unpack and comparsion
@@ -331,11 +343,13 @@ class Ch10UARTTest(unittest.TestCase):
     def test_uart_unpack(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_uart2.pcap"))
         mypcaprecord = p[0]
-        ch10pkt = ch10.Chapter10UDP()
-        ch10pkt.unpack(mypcaprecord.payload[0x2a:-4]) # FCS
-        self.assertEqual(ch10pkt.chapter10.packetflag, 0xc4)
+        ch10udppkt = ch10.Chapter10UDP()
+        ch10udppkt.unpack(mypcaprecord.payload[0x2a:-4]) # FCS
+        ch10pkt = ch10.Chapter10()
+        ch10pkt.unpack(ch10udppkt.payload)
+        self.assertEqual(ch10pkt.packetflag, 0xc4)
         uart = ch10.UARTDataPacket()
-        uart.unpack(ch10pkt.chapter10.payload)
+        uart.unpack(ch10pkt.payload)
         self.assertEqual(len(uart), 1)
         (b1,b2) = struct.unpack_from("<BB", uart[0].payload)
         self.assertEqual(b1, 0xd5)
@@ -402,7 +416,7 @@ class Time_Test(unittest.TestCase):
         #print(repr(t2))
 
     def test_time_to_pcap(self):
-        pcapw = pcap.Pcap("test_ch10_time.pcap", mode="w")
+        pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_time.pcap", mode="w")
         pcapw.write_global_header()
         rec = pcap.PcapRecord()
         cu = ch10.Chapter10UDP()
@@ -445,7 +459,7 @@ class Time_Test(unittest.TestCase):
 class GenPCAP(unittest.TestCase):
 
     def test_ch10_fmt1(self):
-        pcapw = pcap.Pcap("test_ch10_sample.pcap", mode="w")
+        pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_sample.pcap", mode="w")
         pcapw.write_global_header()
         rec = pcap.PcapRecord()
         for fmt in [1, 2, 3]:
@@ -495,7 +509,7 @@ class PCMData(unittest.TestCase):
 
     def test_pcm(self):
         payload_len = 10
-        pcapw = pcap.Pcap("test_ch10_pcm.pcap", mode="w")
+        pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_pcm.pcap", mode="w")
         rec = pcap.PcapRecord()
         u = ch10.Chapter10UDP()
         u.type = ch10.Chapter10UDP.TYPE_FULL
@@ -522,6 +536,18 @@ class PCMData(unittest.TestCase):
         pcmdf2.minor_frame_size_bytes = payload_len
         pcmdf2.unpack(packed_data)
         self.assertEqual(pcmdf, pcmdf2)
+
+class MnACQData(unittest.TestCase):
+
+    def test_pcap(self):
+        p = pcap.Pcap(os.path.join(THIS_DIR, "mnacq.pcap"))
+        for rec in p:
+            ch10_pay = rec.payload[0x2a:]
+            pkt = ch10.Chapter10UDP()
+            pkt.unpack(ch10_pay)
+            #print(repr(pkt))
+
+        p.close()
 
 if __name__ == '__main__':
     unittest.main()

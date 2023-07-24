@@ -1,10 +1,6 @@
 import struct
 from .Chapter10 import Chapter10
 
-DATA_TYPE_TIMEFMT_1 = 0X11
-DATA_TYPE_TIMEFMT_2 = 0X12
-DATA_TYPE_PCM_DATA_FMT1 = 0X9
-
 
 class Chapter10UDP(object):
     """ 
@@ -43,6 +39,8 @@ class Chapter10UDP(object):
     TYPE_FULL = 0  #: Full Chapter 10 packets type field constant. Assign to :attr:`Chapter10UDP.type`
     TYPE_SEG = 1  #: Segmented Chapter 10 packets type field constant. Assign to :attr:`Chapter10UDP.type`
 
+
+
     def __init__(self):
         '''Creator method for a UDP class'''
         self.version = 1  #: Version
@@ -56,7 +54,6 @@ class Chapter10UDP(object):
         self.sourceid = 0  #: Format 3 Source ID
         self.offset_pkt_start = None  #: Format 3 Offset to packet start in bytes
         self.payload = b""
-        self.chapter10 = Chapter10() #: The encapsulated Chapter10 packet. :class:`Chapter10`
 
     def unpack(self, buffer):
         """
@@ -73,7 +70,7 @@ class Chapter10UDP(object):
         # we have the correct format
         (_size_upp, _size_lower,) = struct.unpack_from(">BH", buffer, 5)
         size_guess = _size_lower + (_size_upp << 16)
-        if _ver_type & 0xF == 2 and size_guess == len(buffer)/4 - 3:
+        if _ver_type & 0xF in [1, 2, 3] and (_ver_type >> 4) & 0xF in [Chapter10UDP.TYPE_FULL, Chapter10UDP.TYPE_SEG]:
             self.version = _ver_type & 0xF
         else:
             (_ver_type, seg_lwr, seg_upr) = struct.unpack_from(Chapter10UDP.CH10_UDP_HEADER_FORMAT1, buffer)
@@ -125,7 +122,7 @@ class Chapter10UDP(object):
         else:
             self.payload = buffer[Chapter10UDP.CH10_UDP_HEADER_LENGTH:]
 
-        return self.chapter10.unpack(self.payload)
+        return True
 
     @property
     def format(self):
@@ -156,7 +153,6 @@ class Chapter10UDP(object):
         else:
             _payload= struct.pack(Chapter10UDP.CH10_UDP_HEADER_FORMAT1, _ver_type, seg_lr, seg_up)
 
-        self.payload = self.chapter10.pack()
         if self.type == Chapter10UDP.TYPE_SEG and self.format == 1:
             _payload += struct.pack(Chapter10UDP.CH10_UDP_SEG_HEADER_FORMAT1, self.channelID, self.channelsequence, 0, self.segmentoffset)
 
@@ -186,8 +182,8 @@ class Chapter10UDP(object):
 
     def __repr__(self):
         if self.type == Chapter10UDP.TYPE_FULL:
-            return "CH10 UDP Full Packet: Format={} Sequence={} Payload={}".format(
-                self.format, self.sequence, repr(self.chapter10))
+            return "CH10 UDP Full Packet: Format={} Sequence={}".format(
+                self.format, self.sequence)
         else:
             return "CH10 UDP Sequence: Format={} Sequence={} ChID={} ChSeqNum={} SegOffset={}".format(
                 self.format, self.sequence, self.channelID, self.channelsequence, self.segmentoffset)
