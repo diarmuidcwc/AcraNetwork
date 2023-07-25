@@ -18,6 +18,11 @@ from functools import reduce
 from datetime import datetime
 import time
 from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY
+import logging
+
+
+logger =  logging.getLogger(__name__)
+
 
 def get_checksum_buf(buf):
     """
@@ -99,16 +104,16 @@ class Chapter10(object):
     def __init__(self):
 
         self.syncpattern = Chapter10.SYNC_WORD  #:(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25
-        self.channelID = None  #:(2 Bytes) contains a value representing the Packet Channel ID.
-        self.packetlen = None  #:(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four
-        self.datalen = None  #:(4 Bytes) contains a value representing the valid data length within the packet
+        self.channelID = 0  #:(2 Bytes) contains a value representing the Packet Channel ID.
+        self.packetlen = 0  #:(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four
+        self.datalen = 0  #:(4 Bytes) contains a value representing the valid data length within the packet
         self.datatypeversion = 0x5  #: RCC released versions
-        self.sequence= None  #:(1 Byte) contains a value representing the packet sequence number for each Channel ID.
-        self._packetflag = None  #:(1 Byte) contains bits representing information on the content and format of the packet(s)
-        self.datatype = None  #:(1 Byte) contains a value representing the type and format of the data
+        self.sequence= 0  #:(1 Byte) contains a value representing the packet sequence number for each Channel ID.
+        self._packetflag = 0  #:(1 Byte) contains bits representing information on the content and format of the packet(s)
+        self.datatype = 0  #:(1 Byte) contains a value representing the type and format of the data
         self.relativetimecounter = 0  #:(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
-        self.ptptimeseconds = None  #: PTP Timestamp seconds
-        self.ptptimenanoseconds = None  #: PTP Timestamp nanoseconds
+        self.ptptimeseconds = 0  #: PTP Timestamp seconds
+        self.ptptimenanoseconds = 0  #: PTP Timestamp nanoseconds
         self.ts_source = TS_RTC #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
         self.payload = b""  #:The payload
         self.data_checksum_size = 0
@@ -254,6 +259,57 @@ class Chapter10(object):
         return "Chapter 10: ChannelID={} Sequence={} DataLen={}".format(self.channelID, self.sequence, self.datalen)
 
 
+class FileParser(object):
 
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.insync = False
+        self._offset = 0
 
+    def __enter__(self):
+        self._fd = open(self.filename, 'rb')
+        return self
 
+    def __exit__(self, type, value, traceback):
+        #Exception handling here
+        self._fd.close()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        in_sync = False
+        pkt_len = 0
+        while not in_sync:
+            try:
+                self._fd.seek(self._offset)
+                _first_few_words = self._fd.read(8)
+            except:
+                raise StopIteration
+            try:
+                (sync, chid, pkt_len) = struct.unpack("<HHI", _first_few_words)
+            except Exception as e:
+                logger.debug(f"Exiting loop err={e}")
+                raise StopIteration
+
+            if sync == Chapter10.SYNC_WORD:
+                in_sync = True
+            else:
+                self._offset += 1
+
+        self._fd.seek(self._offset)
+        pkt_payload = self._fd.read(pkt_len)
+
+        ch10 = Chapter10()
+        try:
+            ch10.unpack(pkt_payload)
+        except Exception as e:
+            logger.error(f"Failed to unpack data from {self._offset}. err={e}")
+            raise StopIteration
+        else:
+            self._offset += pkt_len
+            return ch10
+
+            
+
+    __next__ = next
