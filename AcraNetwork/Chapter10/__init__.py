@@ -1,5 +1,7 @@
 import struct
 from functools import reduce
+import logging
+
 
 
 DATA_TYPE_TIMEFMT_1 = 0X11

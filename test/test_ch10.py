@@ -598,5 +598,18 @@ class MnACQData(unittest.TestCase):
         cf.close()
         p.close()
 
+
+class CH10SampleFile(unittest.TestCase):
+
+    def test_dotch10(self):
+        fileparser = ch10.FileParser(THIS_DIR + "/ch10.ch10")
+        total_len = 0 
+        with fileparser as chf:
+            for pkt in chf:
+                print(repr(pkt))
+                total_len += pkt.packetlen
+                #self.assertTrue(False)
+        print(f"{total_len:,d}")
+
 if __name__ == '__main__':
     unittest.main()
