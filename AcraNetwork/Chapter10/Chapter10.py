@@ -264,7 +264,7 @@ class FileParser(object):
     Parse a Chapter10 file. Open the file and iterate through it
     """
 
-    def __init__(self, filename: str, mode='rb'):
+    def __init__(self, filename, mode='rb'):
         self.filename = filename
         self._mode = mode
         self.insync = False
@@ -293,7 +293,7 @@ class FileParser(object):
             try:
                 (sync, chid, pkt_len) = struct.unpack("<HHI", _first_few_words)
             except Exception as e:
-                logger.debug(f"Exiting loop err={e}")
+                logger.debug("Exiting loop err={}".format(e))
                 raise StopIteration
 
             if sync == Chapter10.SYNC_WORD:
@@ -308,12 +308,10 @@ class FileParser(object):
         try:
             ch10.unpack(pkt_payload)
         except Exception as e:
-            logger.error(f"Failed to unpack data from {self._offset}. err={e}")
+            logger.error("Failed to unpack data from {}. err={}".format(self._offset, e))
             raise StopIteration
         else:
             self._offset += pkt_len
             return ch10
-
-            
 
     __next__ = next

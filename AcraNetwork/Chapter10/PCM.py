@@ -17,7 +17,7 @@ class PTPTime(object):
         (self.sec, self.nanosec) = struct.unpack("<II", buffer)
         return True
     
-    def __repr__(self) -> str:
+    def __repr__(self):
         time_fmt = "%H:%M:%S %d-%b %Y"
         date_str = datetime.fromtimestamp(self.sec).strftime(time_fmt)
         return "PTP: {} nanosec={}".format(date_str, self.nanosec)
@@ -28,6 +28,7 @@ class PTPTime(object):
         if self.nanosec != __value.nanosec or self.sec != __value.sec:
             return False
         return True
+
 
 class RTCTime(object):
     def __init__(self, count=0):
@@ -43,7 +44,7 @@ class RTCTime(object):
         self.count = lsw + (msw << 32)
         return True
     
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "RTC: count={}".format(self.count)
     
     def __eq__(self, __value):
@@ -82,8 +83,8 @@ class PCMMinorFrame(object):
         else:
             self.ipts = PTPTime()
 
-        self.ipts.unpack(buffer[:8])    
-        (self.intra_packet_data_header,) =  struct.unpack_from("<H", buffer, 8)
+        self.ipts.unpack(buffer[:8])
+        (self.intra_packet_data_header,) = struct.unpack_from("<H", buffer, 8)
         if extract_sync_sfid:
             (msw, lsw, self.sfid) = struct.unpack_from("<HHH", buffer, 10)
             self.syncword = lsw + (msw << 16)
@@ -108,8 +109,8 @@ class PCMMinorFrame(object):
 
     def __repr__(self):
         
-        return "Minor Frame. Time={} DataHdr={:#0X} ".format(
-            self.ipts, self.intra_packet_data_header
+        return "Minor Frame. Time={} DataHdr={:#0X} Payload_len={}".format(
+            self.ipts, self.intra_packet_data_header, len(self.minor_frame_data)
         )
 
     def __eq__(self, other):
@@ -124,6 +125,7 @@ class PCMMinorFrame(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
 
 PCM_DATA_FRAME_FILL = 0x0
 
@@ -150,7 +152,7 @@ class PCMDataPacket(object):
         (self.channel_specific_word,) = struct.unpack_from("<I", buffer, 0)
         offset = 4
         _byte_count_req = self.minor_frame_size_bytes + PCMMinorFrame.HDR_LEN
-        while offset+_byte_count_req <= len(buffer):
+        while offset + _byte_count_req <= len(buffer):
             minor_frame = PCMMinorFrame()
             if (_byte_count_req) % 2 != 0:
                 padding = 1
