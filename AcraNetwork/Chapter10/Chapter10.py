@@ -260,14 +260,18 @@ class Chapter10(object):
 
 
 class FileParser(object):
+    """
+    Parse a Chapter10 file. Open the file and iterate through it
+    """
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, mode='rb'):
         self.filename = filename
+        self._mode = mode
         self.insync = False
         self._offset = 0
 
     def __enter__(self):
-        self._fd = open(self.filename, 'rb')
+        self._fd = open(self.filename, self._mode)
         return self
 
     def __exit__(self, type, value, traceback):
