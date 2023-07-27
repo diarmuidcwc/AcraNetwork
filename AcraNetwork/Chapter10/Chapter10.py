@@ -269,6 +269,20 @@ class FileParser(object):
         self._mode = mode
         self.insync = False
         self._offset = 0
+        self._fd = None  
+
+    def write(self, ch10packet):
+        # type: (Chapter10) -> None
+        """
+        Write a chapter10 packet to the file
+        """
+        if not isinstance(ch10packet, Chapter10):
+            raise Exception("Only write Chapter10 instances to the file")
+        if self._fd is None or self._mode != "wb":
+            raise Exception("File name not defined")
+        if not self._fd.writable():
+            raise  Exception("File {} not open for writing".format(self.filename))
+        self._fd.write(ch10packet.pack())
 
     def __enter__(self):
         self._fd = open(self.filename, self._mode)

@@ -37,7 +37,7 @@ class RTCTime(object):
     def pack(self):
         msw = (self.count >> 32) & 0xFFFF
         lsw = self.count & 0xFFFFFFFF
-        return struct.pack("<HIH", msw, lsw, 0)
+        return struct.pack("<IHH", lsw, msw, 0)
     
     def unpack(self, buffer):
         (lsw, msw, _zero) = struct.unpack("<IHH", buffer)
@@ -176,6 +176,9 @@ class PCMDataPacket(object):
                 buf += struct.pack(">B", PCM_DATA_FRAME_FILL)
 
         return buf
+    
+    def append(self, minorframe):
+        self.minor_frames.append(minorframe)
 
     def __repr__(self):
         _rstr = "PCM Data Packet Format 1. Channel Specific Word ={:#0X}\n".format(self.channel_specific_word)

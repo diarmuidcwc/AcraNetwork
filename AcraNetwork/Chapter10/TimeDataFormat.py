@@ -80,8 +80,8 @@ class TimeDataFormat1(object):
     def __init__(self):
 
         self.channel_specific_data = ITS_FREEWHEELING + DATE_FMT_YEAR_AVAIL + TIME_FMT_GPS + SRC_EXTERNAL
-        self.datetime = datetime.fromtimestamp(0.0)
-        self.milliseconds = 0
+        self.seconds = 0
+        self.nanoseconds = 0
 
     def pack(self):
         """
@@ -89,21 +89,20 @@ class TimeDataFormat1(object):
 
         :rtype: str
         """
-        if not isinstance(self.datetime, datetime):
-            raise Exception("datetime attribute should be an instance of the datetime object ")
 
+        dt = datetime.fromtimestamp(self.seconds)
         packet_bytes = list()
-        packet_bytes.append(double_digits_to_bcd(self.milliseconds/10))
-        packet_bytes.append(double_digits_to_bcd(self.datetime.second))
-        packet_bytes.append(double_digits_to_bcd(self.datetime.minute))
-        packet_bytes.append(double_digits_to_bcd(self.datetime.hour))
+        packet_bytes.append(double_digits_to_bcd(self.nanoseconds/1e7))
+        packet_bytes.append(double_digits_to_bcd(dt.second))
+        packet_bytes.append(double_digits_to_bcd(dt.minute))
+        packet_bytes.append(double_digits_to_bcd(dt.hour))
         if (self.channel_specific_data & DATE_FMT_YEAR_AVAIL) >> 9 == 0x1:
-            packet_bytes.append(double_digits_to_bcd(self.datetime.day))
-            packet_bytes.append(double_digits_to_bcd(self.datetime.month))
-            packet_bytes.append(double_digits_to_bcd(self.datetime.year % 100))
-            packet_bytes.append(double_digits_to_bcd(self.datetime.year / 100))
+            packet_bytes.append(double_digits_to_bcd(dt.day))
+            packet_bytes.append(double_digits_to_bcd(dt.month))
+            packet_bytes.append(double_digits_to_bcd(dt.year % 100))
+            packet_bytes.append(double_digits_to_bcd(dt.year / 100))
         else:
-            doy = int(self.datetime.strftime("%j"))
+            doy = int(dt.strftime("%j"))
             packet_bytes.append(double_digits_to_bcd(doy % 100))
             packet_bytes.append(double_digits_to_bcd(doy / 100))
 
@@ -119,7 +118,8 @@ class TimeDataFormat1(object):
         :return:
         """
         (self.channel_specific_data, ms, s, mn, h) = struct.unpack_from("<IBBBB", buf)
-        self.milliseconds = bcd_to_int(ms) * 10
+        milliseconds = bcd_to_int(ms) * 10
+        self.nanoseconds = milliseconds * int(1e6)
         sec = bcd_to_int(s)
         mins = bcd_to_int(mn)
         hrs = bcd_to_int(h)
@@ -129,12 +129,15 @@ class TimeDataFormat1(object):
             day = bcd_to_int(d)
             mon = bcd_to_int(mo)
             year = bcd_to_int(yr)
-            self.datetime = datetime(year, mon, day, hrs, mins, sec)
+            dt = datetime(year, mon, day, hrs, mins, sec)
         else:
             (doy,hdoy) = struct.unpack_from("<BB", buf, 8)
             day_of_year = bcd_to_int(doy) + 100 * bcd_to_int(hdoy)
             date_as_string = "{:02d}:{:02d}:{:02d} {:03d} 1970".format(hrs, mins, sec, day_of_year)
-            self.datetime = datetime.strptime(date_as_string, "%H:%M:%S %j %Y")
+            dt = datetime.strptime(date_as_string, "%H:%M:%S %j %Y")
+
+        epoch_time = datetime(1970, 1, 1)
+        self.seconds = (dt - epoch_time).total_seconds()
 
         return True
 
@@ -142,7 +145,7 @@ class TimeDataFormat1(object):
         if not isinstance(other, TimeDataFormat1):
             return False
 
-        _match_att = ("channel_specific_data", "datetime", "milliseconds")
+        _match_att = ("channel_specific_data", "seconds", "nanoseconds")
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -152,7 +155,9 @@ class TimeDataFormat1(object):
 
     def __repr__(self):
         return "TimeFormat1 ChannelSpecificWord={:#0X} Time={} MilliSeconds={}".format(
-            self.channel_specific_data, self.datetime.strftime("%H:%M:%S %x %d-%b %Y"), self.milliseconds
+            self.channel_specific_data, 
+            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %x %d-%b %Y"), 
+            int(self.nanoseconds/1e6)
         )
 
     def __len__(self):
@@ -175,15 +180,15 @@ class TimeDataFormat2(object):
 
 
     :type channel_specific_data: int
-    :type milliseconds: int
-    :type datetime: datetime | None
+    :type nanoseconds: int
+    :type seconds: int
     :type filler: str
     """
 
     def __init__(self):
 
         self.channel_specific_data = TS_STATUS_VALID + TS_STATUS_IEEE2002
-        self.datetime = datetime.fromtimestamp(0)
+        self.seconds = 0
         self.nanoseconds = 0
 
     def pack(self):
@@ -192,9 +197,7 @@ class TimeDataFormat2(object):
 
         :rtype: str
         """
-        if not isinstance(self.datetime, datetime):
-            raise Exception("datetime attribute should be an instance of the datetime object ")
-        utc_seconds = int(time.mktime(self.datetime.timetuple()))
+
         if (self.channel_specific_data >> 4) & 0x1:
             # ptp
             frac_sec = self.nanoseconds
@@ -202,7 +205,7 @@ class TimeDataFormat2(object):
             #ntp
             frac_sec = int(self.nanoseconds * (pow(2, 32)/1e9))
 
-        return struct.pack("<III", self.channel_specific_data, utc_seconds, frac_sec)
+        return struct.pack("<III", self.channel_specific_data, self.seconds, frac_sec)
 
     def unpack(self, buf):
         """
@@ -216,7 +219,7 @@ class TimeDataFormat2(object):
         else:
             self.nanoseconds = int(fs / (pow(2, 32)/1e9)) # NTP
 
-        self.datetime = datetime.fromtimestamp(s)
+        self.seconds = s
 
         return True
 
@@ -224,7 +227,7 @@ class TimeDataFormat2(object):
         if not isinstance(other, TimeDataFormat2):
             return False
 
-        _match_att = ("channel_specific_data", "datetime", "nanoseconds")
+        _match_att = ("channel_specific_data", "seconds", "nanoseconds")
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -234,7 +237,9 @@ class TimeDataFormat2(object):
 
     def __repr__(self):
         return "TimeFormat2 ChannelSpecificWord={:#0X} Time={} NanoSeconds={}".format(
-            self.channel_specific_data, self.datetime.strftime("%H:%M:%S %x %d-%b %Y"), self.nanoseconds
+            self.channel_specific_data, 
+            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %x %d-%b %Y"), 
+            self.nanoseconds
         )
 
     def __len__(self):
