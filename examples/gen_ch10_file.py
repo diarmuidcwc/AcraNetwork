@@ -26,7 +26,38 @@ from collections import namedtuple
 from dataclasses import dataclass
 import typing
 from math import floor
+import logging
+from decimal import Decimal
 
+
+logging.basicConfig(level=logging.INFO)
+
+
+class PTPTime(object):
+
+    def __init__(self, second, nanosecond):
+        self.second : int = second
+        self.nanosecond: int = nanosecond
+
+    def __add__(self, other):
+        if not isinstance(other, PTPTime):
+            raise Exception("Add PTPTime ")
+        nsn = self.nanosecond + other.nanosecond
+        overflow = int(nsn // 1e9)
+        remainder = int(nsn % 1e9)
+        result = PTPTime(self.second + overflow + other.second, remainder)
+        return result
+    
+    def __eq__(self, __value) -> bool:
+        if __value.second == self.second and __value.nanosecond == self.nanosecond:
+            return True
+        else:
+            return False
+        
+    def __repr__(self) -> str:
+        return f"sec={self.second} ns={self.nanosecond}"
+
+ONE_SECOND = PTPTime(1, 0)
 
 class PCMFrame(object):
     def __init__(self, wordcount: int = 32) -> None:
@@ -54,11 +85,16 @@ def create_parser():
     return parser
 
 
-def ptp_to_rtc(ptp_time_seconds: float) -> int:
+def ptp_to_rtc(ptp_time_seconds: PTPTime) -> int:
     """
     Convert a time to PTP
     """
-    return int((ptp_time_seconds * 1e9) / 100) & (pow(2,48) - 1)
+    ns_conv = Decimal(ptp_time_seconds.second) * Decimal(1e9) + Decimal(ptp_time_seconds.nanosecond)
+    div_conv = ns_conv / Decimal(100)
+    conv_int = int(div_conv) & (pow(2,48) - 1)
+    #logging.debug(f"{ptp_time_seconds} {ns_conv} {div_conv} {conv_int}")
+    #sys.exit(1)
+    return conv_int
 
 
 
@@ -79,7 +115,8 @@ def get_tmats_ch10(tmatsfname: str, rtctime: int) -> ch10.Chapter10:
 
     return tmats_record
     
-def get_time_pkt(run_time_s: int, starttime: float, delta_s: float = 1.0, format: int = 1) -> typing.Generator[ch10.Chapter10, None, None]:
+def get_time_pkt(run_time_s: int, starttime: PTPTime, delta_s: PTPTime = ONE_SECOND, 
+                 format: int = 1) -> typing.Generator[ch10.Chapter10, None, None]:
     """
     Generate a time packet
     """
@@ -87,8 +124,7 @@ def get_time_pkt(run_time_s: int, starttime: float, delta_s: float = 1.0, format
     run_time = starttime
     
     for sequence in range(run_time_s):
-        sec = int(run_time)
-        nsec = int((run_time % 1.0) * 1e9)
+
         rtc_time = ptp_to_rtc(run_time)
         pkt = ch10.Chapter10()
         pkt.sequence = sequence
@@ -101,8 +137,8 @@ def get_time_pkt(run_time_s: int, starttime: float, delta_s: float = 1.0, format
             pkt.datatype = DATA_TYPE_TIMEFMT_2
             time_fmt.channel_specific_data = 0x11
         
-        time_fmt.seconds = sec
-        time_fmt.nanoseconds = nsec
+        time_fmt.seconds = run_time.second
+        time_fmt.nanoseconds = run_time.nanosecond
         
         pkt.channelID = 0x280
         pkt.datatypeversion = 0x1
@@ -113,7 +149,8 @@ def get_time_pkt(run_time_s: int, starttime: float, delta_s: float = 1.0, format
         yield pkt
             
 
-def get_pcm_pkt(count: int, starttime: float, subframe_cnt: int, sample_rate: int = 100,
+def get_pcm_pkt(count: int, starttime: PTPTime, subframe_cnt: int, start_seq: int,
+                sample_rate: int = 100,
                 minor_frm_size: int = 32) -> typing.Generator[ch10.Chapter10, None, None]:
     """
     Generate a time packet
@@ -122,19 +159,18 @@ def get_pcm_pkt(count: int, starttime: float, subframe_cnt: int, sample_rate: in
     run_time = starttime
     counter = 0
 
-    major_frame_delay_seconds = 1.0/sample_rate
-    minor_frame_delta_seconds = 1.0/(sample_rate * subframe_cnt)
-    ch10_seq = 0
+    minor_dlt_ns = int(1e9/(sample_rate * subframe_cnt))
+    minor_frame_delay = PTPTime(0, minor_dlt_ns)
     
-    for _i in range(count):
+    for _i in range(start_seq, count+start_seq):
         rtc_time = ptp_to_rtc(run_time)
+        logging.debug(f"Frame={_i} ptp_time={run_time}, rtc_time={rtc_time}")
         pkt = ch10.Chapter10()
         pkt.channelID = 0x1
         pkt.datatypeversion = 0x1
         pkt.relativetimecounter = rtc_time
         pkt.datatype = DATA_TYPE_PCM_DATA_FMT1
-        pkt.sequence = ch10_seq
-        ch10_seq += 1
+        pkt.sequence = _i % 256
 
         pcm = ch10pcm.PCMDataPacket()
         pcm.channel_specific_word = 0x7f040000
@@ -147,27 +183,40 @@ def get_pcm_pkt(count: int, starttime: float, subframe_cnt: int, sample_rate: in
             pcm_frame.fixed_frame(frame_count, counter % 65536)
             minor_frame.minor_frame_data = pcm_frame.pack()
             pcm.append(minor_frame)
-            run_time += minor_frame_delta_seconds
-
+            run_time += minor_frame_delay
+            logging.debug(f"ptp_time={run_time} minor_dlt={minor_frame_delay}")
         pkt.payload = pcm.pack()
 
         yield pkt
             
 
+def ptp_test():    
+    assert ONE_SECOND + ONE_SECOND== PTPTime(2, 0)
+    assert PTPTime(1, 99_999_999) + ONE_SECOND == PTPTime(2, 99999999)
+    assert PTPTime(1, 999_999_999) + PTPTime(1, 1) == PTPTime(3, 0)
+
+
 def main(args):
 
+    ptp_test()
     sample_rate = 100
-    ptp_start_time = floor(time.time())
-    run_for_s = 5
+    ptp_start_time = PTPTime(int(time.time()), 0)
+    run_for_s = 60
     minor_frm_size = 32
+    seq = 0
+    time_format_1 = 1
+    time_format_2 = 2
+    st = ptp_start_time
     
     chf = ch10.FileParser(args.ch10file, mode='wb')
     with chf as ch10file:
         ch10file.write(get_tmats_ch10(args.tmats, ptp_to_rtc(ptp_start_time)))
-        for time_pkt in get_time_pkt(run_for_s, ptp_start_time, 1.0, 1):
+        for time_pkt in get_time_pkt(run_for_s, ptp_start_time, ONE_SECOND, time_format_1):
             ch10file.write(time_pkt)
-            for pcm_pkt in get_pcm_pkt(sample_rate, ptp_start_time, 4, sample_rate, minor_frm_size):
+            for pcm_pkt in get_pcm_pkt(sample_rate, st, 4, seq, sample_rate, minor_frm_size):
                 ch10file.write(pcm_pkt)
+            st += ONE_SECOND
+            seq = (seq + sample_rate) % 256
 
 
 
