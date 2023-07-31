@@ -68,7 +68,7 @@ class PCMFrame(object):
         """
         Populate a fixed from to look like TTCWare frame
         """
-        words = [0xfe6b, 0x2840]  + [sfid, readcount] + list(range(self.wordcount - 4))
+        words =   [0xfe6b, 0x2840] + [sfid, readcount] + [0x5555] *  (self.wordcount - 4) 
         self.payload = struct.pack(f"<{self.wordcount}H", *words)
     
     def pack(self):
@@ -91,7 +91,7 @@ def ptp_to_rtc(ptp_time_seconds: PTPTime) -> int:
     """
     ns_conv = Decimal(ptp_time_seconds.second) * Decimal(1e9) + Decimal(ptp_time_seconds.nanosecond)
     div_conv = ns_conv / Decimal(100)
-    conv_int = int(div_conv) & (pow(2,48) - 1)
+    conv_int = int(div_conv) & (pow(2,32) - 1)
     #logging.debug(f"{ptp_time_seconds} {ns_conv} {div_conv} {conv_int}")
     #sys.exit(1)
     return conv_int
@@ -173,7 +173,7 @@ def get_pcm_pkt(count: int, starttime: PTPTime, subframe_cnt: int, start_seq: in
         pkt.sequence = _i % 256
 
         pcm = ch10pcm.PCMDataPacket()
-        pcm.channel_specific_word = 0x7f040000
+        pcm.channel_specific_word =   0x7f040000    #  0x7f040000  #0x5f240000
         for frame_count in range(subframe_cnt):
             rtc_time = ptp_to_rtc(run_time)
             minor_frame = ch10pcm.PCMMinorFrame()
@@ -185,6 +185,7 @@ def get_pcm_pkt(count: int, starttime: PTPTime, subframe_cnt: int, start_seq: in
             pcm.append(minor_frame)
             run_time += minor_frame_delay
             logging.debug(f"ptp_time={run_time} minor_dlt={minor_frame_delay}")
+            counter += 1
         pkt.payload = pcm.pack()
 
         yield pkt
