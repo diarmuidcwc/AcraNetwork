@@ -91,7 +91,7 @@ def ptp_to_rtc(ptp_time_seconds: PTPTime) -> int:
     """
     ns_conv = Decimal(ptp_time_seconds.second) * Decimal(1e9) + Decimal(ptp_time_seconds.nanosecond)
     div_conv = ns_conv / Decimal(100)
-    conv_int = int(div_conv) & (pow(2,32) - 1)
+    conv_int = int(div_conv) & (pow(2,48) - 1)
     #logging.debug(f"{ptp_time_seconds} {ns_conv} {div_conv} {conv_int}")
     #sys.exit(1)
     return conv_int

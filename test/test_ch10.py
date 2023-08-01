@@ -428,6 +428,17 @@ class Time_Test(unittest.TestCase):
         #print(repr(t))
         #self.assertEqual("TimeFormat2 ChannelSpecificWord=0X11 Time=16:41:24 05/20/19 20-May 2019 NanoSeconds=999999999", repr(t))
         #print(repr(t2))
+        
+    def test_time_pkt_1_decom(self):
+        t = ch10time.TimeDataFormat1()
+        #0000   11 00 00 00 99 09 13 14 06 02
+        # Tue, 25 Jul 2023 14:13:09 GMT
+        t.unpack(struct.pack(">HHHHH", 0x1100, 0x0, 0x9909, 0x1314, 0x0602))
+        _t = repr(t)
+        self.assertEqual(t.seconds, 17763189)
+        self.assertEqual(t.nanoseconds, 990_000_000)
+        self.assertEqual('TimeFormat1 ChannelSpecificWord=0X11 Time=15:13:09 25-Jul 1970 Seconds=17763189 MilliSeconds=990', repr(t))
+        
 
     def test_time_to_pcap(self):
         pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_time.pcap", mode="w")
