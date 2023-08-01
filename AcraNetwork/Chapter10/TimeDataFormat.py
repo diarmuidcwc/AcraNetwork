@@ -137,7 +137,7 @@ class TimeDataFormat1(object):
             dt = datetime.strptime(date_as_string, "%H:%M:%S %j %Y")
 
         epoch_time = datetime(1970, 1, 1)
-        self.seconds = (dt - epoch_time).total_seconds()
+        self.seconds = int((dt - epoch_time).total_seconds())
 
         return True
 
@@ -154,9 +154,10 @@ class TimeDataFormat1(object):
         return True
 
     def __repr__(self):
-        return "TimeFormat1 ChannelSpecificWord={:#0X} Time={} MilliSeconds={}".format(
+        return "TimeFormat1 ChannelSpecificWord={:#0X} Time={} Seconds={} MilliSeconds={}".format(
             self.channel_specific_data, 
-            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %x %d-%b %Y"), 
+            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %d-%b %Y"), 
+            self.seconds,
             int(self.nanoseconds/1e6)
         )
 
