@@ -94,7 +94,7 @@ class SimpleEthernetTest(unittest.TestCase):
     ######################
     def test_defaultIP(self):
         i = SimpleEthernet.IP()
-        self.assertRaises(ValueError, lambda : i.pack())
+        self.assertRaises(OSError, lambda : i.pack())
 
     def test_basicIP(self):
         i = SimpleEthernet.IP()
