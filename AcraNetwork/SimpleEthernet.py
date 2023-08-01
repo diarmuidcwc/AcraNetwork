@@ -195,9 +195,17 @@ class Ethernet(object):
         if self.dstmac == None or self.srcmac == None or self.type == None or self.payload == None:
             raise ValueError("All three required Ethernet fields are not complete")
         if self.vlan:
-            header = struct.pack('>HIHIHHH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), Ethernet.TYPE_VLAN, self.vlantag, self.type)
+            header = struct.pack(
+                '>HIHIHHH',
+                self.dstmac >> 32, self.dstmac & 0xffffffff, self.srcmac >> 32,
+                self.srcmac & 0xffffffff, Ethernet.TYPE_VLAN, self.vlantag, self.type
+                )
         else:
-            header = struct.pack('>HIHIH',(self.dstmac>>32),(self.dstmac&0xffffffff),(self.srcmac>>32),(self.srcmac&0xffffffff), self.type)
+            header = struct.pack(
+                '>HIHIH',
+                self.dstmac >> 32, self.dstmac & 0xffffffff, self.srcmac >> 32,
+                self.srcmac & 0xffffffff, self.type
+                )
 
         if fcs:
             _crc = crc32(header + self.payload) & 0xffffffff
@@ -265,13 +273,13 @@ class IP(object):
         :type buf: bytes
         
         """
-        self.srcip = None #: Source IP Address
-        self.dstip = None #: Destination IP Address
+        self.srcip = "" #: Source IP Address
+        self.dstip = "" #: Destination IP Address
         self.len = None #: Total Length. This is calculated when packing the packet
         self.flags = 0x0 #: Three bit field identifying a flag
         self.fragment_offset = None #: Fragment offset
         self.protocol = IP.PROTOCOL_UDP #: The type of the payload
-        self.payload = None #: The IPv4 payload
+        self.payload = b'' #: The IPv4 payload
         self.version = 4 #: IP version field
         self.ihl = 5 #: Header length in 32 bit words
         self.dscp = 0 #: Differentiated Services Code Point
@@ -291,7 +299,8 @@ class IP(object):
         """
         if len(buf) < IP.IP_HEADER_SIZE:
             raise ValueError("Buffer too short for to be an IP packet")
-        (na1, self.dscp, self.len, self.id, self.flags, na3, self.ttl, self.protocol, checksum, self.srcip, self.dstip) \
+        (na1, self.dscp, self.len, self.id, self.flags, na3, self.ttl, 
+         self.protocol, checksum, self.srcip, self.dstip) \
             = struct.unpack_from(IP.IP_HEADER_FORMAT,buf)
         self.fragment_offset = (((self.flags & 0x1f) << 8) + na3) * 8 
         self.flags = self.flags >> 5
@@ -318,8 +327,13 @@ class IP(object):
         (srcip_as_int,) = struct.unpack('!I',socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack('!I',socket.inet_aton(self.dstip))
         self.len = IP.IP_HEADER_SIZE+len(self.payload)
-        header = struct.pack(IP.IP_HEADER_FORMAT, 0x45, self.dscp, self.len, self.id, self.flags, 0, self.ttl,
-                             self.protocol, 0, srcip_as_int,dstip_as_int)
+        if self.len > 65536:
+            logger.warning("IP Payload longer than 65536. Truncating the length field")
+        header = struct.pack(
+            IP.IP_HEADER_FORMAT, 
+            0x45, self.dscp, self.len % 65536, self.id, self.flags, 0, 
+            self.ttl, self.protocol, 0, srcip_as_int, dstip_as_int
+            )
         checksum = ip_calc_checksum(header)
         header = header[:10] + struct.pack('H',checksum) + header[12:]
         return header + self.payload
@@ -347,14 +361,9 @@ class IPv6(object):
     
     """
 
-    PROTOCOL_ICMP = 0x01  #:(Object Constant) ICMP Protocol Constant
-    PROTOCOL_IGMP = 0x02  #:(Object Constant) IGMP Protocol Constant
-    PROTOCOL_TCP = 0x6  #:(Object Constant) TCP Protocol Constant
-    PROTOCOL_UDP = 0x11  #:(Object Constant) UDP Protocol Constant
     FLAG_DONT_FRAGMENT = 0x2
     FLAG_MORE_FRAGMENTS = 0x1
 
-    PROTOCOLS = {"ICMP":PROTOCOL_ICMP, "IGMP" : PROTOCOL_IGMP, "TCP":PROTOCOL_TCP, "UDP":PROTOCOL_UDP}  #:(Object Constant) Protocols available
     IP_HEADER_FORMAT = '>IHBBIIIIIIII'
     IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
 
@@ -371,8 +380,8 @@ class IPv6(object):
         self.len = None #: Total Length. This is calculated when packing the packet
         self.next_header = 0x3B # 0x3B = No next header
         self.hop_limit = 0x01
-        self.srcip = None #: Source IP Address
-        self.dstip = None #: Destination IP Address
+        self.srcip = 0 #: Source IP Address
+        self.dstip = 0 #: Destination IP Address
         self.payload = bytes()
 
         if buf is not None:
@@ -390,7 +399,21 @@ class IPv6(object):
                 raise ValueError("All required IP payloads not defined")
 
         self.len = len(self.payload)
-        header = struct.pack(IPv6.IP_HEADER_FORMAT, ((self.version<<28)+(self.traffic_class<<24)+self.flow_label), self.len, self.next_header, self.hop_limit, self.srcip>>96, (self.srcip>>64)&0xFFFFFFFF,(self.srcip>>32)&0xFFFFFFFF, self.srcip&0xFFFFFFFF, self.dstip>>96, (self.dstip>>64)&0xFFFFFFFF,(self.dstip>>32)&0xFFFFFFFF, self.dstip&0xFFFFFFFF)
+        header = struct.pack(
+            IPv6.IP_HEADER_FORMAT, 
+            ((self.version << 28) + (self.traffic_class << 24) + self.flow_label), 
+            self.len, 
+            self.next_header, 
+            self.hop_limit, 
+            self.srcip >> 96, 
+            (self.srcip >> 64) & 0xFFFFFFFF,
+            (self.srcip >> 32) & 0xFFFFFFFF, 
+            self.srcip & 0xFFFFFFFF, 
+            self.dstip >> 96, 
+            (self.dstip >> 64) & 0xFFFFFFFF,
+            (self.dstip >> 32) & 0xFFFFFFFF, 
+            self.dstip & 0xFFFFFFFF
+            )
 
         return header + self.payload
 
@@ -399,11 +422,8 @@ class IPv6(object):
 
 
     def __repr__(self):
-        protocol = ""
-        for p,v in IPv6.PROTOCOLS.items():
-            if v == self.protocol:
-                protocol = p
-        return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
+
+        return "SRCIP={} DSTIP={} LEN={}".format(self.srcip, self.dstip, self.len)
 
 
 class UDP(object):
@@ -473,7 +493,10 @@ class UDP(object):
             raise ValueError("All UDP fields need to be defined to pack the payload")
 
         self.len = len(self.payload) + UDP.UDP_HEADER_SIZE
-        return struct.pack(UDP.UDP_HEADER_FORMAT,self.srcport,self.dstport,self.len,0) + self.payload
+        if self.len >= 65536:
+            logger.warning("UDP Payload longer than 65536. Truncating the length field")
+        return struct.pack(UDP.UDP_HEADER_FORMAT, self.srcport, self.dstport, 
+                           self.len % 65536, 0) + self.payload
 
     def __repr__(self):
         return "SRCPORT={} DSTPORT={}".format(self.srcport, self.dstport)
@@ -494,8 +517,8 @@ class AFDX(object):
         raise Exception("No working")
         self.type =None
         self.networkID = None
-        self.equipmentID = None
-        self.interfaceID = None
+        self.equipmentID = 0
+        self.interfaceID = 0
         self.vlink = None
 
         self.payload = None
