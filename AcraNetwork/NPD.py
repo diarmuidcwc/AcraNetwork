@@ -118,7 +118,7 @@ class ACQSegment(NPDSegment):
         remaining = NPDSegment.unpack(self, buffer)
         (self.sfid, _cal, reserved) = struct.unpack_from(">BBH", self.payload)
         self.cal = _cal >> 7
-        len_words = (len(self.payload) - 4 ) / 2
+        len_words = int((len(self.payload) - 4 ) / 2)
         self.words = list(struct.unpack_from(">{}H".format(len_words), self.payload, 4))
         return remaining
 
