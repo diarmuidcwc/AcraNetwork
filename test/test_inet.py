@@ -27,9 +27,7 @@ def getEthernetPacket(data=""):
 
 
 class testINET(unittest.TestCase):
-
     def setUp(self):
-
         self.pkg = iNET.iNETPackage()
         self.pkg.definitionID = 7
         self.pkg.flags = 8
@@ -39,25 +37,24 @@ class testINET(unittest.TestCase):
         self.i = iNET.iNET()
         self.i.flags = 0
         self.i.type = 1
-        self.i.definition_ID = 0xdc
+        self.i.definition_ID = 0xDC
         self.i.sequence = 3
         self.i.ptptimeseconds = 100
         self.i.ptptimenanoseconds = 1000
         self.i.app_fields = [0x30, 0x40]
         self.i.packages.append(self.pkg)
 
-        for pkg_idx in range(2,5):
+        for pkg_idx in range(2, 5):
             pkg = iNET.iNETPackage()
             pkg.definitionID = 7
             pkg.flags = 8
             pkg.timedelta = 0x99
             payload = list(range(pkg_idx))
-            pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload )
+            pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload)
             self.i.packages.append(pkg)
 
     def test_unpack_compare(self):
-
-        d= iNET.iNET()
+        d = iNET.iNET()
         d.unpack(self.i.pack())
         self.assertEqual(d.flags, self.i.flags)
         self.assertEqual(d.type, self.i.type)
@@ -78,30 +75,30 @@ class testINET(unittest.TestCase):
 
     def test_topcap(self):
         pcapw = pcap.Pcap(os.path.join(THIS_DIR, "test_inet.pcap"), mode="w")
-        pcapw.write_global_header()
+
         rec = pcap.PcapRecord()
-        for pkg_idx in range(2,5):
+        for pkg_idx in range(2, 5):
             pkg = iNET.iNETPackage()
             pkg.definitionID = 7
             pkg.flags = 8
             pkg.timedelta = 99
             payload = list(range(pkg_idx))
-            pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload )
+            pkg.payload = struct.pack(">{}B".format(pkg_idx), *payload)
             self.i.packages.append(pkg)
         rec.payload = getEthernetPacket(self.i.pack())
         pcapw.write(rec)
         pcapw.close()
 
-
     def test_print(self):
-        self.assertEqual(repr(self.i), "MessageDefinitionID=0XDC Sequence=3 Type=1 TimeStamp(s)=100 TimeStamp(ns)=1000 OptionWordCount=0")
+        self.assertEqual(
+            repr(self.i),
+            "MessageDefinitionID=0XDC Sequence=3 Type=1 TimeStamp(s)=100 TimeStamp(ns)=1000 OptionWordCount=0",
+        )
 
     def test_len(self):
-
         self.assertEqual(len(self.i), 96)
 
     def test_pack(self):
-
         ref_str = self.i.pack()
         i2 = iNET.iNET()
         i2.unpack(ref_str)
@@ -109,5 +106,5 @@ class testINET(unittest.TestCase):
         self.assertEqual(self.i, i2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

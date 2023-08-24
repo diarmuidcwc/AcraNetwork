@@ -16,22 +16,22 @@ __status__ = "Production"
 import struct
 
 
-class iNetX (object):
-    """ 
+class iNetX(object):
+    """
     Class to pack and unpack iNetX payloads. iNet-X is an open payload format for use
     in FTI networks. It is usually transmitted in a UDP packet containing parameter data
     acquired from sensors and buses
-    
+
     Capture a UDP packet and unpack the payload as an iNetX packet
-    
+
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  
+    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = iNetX()
     >>> i.unpack(data)
     >>> print i.streamid
     6
-    
+
     :type inetxcontrol: int
     :type streamid: int
     :type sequence: int
@@ -42,30 +42,30 @@ class iNetX (object):
     :type payload: bytes
     """
 
-    DEF_CONTROL_WORD = 0x11000000 #:(Object Constant) The default iNetX control word.
-    INETX_HEADER_FORMAT = '>LLLLLLL'
+    DEF_CONTROL_WORD = 0x11000000  #: (Object Constant) The default iNetX control word.
+    INETX_HEADER_FORMAT = ">LLLLLLL"
     INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
     REQ_ATTR = ("inetxcontrol", "streamid", "sequence", "ptptimeseconds", "ptptimenanoseconds", "pif", "payload")
 
     def __init__(self, buf=None):
-        '''Creator method for an iNetX class'''
-        self.inetxcontrol = iNetX.DEF_CONTROL_WORD #: Control Word
-        self.streamid = None #: Stream ID. Typically to identify a unique packet in an FTI network. 4 bytes in size
-        self.sequence = None #: Unique rollover counter per stream ID.Rolls over at 2^64
-        self.packetlen = None #: Packet Length
-        self.ptptimeseconds = None #: Timestamp of first parameter in the packet. EPOCH time
-        self.ptptimenanoseconds = None #: Nanaosecond timestamp
-        self.pif = None #: Payload Information Field
-        self.payload = None #: Payload
+        """Creator method for an iNetX class"""
+        self.inetxcontrol: int = iNetX.DEF_CONTROL_WORD  #: Control Word
+        self.streamid: int = 0  #: Stream ID. Typically to identify a unique packet in an FTI network. 4 bytes in size
+        self.sequence: int = 0  #: Unique rollover counter per stream ID.Rolls over at 2^64
+        self.packetlen: int = 0  #: Packet Length
+        self.ptptimeseconds: int = 0  #: Timestamp of first parameter in the packet. EPOCH time
+        self.ptptimenanoseconds: int = 0  #: Nanaosecond timestamp
+        self.pif: int = 0  #: Payload Information Field
+        self.payload: bytes = bytes()  #: Payload
 
         self._packetStrut = struct.Struct(iNetX.INETX_HEADER_FORMAT)
         if buf is not None:
             self.unpack(buf)
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the packet into a binary format and return as a string
-        
+
         :rtype: bytes
         """
 
@@ -73,12 +73,20 @@ class iNetX (object):
             if getattr(self, attr) is None:
                 raise ValueError("Require {} is not defined".format(attr))
 
-        self.packetlen =  len(self.payload)  + iNetX.INETX_HEADER_LENGTH
-        packetvalues = (self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif )
+        self.packetlen = len(self.payload) + iNetX.INETX_HEADER_LENGTH
+        packetvalues = (
+            self.inetxcontrol,
+            self.streamid,
+            self.sequence,
+            self.packetlen,
+            self.ptptimeseconds,
+            self.ptptimenanoseconds,
+            self.pif,
+        )
         packet = self._packetStrut.pack(*packetvalues) + self.payload
         return packet
 
-    def unpack(self, buf):
+    def unpack(self, buf: bytes) -> bool:
         """
         Unpack a raw byte stream to an iNetX object
         Accepts a buffer to unpack as the required argument
@@ -89,21 +97,31 @@ class iNetX (object):
         """
 
         if len(buf) < iNetX.INETX_HEADER_LENGTH:
-            raise ValueError ("Buffer is too short to be an iNetX packet")
+            raise ValueError("Buffer is too short to be an iNetX packet")
 
-        self.inetxcontrol,self.streamid,self.sequence,self.packetlen,self.ptptimeseconds,self.ptptimenanoseconds,self.pif  = self._packetStrut.unpack_from(buf)
+        (
+            self.inetxcontrol,
+            self.streamid,
+            self.sequence,
+            self.packetlen,
+            self.ptptimeseconds,
+            self.ptptimenanoseconds,
+            self.pif,
+        ) = self._packetStrut.unpack_from(buf)
 
         if self.packetlen != len(buf):
-            raise ValueError("Length of buffer 0x{:X} does not match length field 0x{:X}".format(len(buf),self.packetlen))
+            raise ValueError(
+                "Length of buffer 0x{:X} does not match length field 0x{:X}".format(len(buf), self.packetlen)
+            )
 
-        self.payload = buf[iNetX.INETX_HEADER_LENGTH:]
+        self.payload = buf[iNetX.INETX_HEADER_LENGTH :]
 
         return True
 
-    def setPacketTime(self,utctimestamp, nanoseconds=0):
+    def setPacketTime(self, utctimestamp, nanoseconds=0):
         """
         Set the packet timestamp
-        
+
         :param timestamp: The timestamp in seconds since 1 Jan 1970
         :type timestamp: int
         :type nanoseconds: Nanoseconds past the current time
@@ -116,8 +134,9 @@ class iNetX (object):
         return True
 
     def __repr__(self):
-        return "STREAMID={:#0X} SEQ={} LEN={} PTPS={} PTPNS={}".format(self.streamid, self.sequence, self.packetlen,
-                                                                       self.ptptimeseconds, self.ptptimenanoseconds)
+        return "STREAMID={:#0X} SEQ={} LEN={} PTPS={} PTPNS={}".format(
+            self.streamid, self.sequence, self.packetlen, self.ptptimeseconds, self.ptptimenanoseconds
+        )
 
     def __eq__(self, other):
         if not isinstance(other, iNetX):
@@ -131,5 +150,3 @@ class iNetX (object):
 
     def __len__(self):
         return len(self.pack())
-
-
