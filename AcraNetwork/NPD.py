@@ -14,13 +14,14 @@ __status__ = "Production"
 
 
 import struct
-from socket import inet_aton,inet_ntoa
+from socket import inet_aton, inet_ntoa
+import typing
 
 
 class NPDSegment(object):
     """
     NPD Payloads are split into segments. This class will pack and unpack segments
-    
+
     :type timedelta: int
     :type segmentlen: int
     :type errorcode: int
@@ -32,57 +33,61 @@ class NPDSegment(object):
     NPD_SEGMENT_HDR_LEN = struct.calcsize(NPD_SEGMENT_HDR_FORMAT)
 
     def __init__(self):
-        self.timedelta = None  #: The R-bit in the Flags field of the packet header dictates the format of this field.
-        self.segmentlen = None #: The length of the segment header and data in bytes excluding padding.
-        self.errorcode = None  #: This field has a zero value if there are no errors
-        self.flags = None  #: [2:1] Fragmentation state flag
-        self._payload = None  #: Payload of segment
+        self.timedelta: int = 0  #: The R-bit in the Flags field of the packet header dictates the format of this field.
+        self.segmentlen: int = 0  #: The length of the segment header and data in bytes excluding padding.
+        self.errorcode: int = 0  #: This field has a zero value if there are no errors
+        self.flags: int = 0  #: [2:1] Fragmentation state flag
+        self._payload: bytes = bytes()  #: Payload of segment
 
     @property
     def payload(self):
         """
         Payload of segment
-        :return: 
+        :return:
         """
         return self._payload
 
     @payload.setter
-    def payload(self, buf):
+    def payload(self, buf: bytes):
         self._payload = buf
         self.segmentlen = len(self.payload) + NPDSegment.NPD_SEGMENT_HDR_LEN
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes) -> bytes:
         """
         Unpack a string buffer into an NPD segment. Return the remaining buffer so that the next segment can iteratively
         be unpacked
 
         :param buffer: A string buffer representing an NPD segment
         :type buffer: str
-        
+
         :rtype: str
         """
-        (self.timedelta, self.segmentlen, self.errorcode, self.flags) = struct.unpack_from(NPDSegment.NPD_SEGMENT_HDR_FORMAT, buffer)
-        self.payload = buffer[NPDSegment.NPD_SEGMENT_HDR_LEN:self.segmentlen]
-        if self.segmentlen % 4  == 0:
+        (self.timedelta, self.segmentlen, self.errorcode, self.flags) = struct.unpack_from(
+            NPDSegment.NPD_SEGMENT_HDR_FORMAT, buffer
+        )
+        self.payload = buffer[NPDSegment.NPD_SEGMENT_HDR_LEN : self.segmentlen]
+        if self.segmentlen % 4 == 0:
             pad_len = 0
         else:
-            pad_len = 4- (self.segmentlen % 4)
+            pad_len = 4 - (self.segmentlen % 4)
 
-        return buffer[(self.segmentlen+pad_len):]
+        return buffer[(self.segmentlen + pad_len) :]
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the NPD object into a binary buffer
 
-        :rtype: str 
+        :rtype: str
         """
         if len(self.payload) % 4 == 0:
             pad = b""
         else:
             pad_len = 4 - len(self.payload) % 4
-            pad = struct.pack(">B",0xFF) * pad_len
+            pad = struct.pack(">B", 0xFF) * pad_len
 
-        hdr_pack = struct.pack(NPDSegment.NPD_SEGMENT_HDR_FORMAT, self.timedelta, self.segmentlen, self.errorcode, self.flags)
+        hdr_pack = struct.pack(
+            NPDSegment.NPD_SEGMENT_HDR_FORMAT, self.timedelta, self.segmentlen, self.errorcode, self.flags
+        )
 
         return hdr_pack + self.payload + pad
 
@@ -100,32 +105,35 @@ class NPDSegment(object):
 
     def __repr__(self):
         return "NPD Segment. TimeDelta={} Segment Len={} ErrorCode={} Flags={:#0X}".format(
-            self.timedelta, self.segmentlen, self.errorcode, self.flags)
-
+            self.timedelta, self.segmentlen, self.errorcode, self.flags
+        )
 
 
 class ACQSegment(NPDSegment):
     """
     PCM Segments
     """
+
     def __init__(self):
         NPDSegment.__init__(self)
-        self.sfid = 0
-        self.cal = 0
+        self.sfid: int = 0
+        self.cal: int = 0
         self.words = []
 
     def unpack(self, buffer):
         remaining = NPDSegment.unpack(self, buffer)
         (self.sfid, _cal, reserved) = struct.unpack_from(">BBH", self.payload)
         self.cal = _cal >> 7
-        len_words = int((len(self.payload) - 4 ) / 2)
+        len_words = int((len(self.payload) - 4) / 2)
         self.words = list(struct.unpack_from(">{}H".format(len_words), self.payload, 4))
         return remaining
 
     def __repr__(self):
-        return "PCM NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} sfid={:#0X} " \
-               "WordCnt={}" \
-               "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.sfid, len(self.words))
+        return (
+            "PCM NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} sfid={:#0X} "
+            "WordCnt={}"
+            "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.sfid, len(self.words))
+        )
 
 
 class A429Segment(NPDSegment):
@@ -133,7 +141,6 @@ class A429Segment(NPDSegment):
 
 
 class RS232Segment(NPDSegment):
-
     BSL_CH0 = 0x0
     BSL_CH1 = 0x8000
     BSL_PAR_ERR = 0x4000
@@ -160,7 +167,7 @@ class RS232Segment(NPDSegment):
         NPDSegment.__init__(self)
         self.block_status = None
         self.sync_bytes = []
-        self.data = b""
+        self.data: bytes = bytes()
 
     def unpack(self, buffer):
         """
@@ -177,7 +184,7 @@ class RS232Segment(NPDSegment):
         sync_word_cnt = self.block_status & RS232Segment.BSL_SYNC_COUNT_MASK
         if sync_word_cnt > 0:
             self.sync_bytes = list(struct.unpack_from(">{}B".format(sync_word_cnt), self.payload[2:]))
-            self.data = self.payload[2+sync_word_cnt:]
+            self.data = self.payload[2 + sync_word_cnt :]
         else:
             self.data = self.payload[2:]
         return remaining
@@ -212,9 +219,11 @@ class RS232Segment(NPDSegment):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "RS232 NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} Block_Status={:#0X} " \
-               "DataLen={}" \
-               "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.block_status, len(self.data))
+        return (
+            "RS232 NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} Block_Status={:#0X} "
+            "DataLen={}"
+            "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.block_status, len(self.data))
+        )
 
 
 class MIL1553Segment(NPDSegment):
@@ -232,19 +241,23 @@ class MIL1553Segment(NPDSegment):
         return remaining
 
     def __repr__(self):
-        return "MIL-STD-1553 Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} BlockStatus={:#0X} " \
-               "Gap1={} Gap2={}" \
-               "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.blockstatus, self.gap1,
-                         self.gap2)
+        return (
+            "MIL-STD-1553 Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} BlockStatus={:#0X} "
+            "Gap1={} Gap2={}"
+            "".format(
+                self.timedelta, self.segmentlen, self.errorcode, self.flags, self.blockstatus, self.gap1, self.gap2
+            )
+        )
+
 
 class NPD(object):
-    """ 
-    Class to pack and unpack NPD payloads. 
+    """
+    Class to pack and unpack NPD payloads.
 
     Capture a UDP packet and unpack the _payload as an NPD packet
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  
+    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> n = NPD()
     >>> n.unpack(data)
@@ -267,19 +280,23 @@ class NPD(object):
     :type segments: list[NPDSegment|ACQSegment|RS232Segment|A429Segment]
     """
 
-    NPD_HEADER_FORMAT = '>BBHBBHIII'
+    NPD_HEADER_FORMAT = ">BBHBBHIII"
     NPD_HEADER_LENGTH = struct.calcsize(NPD_HEADER_FORMAT)
     NPD_VERSION = 3
 
-    NPD_DT = { 0x50: RS232Segment, 0x38: A429Segment, 0xA1: ACQSegment, 0xD0: MIL1553Segment}
+    NPD_DT = {0x50: RS232Segment, 0x38: A429Segment, 0xA1: ACQSegment, 0xD0: MIL1553Segment}
 
     def __init__(self):
-        '''Creator method for a UDP class'''
-        self.version = NPD.NPD_VERSION #: Version
-        self.hdrlen = NPD.NPD_HEADER_LENGTH//4  #: Header Length
+        """Creator method for a UDP class"""
+        self.version = NPD.NPD_VERSION  #: Version
+        self.hdrlen = NPD.NPD_HEADER_LENGTH // 4  #: Header Length
         self.datatype = None  #: A unique identifier for the type of data collected in the packet
-        self.packetlen = None  #: The number of 32-bit words in the data packet including the NPD header and data segments.
-        self.cfgcnt = None  #: Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.
+        self.packetlen = (
+            None  #: The number of 32-bit words in the data packet including the NPD header and data segments.
+        )
+        self.cfgcnt = (
+            None  #: Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.
+        )
         self.flags = None  #: Flags [0]-Unlocked timestamp [1]-Packet fragmentation [2]-Relative Time Count Present
         self.sequence = None  #: Sequence number
         self.datasrcid = None  #: A unique data source identifier for each data source.
@@ -290,18 +307,27 @@ class NPD(object):
     def unpack(self, buffer):
         """
         Unpack a string buffer into an NPD object
-        
+
         :param buffer: A string buffer representing an NPD packet
         :type buffer: bytes
         :rtype: None
         """
-        (_ver_hdr, self.datatype, self.packetlen, self.cfgcnt, self.flags, self.sequence, self.datasrcid,
-         _mcast, self.timestamp) = struct.unpack_from(NPD.NPD_HEADER_FORMAT, buffer)
+        (
+            _ver_hdr,
+            self.datatype,
+            self.packetlen,
+            self.cfgcnt,
+            self.flags,
+            self.sequence,
+            self.datasrcid,
+            _mcast,
+            self.timestamp,
+        ) = struct.unpack_from(NPD.NPD_HEADER_FORMAT, buffer)
         self.version = _ver_hdr >> 4
         self.hdrlen = _ver_hdr & 0xF
-        self.mcastaddr = inet_ntoa(struct.pack(">I",_mcast))
+        self.mcastaddr = inet_ntoa(struct.pack(">I", _mcast))
 
-        _payload = buffer[self.hdrlen * 4:]
+        _payload = buffer[self.hdrlen * 4 :]
 
         if self.packetlen * 4 != len(buffer):
             raise Exception("The self reported packet length does not match the length of the buffer supplied")
@@ -324,8 +350,8 @@ class NPD(object):
     def pack(self):
         """
         Pack the NPD object into a binary buffer
-        
-        :rtype: str 
+
+        :rtype: str
         """
         _ver_hdr = (self.version << 4) + self.hdrlen
         (_mc,) = struct.unpack(">I", inet_aton(self.mcastaddr))
@@ -333,15 +359,26 @@ class NPD(object):
         _payload = b""
         for segment in self.segments:
             _payload += segment.pack()
-        self.packetlen = (NPD.NPD_HEADER_LENGTH + len(_payload))//4
-        hdr_buf = struct.pack(NPD.NPD_HEADER_FORMAT, _ver_hdr, self.datatype, self.packetlen, self.cfgcnt, self.flags,
-                              self.sequence, self.datasrcid, _mc, self.timestamp)
+        self.packetlen = (NPD.NPD_HEADER_LENGTH + len(_payload)) // 4
+        hdr_buf = struct.pack(
+            NPD.NPD_HEADER_FORMAT,
+            _ver_hdr,
+            self.datatype,
+            self.packetlen,
+            self.cfgcnt,
+            self.flags,
+            self.sequence,
+            self.datasrcid,
+            _mc,
+            self.timestamp,
+        )
 
         return hdr_buf + _payload
 
     def __repr__(self):
         det = "NPD: DataType={:#0X} Seq={} DataSrcID={:#0X} MCastAddr={}".format(
-            self.datatype, self.sequence, self.datasrcid, self.mcastaddr)
+            self.datatype, self.sequence, self.datasrcid, self.mcastaddr
+        )
         for seg in self.segments:
             det += "\n\t{}".format(repr(seg))
 
@@ -350,8 +387,19 @@ class NPD(object):
     def __eq__(self, other):
         if not isinstance(other, NPD):
             return False
-        for attr in ["version", "hdrlen", "datatype", "packetlen", "cfgcnt", "flags", "sequence", "datasrcid",
-                     "mcastaddr", "timestamp", "segments"]:
+        for attr in [
+            "version",
+            "hdrlen",
+            "datatype",
+            "packetlen",
+            "cfgcnt",
+            "flags",
+            "sequence",
+            "datasrcid",
+            "mcastaddr",
+            "timestamp",
+            "segments",
+        ]:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 

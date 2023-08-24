@@ -56,4 +56,5 @@
 # 0.15.27 - Added simple IENA packet generation script
 # 0.15.28 - Fixed line endings
 # 0.16.0  - Refactored Chapter10 module
-__version__ = '0.16.0'
+# 0.16.1  - Initialized attributes
+__version__ = '0.16.1'
