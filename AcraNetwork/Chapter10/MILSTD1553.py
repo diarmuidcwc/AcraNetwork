@@ -1,5 +1,6 @@
 import struct
 
+
 class MILSTD1553DataPacket(object):
     """
     Data Packet Format. Contains a list of MIML-STD-1553 Data Words
@@ -35,7 +36,7 @@ class MILSTD1553DataPacket(object):
         for dw in self:
             msg_buf += dw.pack()
 
-        csw = struct.pack("<I", (self.ttb << 30)+len(self))
+        csw = struct.pack("<I", (self.ttb << 30) + len(self))
 
         return csw + msg_buf
 
@@ -53,7 +54,7 @@ class MILSTD1553DataPacket(object):
         self.ttb = (ch_spec_word >> 30) & 0x3
 
         offset = 4
-        while offset+14 < len(mybuffer):  # Should have at least the timestamp
+        while offset + 14 < len(mybuffer):  # Should have at least the timestamp
             m = MILSTD1553Message()
             offset += m.unpack(mybuffer[offset:])
             self.messages.append(m)
@@ -126,12 +127,12 @@ class MILSTD1553Message(object):
     """
 
     def __init__(self):
-        self.ptptimeseconds = None #: Timestamp of first parameter in the packet. EPOCH time
-        self.ptptimenanoseconds = None #: Nanaosecond timestamp
+        self.ptptimeseconds = None  #: Timestamp of first parameter in the packet. EPOCH time
+        self.ptptimenanoseconds = None  #: Nanaosecond timestamp
         self.blockstatus = 0
         self.gaptimes = 0
         self.length = 0
-        self.message = b''
+        self.message = b""
 
     def pack(self):
         """
@@ -140,7 +141,7 @@ class MILSTD1553Message(object):
         :rtype: str|bytes
         """
         if self.ptptimeseconds is not None and self.ptptimenanoseconds is not None:
-            ch_spec_word = struct.pack("<II",self.ptptimenanoseconds, self.ptptimeseconds)
+            ch_spec_word = struct.pack("<II", self.ptptimenanoseconds, self.ptptimeseconds)
         else:
             raise Exception("No timestamp defined")
         self.length = len(self.message)
@@ -157,13 +158,13 @@ class MILSTD1553Message(object):
         :rtype: int
         """
         offset = 0
-        #bytes = struct.unpack_from(">8B", mybuffer)
+        # bytes = struct.unpack_from(">8B", mybuffer)
         (self.ptptimenanoseconds, self.ptptimeseconds) = struct.unpack_from("<II", mybuffer, offset)
         offset += 8
         (self.blockstatus, self.gaptimes, self.length) = struct.unpack_from("<HHH", mybuffer, offset)
         offset += 6
 
-        self.message = mybuffer[offset:offset+self.length]
+        self.message = mybuffer[offset : offset + self.length]
         offset += self.length
 
         return offset
@@ -182,4 +183,5 @@ class MILSTD1553Message(object):
 
     def __repr__(self):
         return "MILSTD1553Message: PTPSec={} PTPNSec={} BlockStatus={} GapTimes={} Length={}".format(
-             self.ptptimeseconds, self.ptptimenanoseconds, self.blockstatus, self.gaptimes, self.length)
+            self.ptptimeseconds, self.ptptimenanoseconds, self.blockstatus, self.gaptimes, self.length
+        )
