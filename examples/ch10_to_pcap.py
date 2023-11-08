@@ -16,6 +16,7 @@ def create_parser():
     parser = argparse.ArgumentParser(description='Covert a chapter 10 file to a pcap')
     parser.add_argument('--pcap',  required=True,  help='The output pcap file')
     parser.add_argument('--ch10',  required=True,  help='The input chapter 10 file')
+    parser.add_argument('--tmats',  required=False,  default=None, help='Optional TMATS output file')
     return parser
 
 def encapsulate_udppayload_in_eth(udp_payload: bytes):
@@ -45,10 +46,15 @@ def main(args):
 
     pf = pcap.Pcap(args.pcap, mode='w')
     fp = ch10.FileParser(args.ch10)
+    if args.tmats is not None:
+        tf = open(args.tmats, mode='wb')
 
     idx = 0
     with fp as ch10file:
         for idx, pkt in enumerate(ch10file):
+            if args.tmats is not None and idx == 0:
+                tf.write(pkt.pack())
+                tf.close()
             pr = pcap.PcapRecord()
             pr.set_current_time()
             udp = ch10udp.Chapter10UDP()
