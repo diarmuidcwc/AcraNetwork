@@ -33,36 +33,6 @@ from AcraNetwork.Chapter10 import (
 import typing
 
 
-def payload_to_object(
-    buffer: bytes, datatype: int
-) -> typing.Union[
-    ch10pcm.PCMDataPacket,
-    ch10uart.UARTDataPacket,
-    ch10arinc.ARINC429DataPacket,
-    ch10analog.Analog,
-    ch10mil.MILSTD1553DataPacket,
-]:
-    p = None
-    if datatype == DATA_TYPE_ARINC429_FMT0:
-        p = ch10arinc.ARINC429DataPacket()
-        p.unpack(buffer)
-    elif datatype == DATA_TYPE_MILSTD1553_FMT1:
-        p = ch10mil.MILSTD1553DataPacket()
-        p.unpack(buffer)
-    elif datatype == DATA_TYPE_UART_FMT0:
-        p = ch10uart.UARTDataPacket()
-        p.unpack(buffer)
-    elif datatype == DATA_TYPE_PCM_DATA_FMT1:
-        p = ch10pcm.PCMDataPacket()
-        p.unpack(buffer)
-    elif datatype == DATA_TYPE_ANALOG:
-        p = ch10analog.Analog()
-        p.unpack(buffer)
-    else:
-        raise Exception(f"Data type {datatype} not supported")
-    return p
-
-
 logging.basicConfig(level=logging.DEBUG)
 
 
