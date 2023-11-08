@@ -292,6 +292,10 @@ class FileParser(object):
         #Exception handling here
         self._fd.close()
 
+    def close(self):
+        if self._fd is not None:
+            self._fd.close()
+
     def __iter__(self):
         return self
 
