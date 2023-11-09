@@ -78,6 +78,9 @@ class RTCTime(object):
         self.count = lsw + (msw << 32)
         return True
 
+    def to_rtc(self):
+        return self.count
+
     def __repr__(self):
         return "RTC: count={}".format(self.count)
 

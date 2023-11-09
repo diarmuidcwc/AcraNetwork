@@ -2,6 +2,79 @@ import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
 
+class MILSTD1553Message(object):
+    """
+    The Chapter 10 standard defines specific payload formats for different data. This class handles MIL1553 packets
+
+    :type ptptimeseconds: int
+    :type ptptimenanoseconds: int
+    :type subchannel: int
+    :type parity_error: bool
+    :type datalength: int
+    :type payload: str
+    """
+
+    def __init__(self, ipts_source=TS_CH4):
+        if ipts_source == TS_CH4:
+            self.ipts = RTCTime()
+        elif ipts_source == TS_IEEE1558:
+            self.ipts = PTPTime()
+        elif ipts_source is None:
+            raise Exception("Time stamp is not option for MIL-STD-1553")
+        self.blockstatus = 0
+        self.gaptimes = 0
+        self.length = 0
+        self.message = b""
+
+    def pack(self):
+        """
+        Pack the MIL-STD-1553 message object into a binary buffer
+
+        :rtype: str|bytes
+        """
+        ch_spec_word = self.ipts.pack()
+        self.length = len(self.message)
+        intra_packet_data_header = struct.pack("<HHH", self.blockstatus, self.gaptimes, self.length)
+
+        return ch_spec_word + intra_packet_data_header + self.message
+
+    def unpack(self, mybuffer):
+        """
+        Unpack a string buffer into an MIL-STD-1553 data packet object. Returns the buffer that was consumed
+
+        :param mybuffer: A string buffer representing an UART data  packet
+        :type mybuffer: str
+        :rtype: int
+        """
+        offset = 0
+        # bytes = struct.unpack_from(">8B", mybuffer)
+        self.ipts.unpack(mybuffer[:8])
+        offset += 8
+        (self.blockstatus, self.gaptimes, self.length) = struct.unpack_from("<HHH", mybuffer, offset)
+        offset += 6
+        self.message = mybuffer[offset : offset + self.length]
+        offset += self.length
+
+        return offset
+
+    def __eq__(self, other):
+        if not isinstance(other, MILSTD1553Message):
+            return False
+
+        _match_att = ["ipts", "blockstatus", "gaptimes", "length", "message"]
+
+        for attr in _match_att:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        return True
+
+    def __repr__(self):
+        return "MILSTD1553Message: Time={}  BlockStatus={} GapTimes={} Length={}".format(
+            self.ipts, self.blockstatus, self.gaptimes, self.length
+        )
+
+
 class MILSTD1553DataPacket(object):
     """
     Data Packet Format. Contains a list of MIML-STD-1553 Data Words
@@ -99,7 +172,7 @@ class MILSTD1553DataPacket(object):
         self._index = 0
         return self
 
-    def next(self):
+    def next(self) -> MILSTD1553Message:
         if self._index < len(self.messages):
             _dw = self.messages[self._index]
             self._index += 1
@@ -114,76 +187,3 @@ class MILSTD1553DataPacket(object):
 
     def __getitem__(self, key):
         return self.messages[key]
-
-
-class MILSTD1553Message(object):
-    """
-    The Chapter 10 standard defines specific payload formats for different data. This class handles MIL1553 packets
-
-    :type ptptimeseconds: int
-    :type ptptimenanoseconds: int
-    :type subchannel: int
-    :type parity_error: bool
-    :type datalength: int
-    :type payload: str
-    """
-
-    def __init__(self, ipts_source=TS_CH4):
-        if ipts_source == TS_CH4:
-            self.ipts = RTCTime()
-        elif ipts_source == TS_IEEE1558:
-            self.ipts = PTPTime()
-        elif ipts_source is None:
-            raise Exception("Time stamp is not option for MIL-STD-1553")
-        self.blockstatus = 0
-        self.gaptimes = 0
-        self.length = 0
-        self.message = b""
-
-    def pack(self):
-        """
-        Pack the MIL-STD-1553 message object into a binary buffer
-
-        :rtype: str|bytes
-        """
-        ch_spec_word = self.ipts.pack()
-        self.length = len(self.message)
-        intra_packet_data_header = struct.pack("<HHH", self.blockstatus, self.gaptimes, self.length)
-
-        return ch_spec_word + intra_packet_data_header + self.message
-
-    def unpack(self, mybuffer):
-        """
-        Unpack a string buffer into an MIL-STD-1553 data packet object. Returns the buffer that was consumed
-
-        :param mybuffer: A string buffer representing an UART data  packet
-        :type mybuffer: str
-        :rtype: int
-        """
-        offset = 0
-        # bytes = struct.unpack_from(">8B", mybuffer)
-        self.ipts.unpack(mybuffer[:8])
-        offset += 8
-        (self.blockstatus, self.gaptimes, self.length) = struct.unpack_from("<HHH", mybuffer, offset)
-        offset += 6
-        self.message = mybuffer[offset : offset + self.length]
-        offset += self.length
-
-        return offset
-
-    def __eq__(self, other):
-        if not isinstance(other, MILSTD1553Message):
-            return False
-
-        _match_att = ["ipts", "blockstatus", "gaptimes", "length", "message"]
-
-        for attr in _match_att:
-            if getattr(self, attr) != getattr(other, attr):
-                return False
-
-        return True
-
-    def __repr__(self):
-        return "MILSTD1553Message: Time={}  BlockStatus={} GapTimes={} Length={}".format(
-            self.ipts, self.blockstatus, self.gaptimes, self.length
-        )
