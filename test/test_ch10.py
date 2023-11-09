@@ -327,7 +327,7 @@ class CH10UDPTest(unittest.TestCase):
 
 
 uart_pkt = """UARTPayload: UARTDataWordCount=1
-  UARTDataWord: Time=PTP: 15:21:43 20-May 1976 nanosec=10 ParityError=False DataLen=508 SubChannel=8191
+  UARTDataWord: Time=PTP: 14:21:43 20-May 1976 nanosec=10 ParityError=False DataLen=508 SubChannel=8191
 """
 
 
@@ -423,8 +423,9 @@ class Time_Test(unittest.TestCase):
 
     def test_time_pkt(self):
         t = ch10time.TimeDataFormat1()
-        t.milliseconds = 980
-        t.datetime = datetime.datetime.fromtimestamp(1558366884)
+        t.ptptime = PTPTime(1558366884, 980000000)
+        # t.milliseconds = 980
+        # t.datetime = datetime.datetime.fromtimestamp(1558366884)
 
         # print(repr(t))
         t2 = ch10time.TimeDataFormat1()
@@ -435,8 +436,9 @@ class Time_Test(unittest.TestCase):
 
     def test_time_pkt_2(self):
         t = ch10time.TimeDataFormat2()
-        t.nanoseconds = 999999999
-        t.datetime = datetime.datetime.fromtimestamp(1558366884)
+        t.ptptime = PTPTime(1558366884, 999999999)
+        # t.nanoseconds = 999999999
+        # t.datetime = datetime.datetime.fromtimestamp(1558366884)
 
         t2 = ch10time.TimeDataFormat2()
         t2.unpack(t.pack())
@@ -451,10 +453,11 @@ class Time_Test(unittest.TestCase):
         # Tue, 25 Jul 2023 14:13:09 GMT
         t.unpack(struct.pack(">HHHHH", 0x1100, 0x0, 0x9909, 0x1314, 0x0602))
         _t = repr(t)
-        self.assertEqual(t.seconds, 17763189)
-        self.assertEqual(t.nanoseconds, 990_000_000)
+        ref_t = PTPTime(17763189, 990_000_000)
+        self.assertEqual(t.ptptime, ref_t)
+        # self.assertEqual(t.nanoseconds, 990_000_000)
         self.assertEqual(
-            "TimeFormat1 ChannelSpecificWord=0X11 Time=15:13:09 25-Jul 1970 Seconds=17763189 MilliSeconds=990", repr(t)
+            "TimeFormat1 ChannelSpecificWord=0X11 Time=PTP: 14:13:09 25-Jul 1970 nanosec=990000000", repr(t)
         )
 
     def test_time_to_pcap(self):
@@ -469,8 +472,7 @@ class Time_Test(unittest.TestCase):
         t1 = ch10time.TimeDataFormat1()
         t2 = ch10time.TimeDataFormat2()
         for i, t in enumerate([t1, t2]):
-            t.milliseconds = 980
-            t.datetime = datetime.datetime.fromtimestamp(1558366884)
+            t.ptptime = PTPTime(1558366884, 980_000_000)
             c.payload = t.pack()
             c.datatype = types[i]
             full_payload = getEthernetPacket(cu.pack())
