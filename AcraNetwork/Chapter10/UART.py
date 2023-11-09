@@ -1,4 +1,5 @@
 import struct
+from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
 
 class UARTDataPacket(object):
@@ -17,8 +18,9 @@ class UARTDataPacket(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, ipts_source=TS_CH4):
         self.uartwords = []  #: List of :class:`UARTDataWord`
+        self._ipts_source = ipts_source
 
     def pack(self):
         """
@@ -31,16 +33,11 @@ class UARTDataPacket(object):
             raise Exception("No UARTDataWords defined")
 
         # All words should have the same configuraiton of timestamps
-        ts_present = None
-        for udw in self:
-            if ts_present is None:
-                ts_present = (udw.ptptimeseconds is not None)
-            elif ts_present != (udw.ptptimeseconds is not None):
-                raise Exception("All UARTDataWords should either have or have not a PTPTimestamp header")
-        if ts_present is not None:
-            ret_buf = struct.pack("<I", int(ts_present) << 31)
+        if self._ipts_source is not None:
+            ret_buf = struct.pack("<I", 0x1 << 31)
         else:
-            raise Exception("Timestamp is none")
+            ret_buf = struct.pack("<I", 0x0 << 31)
+
         for udw in self:
             ret_buf += udw.pack()
 
@@ -59,8 +56,8 @@ class UARTDataPacket(object):
         ts_present = bool(ch_spec_word >> 31)
         offset = 4
         while abs(offset - len(mybuffer)) > 4:
-            udw = UARTDataWord()
-            offset += udw.unpack(mybuffer[offset:], ts_present)
+            udw = UARTDataWord(self._ipts_source)
+            offset += udw.unpack(mybuffer[offset:])
             self.uartwords.append(udw)
 
         return True
@@ -129,9 +126,13 @@ class UARTDataWord(object):
     :type payload: str
     """
 
-    def __init__(self):
-        self.ptptimeseconds = None #: Timestamp of first parameter in the packet. EPOCH time
-        self.ptptimenanoseconds = None #: Nanaosecond timestamp
+    def __init__(self, ipts_source=TS_CH4):
+        if ipts_source == TS_CH4:
+            self.ipts = RTCTime()
+        elif ipts_source == TS_IEEE1558:
+            self.ipts = PTPTime()
+        elif ipts_source is None:
+            self.ipts = None
         self.parity_error = False  #: Parity error has occurred
         self.subchannel = 0  #: Subchannel
         self.datalength = None  #: Data Length
@@ -143,7 +144,6 @@ class UARTDataWord(object):
 
     @payload.setter
     def payload(self, mybuffer):
-
         self._payload = mybuffer
         self.datalength = len(mybuffer)
 
@@ -153,10 +153,10 @@ class UARTDataWord(object):
 
         :rtype: str|bytes
         """
-        if self.ptptimeseconds is not None and self.ptptimenanoseconds is not None:
-            ch_spec_word = struct.pack("<II",self.ptptimenanoseconds, self.ptptimeseconds)
-        else:
+        if self.ipts is None:
             ch_spec_word = b""
+        else:
+            ch_spec_word = self.ipts.pack()
         data_len = len(self.payload)
         if self.parity_error:
             _subch = self.subchannel + 0x80
@@ -171,7 +171,7 @@ class UARTDataWord(object):
 
         return ch_spec_word + intra_pkt_header + self.payload + padding
 
-    def unpack(self, mybuffer, timestamp_present=True):
+    def unpack(self, mybuffer):
         """
         Unpack a string buffer into an UART data packet object. Returns the buffer that was consumed
 
@@ -182,16 +182,16 @@ class UARTDataWord(object):
         :rtype: int
         """
         offset = 0
-        if timestamp_present:
-            #bytes = struct.unpack_from(">8B", mybuffer)
-            (self.ptptimenanoseconds, self.ptptimeseconds) = struct.unpack_from("<II", mybuffer, offset)
+        if self.ipts is not None:
+            # bytes = struct.unpack_from(">8B", mybuffer)
+            self.ipts.unpack(mybuffer[:4])
             offset += 8
         (self.datalength, _pe_sub) = struct.unpack_from("<HH", mybuffer, offset)
         offset += 4
 
         self.subchannel = _pe_sub & 0x1FFF
         self.parity_error = bool(_pe_sub >> 15)
-        self.payload = mybuffer[offset:offset+self.datalength]
+        self.payload = mybuffer[offset : offset + self.datalength]
         offset += self.datalength
 
         if self.datalength % 2 == 1:
@@ -212,5 +212,6 @@ class UARTDataWord(object):
         return True
 
     def __repr__(self):
-        return "UARTDataWord: PTPSec={} PTPNSec={} ParityError={} DataLen={} SubChannel={}".format(
-             self.ptptimeseconds, self.ptptimenanoseconds, self.parity_error, self.datalength, self.subchannel)
+        return "UARTDataWord: Tiem={} ParityError={} DataLen={} SubChannel={}".format(
+            self.ipts, self.parity_error, self.datalength, self.subchannel
+        )
