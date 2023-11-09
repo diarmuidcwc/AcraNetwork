@@ -1,5 +1,3 @@
-import sys
-sys.path.append("../")
 import unittest
 import AcraNetwork.Chapter7 as ch7
 import AcraNetwork.SimpleEthernet as eth
@@ -18,7 +16,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 def buf_generator(count, llp_count=0):
     running_count = 0
     while running_count < count:
-        buf_len = os.urandom((running_count+1) * 128)
+        buf_len = os.urandom((running_count + 1) * 128)
         running_count += 1
         if running_count <= llp_count:
             low_latency = True
@@ -28,7 +26,6 @@ def buf_generator(count, llp_count=0):
 
 
 class TestCaseCh7(unittest.TestCase):
-
     def test_basic(self):
         ch7_pkt = ch7.PTFR()
         ch7_pkt.length = 132
@@ -40,17 +37,17 @@ class TestCaseCh7(unittest.TestCase):
             ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
             ch7_pd.payload = os.urandom(58)
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
-            #print("Packet added")
+            # print("Packet added")
         buf = ch7_pkt.pack()
-        #print("Len Buf={} Len Rem={}".format(len(buf), len(remainder)))
+        # print("Len Buf={} Len Rem={}".format(len(buf), len(remainder)))
         # Check the comparsion
         ch7_pkt_copy = copy.deepcopy(ch7_pkt)
-        self.assertTrue(ch7_pkt==ch7_pkt_copy)
+        self.assertTrue(ch7_pkt == ch7_pkt_copy)
 
         ch7_unpack = ch7.PTFR()
         ch7_unpack.length = 132
         self.assertTrue(ch7_unpack.unpack(buf))
-        self.assertTrue(ch7_unpack==ch7_pkt)
+        self.assertTrue(ch7_unpack == ch7_pkt)
 
     def test_partial_fill(self):
         ch7_pkt = ch7.PTFR()
@@ -63,16 +60,15 @@ class TestCaseCh7(unittest.TestCase):
             ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
             ch7_pd.payload = os.urandom(58)
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
-            #print("Packet added")
+            # print("Packet added")
         buf = ch7_pkt.pack()
         ch7_unpack = ch7.PTFR()
         ch7_unpack.length = 140
         self.assertTrue(ch7_unpack.unpack(buf))
-        #print(repr(ch7_pkt))
-        #print(repr(ch7_unpack))
+        # print(repr(ch7_pkt))
+        # print(repr(ch7_unpack))
         self.assertEqual(52, len(remainder))
         self.assertTrue(ch7_unpack == ch7_pkt)
-
 
     def test_comparsion(self):
         ch7_pd = ch7.PTDP()
@@ -80,45 +76,42 @@ class TestCaseCh7(unittest.TestCase):
         ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
         ch7_pd.payload = os.urandom(60)
         ch_pd_copy = copy.deepcopy(ch7_pd)
-        self.assertTrue(ch7_pd==ch_pd_copy)
+        self.assertTrue(ch7_pd == ch_pd_copy)
 
 
 class TestGenerators(unittest.TestCase):
-
     def test_ptdp_generator(self):
         for ptdp_pkt in ch7.datapkts_to_ptdp(buf_generator(5)):
-            #print(repr(ptdp_pkt))
+            # print(repr(ptdp_pkt))
             self.assertIsInstance(ptdp_pkt, ch7.PTDP)
 
     def test_ptfr_geenerator(self):
         remainder = bytes()
         for ptfr in ch7.datapkts_to_ptfr(buf_generator(5), ptfr_len=200):
-            #print(repr(ptfr))
+            # print(repr(ptfr))
             ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 800
             ch7_pkt.unpack(ptfr.pack())
-            for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
+            for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
                 else:
-                    #print(repr(p))
+                    # print(repr(p))
                     self.assertEqual(0, p.length % 128)
 
 
-
 class TestRealEthernet(unittest.TestCase):
-
     def setUp(self):
         self.pr = cProfile.Profile()
         self.pr.enable()
 
     def tearDown(self):
         p = Stats(self.pr)
-        p.sort_stats('cumtime')
-        #p.print_stats()
-
+        p.sort_stats("cumtime")
+        # p.print_stats()
 
     pkts_sent = []
+
     @staticmethod
     def eth_gen(count, low_latency_pkts=None, size_mult=128):
         """
@@ -129,7 +122,7 @@ class TestRealEthernet(unittest.TestCase):
         :rtype:  collections.Iterable[bytes, bool]
         """
 
-        pf = pcap.Pcap(THIS_DIR+"/generated_eth.pcap", mode="w")
+        pf = pcap.Pcap(THIS_DIR + "/generated_eth.pcap", mode="w")
         r = pcap.PcapRecord()
         for i in range(1, count + 1):
             e = eth.Ethernet()
@@ -163,7 +156,7 @@ class TestRealEthernet(unittest.TestCase):
         pf.close()
 
     def test_eth_in_packets(self):
-        pf = pcap.Pcap(THIS_DIR+"/gen.pcap", mode="w")
+        pf = pcap.Pcap(THIS_DIR + "/gen.pcap", mode="w")
         r = pcap.PcapRecord()
         remainder = bytes()
         eth_p = bytes()
@@ -172,28 +165,33 @@ class TestRealEthernet(unittest.TestCase):
             ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 200
             ch7_pkt.unpack(ptfr.pack())
-            for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
+            for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
                 else:
                     eth_p += p.payload
-                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or  p.fragment == ch7.PTDP_FRAGMENT_LAST:
+                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or p.fragment == ch7.PTDP_FRAGMENT_LAST:
                         r.setCurrentTime()
                         r.payload = eth_p
                         # Verify the size of the packets and it's probably good. I could unpack them here too
-                        self.assertEqual(pkt_count*2*128+eth.UDP.UDP_HEADER_SIZE+eth.IP.IP_HEADER_SIZE+eth.Ethernet.HEADERLEN, len(eth_p))
+                        self.assertEqual(
+                            pkt_count * 2 * 128
+                            + eth.UDP.UDP_HEADER_SIZE
+                            + eth.IP.IP_HEADER_SIZE
+                            + eth.Ethernet.HEADERLEN,
+                            len(eth_p),
+                        )
                         pkt_count += 1
                         pf.write(r)
                         eth_p = bytes()
 
-
-                    #self.assertEqual(0, p.length % 128)
-                    #self.assertTrue(p.length <= 1024)
+                    # self.assertEqual(0, p.length % 128)
+                    # self.assertTrue(p.length <= 1024)
         pf.close()
 
     def test_eth_in_packets_low_latency(self):
-        #logging.basicConfig(level=logging.DEBUG)
-        pf = pcap.Pcap(THIS_DIR+"/captured_llp.pcap", mode="w")
+        # logging.basicConfig(level=logging.DEBUG)
+        pf = pcap.Pcap(THIS_DIR + "/captured_llp.pcap", mode="w")
         r = pcap.PcapRecord()
         remainder = bytes()
         eth_p = bytes()
@@ -201,28 +199,30 @@ class TestRealEthernet(unittest.TestCase):
         ptfr_idx = 0
         ptdp_idx = 0
         pkt_size_mult = 16
-        for ptfr in ch7.datapkts_to_ptfr(TestRealEthernet.eth_gen(20, low_latency_pkts=[2, 4, 10], size_mult=8), ptfr_len=400):
+        for ptfr in ch7.datapkts_to_ptfr(
+            TestRealEthernet.eth_gen(20, low_latency_pkts=[2, 4, 10], size_mult=8), ptfr_len=400
+        ):
             ch7_pkt = ch7.PTFR()
             ch7_pkt.length = 400
             ch7_pkt.unpack(ptfr.pack())
-            #b = open("gen_llp_{}.bin".format(ptfr_idx), mode="wb")
+            # b = open("gen_llp_{}.bin".format(ptfr_idx), mode="wb")
             ptfr_idx += 1
-            #b.write(ptfr.pack())
-            #b.close()
-            #print(repr(ptfr))
-            for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
+            # b.write(ptfr.pack())
+            # b.close()
+            # print(repr(ptfr))
+            for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
                 if p is None:
                     continue
                 else:
-                    #print(repr(p))
+                    # print(repr(p))
                     eth_p += p.payload
-                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or  p.fragment == ch7.PTDP_FRAGMENT_LAST:
-                        if ptdp_idx == 0 :
+                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or p.fragment == ch7.PTDP_FRAGMENT_LAST:
+                        if ptdp_idx == 0:
                             self.assertEqual(p.low_latency, True)
                         r.setCurrentTime()
                         r.payload = eth_p
                         # Verify the size of the packets and it's probably good. I could unpack them here too
-                        #self.assertEqual(2*64+eth.UDP.UDP_HEADER_SIZE+eth.IP.IP_HEADER_SIZE+eth.Ethernet.HEADERLEN, len(eth_p))
+                        # self.assertEqual(2*64+eth.UDP.UDP_HEADER_SIZE+eth.IP.IP_HEADER_SIZE+eth.Ethernet.HEADERLEN, len(eth_p))
                         if eth_p not in TestRealEthernet.pkts_sent:
                             self.assertTrue(False)
                         pkt_count += 1
@@ -231,9 +231,8 @@ class TestRealEthernet(unittest.TestCase):
                     ptdp_idx += 1
         self.assertEqual(pkt_count, 11)
 
-
-                    #self.assertEqual(0, p.length % 128)
-                    #self.assertTrue(p.length <= 1024)
+        # self.assertEqual(0, p.length % 128)
+        # self.assertTrue(p.length <= 1024)
         pf.close()
 
     def test_llc(self):
@@ -243,7 +242,7 @@ class TestRealEthernet(unittest.TestCase):
         logging.basicConfig(level=logging.WARN)
         remainder = b""
         for i in range(3, 6):
-            f = open(THIS_DIR+"/ptfr_{}.bin".format(i), "rb")
+            f = open(THIS_DIR + "/ptfr_{}.bin".format(i), "rb")
             ptfr_data = f.read()
             f.close()
 
@@ -251,22 +250,22 @@ class TestRealEthernet(unittest.TestCase):
             ch7_pkt.length = len(ptfr_data)
             eth_p = b""
             ch7_pkt.unpack(ptfr_data)
-            #print repr(ch7_pkt)
+            # print repr(ch7_pkt)
 
-            for (p, remainder, e) in ch7_pkt.get_aligned_payload(remainder):
+            for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
                 if p is not None:
-
                     if p.content != ch7.PTDP_CONTENT_FILL:
                         mac_count += 1
-                        #print(repr(p))
+                        # print(repr(p))
                     if p.low_latency:
                         llc_count += 1
                     if p.content == ch7.PTDP_CONTENT_FILL:
                         fill_count += 1
-        #print("{} {} {}".format(llc_count, fill_count, mac_count))
+        # print("{} {} {}".format(llc_count, fill_count, mac_count))
         self.assertEqual(4, llc_count)
         self.assertEqual(164, fill_count)
         self.assertEqual(4, mac_count)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
