@@ -1,4 +1,7 @@
 import struct
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Chapter10UDP(object):
@@ -41,11 +44,9 @@ class Chapter10UDP(object):
     def __init__(self):
         """Creator method for a UDP class"""
         self.version = 1  #: Version
-        self.type = Chapter10UDP.TYPE_SEG  #: Type of message , Full or Segmented
-        self.channelID = None  #: Segmented Packets Only. Channel ID of the data in the RCC 106 Chapter 10 packet
-        self.channelsequence = (
-            None  #: Segmented Packets Only, Channel Sequence Number of the data in the RCC 106 Chapter 10 packet
-        )
+        self.type = Chapter10UDP.TYPE_FULL  #: Type of message , Full or Segmented
+        self.channelID = 0  #: Segmented Packets Only. Channel ID of the data in the RCC 106 Chapter 10 packet
+        self.channelsequence = 0  #: Segmented Packets Only,
         self.sequence = 0  #: UDP Sequence number
         self.segmentoffset = 0  #: Segmented Packets Only. The 32-bit Segmented Packets Only, Position of the data in the RCC 106 Chapter 10 packet.
         self.packetsize = None  #: Format 2 Packet size
@@ -66,8 +67,9 @@ class Chapter10UDP(object):
         if _ver_type & 0xF == 1:
             self.version = 1
             self.type = _ver_type >> 4
+            self.sequence = seg_lwr + (seg_upr << 8)
         elif _ver_type & 0xF == 3:
-            self.version = 1
+            self.version = 3
             self.type = _ver_type >> 4
         else:
             self.version = 2
@@ -221,6 +223,9 @@ class Chapter10UDP(object):
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
+                logger.debug(
+                    f"Attributes {attr} does not match. self={getattr(self, attr)} other={getattr(other, attr)}"
+                )
                 return False
 
         return True

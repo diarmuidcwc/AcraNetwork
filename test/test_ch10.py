@@ -15,7 +15,15 @@ import AcraNetwork.Chapter10.TimeDataFormat as ch10time
 import AcraNetwork.Chapter10.ARINC429 as ch10arinc
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
 import AcraNetwork.Chapter10.PCM as ch10pcm
-from AcraNetwork.Chapter10 import DATA_TYPE_TIMEFMT_1, DATA_TYPE_TIMEFMT_2, DATA_TYPE_PCM_DATA_FMT1
+from AcraNetwork.Chapter10 import (
+    DATA_TYPE_TIMEFMT_1,
+    DATA_TYPE_TIMEFMT_2,
+    DATA_TYPE_PCM_DATA_FMT1,
+    TS_CH4,
+    TS_IEEE1558,
+    RTCTime,
+    PTPTime,
+)
 import struct
 import os
 import random
@@ -29,7 +37,8 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = tempfile.gettempdir()
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+logging.info(f"Temp folder={TMP_DIR}")
 
 
 def getEthernetPacket(data: bytes = b""):
@@ -253,8 +262,13 @@ class CH10UDPTest(unittest.TestCase):
             c.sequence = 0x15
             c.payload = get_ch10(16).pack()
             self.assertTrue(c.pack())
+            print(repr(c))
             c2 = ch10udp.Chapter10UDP()
             c2.unpack(c.pack())
+            rec.payload = getEthernetPacket(c.pack())
+            pcapw.write(rec)
+            rec.payload = getEthernetPacket(c2.pack())
+            pcapw.write(rec)
             self.assertTrue(c2 == c)
             for packet in [c, c2]:
                 full_payload = getEthernetPacket(packet.pack())
@@ -314,7 +328,7 @@ class CH10UDPTest(unittest.TestCase):
 
 
 uart_pkt = """UARTPayload: UARTDataWordCount=1
-  UARTDataWord: PTPSec=201450103 PTPNSec=10 ParityError=False DataLen=508 SubChannel=8191
+  UARTDataWord: Time=PTP: 15:21:43 20-May 1976 nanosec=10 ParityError=False DataLen=508 SubChannel=8191
 """
 
 
@@ -335,11 +349,11 @@ class Ch10UARTTest(unittest.TestCase):
         self.full.payload = self.chfull.pack()
 
     def test_basic_uart(self):
-        udp = ch10uart.UARTDataPacket()
+        udp = ch10uart.UARTDataPacket(TS_IEEE1558)
         for i in range(5):
             udw = ch10uart.UARTDataWord()
-            udw.ptptimeseconds = 22 * i
-            udw.ptptimenanoseconds = 250000 + i
+            udw.ipts.seconds = 22 * i
+            udw.ipts.nanoseconds = 250000 + i
             udw.subchannel = 52 + 2 * i
             udw.parity_error = random.choice([True, False])
             udw.payload = os.urandom(random.randint(15, 220))
@@ -356,7 +370,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertTrue(dummy_ch10 == self.full)
         self.assertEqual(
             repr(udp[0]),
-            "UARTDataWord: PTPSec=0 PTPNSec=250000 ParityError={} DataLen={} "
+            "UARTDataWord: Time=RTC: count=0 ParityError={} DataLen={} "
             "SubChannel=52".format(udp[0].parity_error, udp[0].datalength),
         )
 
@@ -368,7 +382,7 @@ class Ch10UARTTest(unittest.TestCase):
         ch10pkt = ch10.Chapter10()
         ch10pkt.unpack(ch10udppkt.payload)
         self.assertEqual(ch10pkt.packetflag, 0xC4)
-        uart = ch10uart.UARTDataPacket()
+        uart = ch10uart.UARTDataPacket(TS_IEEE1558)
         uart.unpack(ch10pkt.payload)
         self.assertEqual(len(uart), 1)
         (b1, b2) = struct.unpack_from("<BB", uart[0].payload)

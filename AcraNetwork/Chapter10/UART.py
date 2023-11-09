@@ -184,7 +184,7 @@ class UARTDataWord(object):
         offset = 0
         if self.ipts is not None:
             # bytes = struct.unpack_from(">8B", mybuffer)
-            self.ipts.unpack(mybuffer[:4])
+            self.ipts.unpack(mybuffer[:8])
             offset += 8
         (self.datalength, _pe_sub) = struct.unpack_from("<HH", mybuffer, offset)
         offset += 4
@@ -203,7 +203,7 @@ class UARTDataWord(object):
         if not isinstance(other, UARTDataWord):
             return False
 
-        _match_att = ["ptptimeseconds", "ptptimenanoseconds", "parity_error", "subchannel", "datalength", "payload"]
+        _match_att = ["ipts", "parity_error", "subchannel", "datalength", "payload"]
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -212,6 +212,6 @@ class UARTDataWord(object):
         return True
 
     def __repr__(self):
-        return "UARTDataWord: Tiem={} ParityError={} DataLen={} SubChannel={}".format(
+        return "UARTDataWord: Time={} ParityError={} DataLen={} SubChannel={}".format(
             self.ipts, self.parity_error, self.datalength, self.subchannel
         )
