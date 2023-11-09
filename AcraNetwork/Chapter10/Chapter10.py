@@ -21,7 +21,7 @@ from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY
 import logging
 
 
-logger =  logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def get_checksum_buf(buf):
@@ -34,7 +34,7 @@ def get_checksum_buf(buf):
     if len(buf) % 2 != 0:
         raise Exception("buffer needs to be 16-bit aligned")
 
-    words = struct.unpack("<{}H".format(len(buf)//2), buf)
+    words = struct.unpack("<{}H".format(len(buf) // 2), buf)
     sum = reduce(lambda x, y: x + y, words)
 
     return sum % 65536
@@ -42,10 +42,10 @@ def get_checksum_buf(buf):
 
 class Chapter10(object):
     """
-    Class to pack and unpack Chapter10 payloads. 
-    
+    Class to pack and unpack Chapter10 payloads.
+
     Create a packet and transmit it via UDP
-    
+
     >>> import socket
     >>> # Open a socket
     >>> tx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -88,33 +88,36 @@ class Chapter10(object):
     CH10_OPT_HDR_FORMAT = "<IIHH"
     CH10_OPT_HDR_FORMAT_LEN = struct.calcsize(CH10_OPT_HDR_FORMAT)
 
-    TS_SOURCES = [TS_RTC, TS_SECONDARY] #:(Object Constant) Valid timesources, assign to :attr:`Chapter10.ts_source`
+    TS_SOURCES = [TS_RTC, TS_SECONDARY]  #:(Object Constant) Valid timesources, assign to :attr:`Chapter10.ts_source`
     TS_SECONDARY_SOURCES = [TS_CH4, TS_IEEE1558, TS_ERTC]
 
     PKT_FLAG_SECONDARY = 0x80  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
     PKT_FLAG_SEC_HDR_TIME = 0x40  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
     PKT_FLAG_RTC_SYNC_ERROR = 0x20  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_DATA_OVERFLOW = 0X10  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_RCC_TIME = 0X0  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_1588_TIME = 0X04  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_8BIT_CHKSUM = 0X1  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_16BIT_CHKSUM = 0X2  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_32BIT_CHKSUM = 0X3  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_DATA_OVERFLOW = 0x10  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_RCC_TIME = 0x0  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_1588_TIME = 0x04  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_8BIT_CHKSUM = 0x1  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_16BIT_CHKSUM = 0x2  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_32BIT_CHKSUM = 0x3  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
 
     def __init__(self):
-
-        self.syncpattern = Chapter10.SYNC_WORD  #:(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25
+        self.syncpattern = (
+            Chapter10.SYNC_WORD
+        )  #:(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25
         self.channelID = 0  #:(2 Bytes) contains a value representing the Packet Channel ID.
         self.packetlen = 0  #:(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four
         self.datalen = 0  #:(4 Bytes) contains a value representing the valid data length within the packet
         self.datatypeversion = 0x5  #: RCC released versions
-        self.sequence= 0  #:(1 Byte) contains a value representing the packet sequence number for each Channel ID.
-        self._packetflag = 0  #:(1 Byte) contains bits representing information on the content and format of the packet(s)
+        self.sequence = 0  #:(1 Byte) contains a value representing the packet sequence number for each Channel ID.
+        self._packetflag = (
+            0  #:(1 Byte) contains bits representing information on the content and format of the packet(s)
+        )
         self.datatype = 0  #:(1 Byte) contains a value representing the type and format of the data
         self.relativetimecounter = 0  #:(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
         self.ptptimeseconds = 0  #: PTP Timestamp seconds
         self.ptptimenanoseconds = 0  #: PTP Timestamp nanoseconds
-        self.ts_source = TS_RTC #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
+        self.ts_source = TS_RTC  #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
         self.payload = b""  #:The payload
         self.data_checksum_size = 0
         self.filler = b""
@@ -131,13 +134,11 @@ class Chapter10(object):
 
     @packetflag.setter
     def packetflag(self, val):
-
         if val > 0xFF:
             raise Exception("Packet flag ={:#0X} to valuid".format(val))
         self._packetflag = val
 
         if self._packetflag >> 7 == 1:
-
             if ((self._packetflag >> 2) & 0x3) == 0:
                 self.ts_source = TS_CH4
             elif ((self._packetflag >> 2) & 0x3) == 1:
@@ -168,7 +169,9 @@ class Chapter10(object):
         else:
             sec_hdr = b""
 
-        total_len_excl_filler = len(sec_hdr) + len(self.payload) + Chapter10.CH10_HDR_FORMAT_LEN + self.data_checksum_size
+        total_len_excl_filler = (
+            len(sec_hdr) + len(self.payload) + Chapter10.CH10_HDR_FORMAT_LEN + self.data_checksum_size
+        )
 
         # Add the filler
         if total_len_excl_filler % 4 == 0:
@@ -185,8 +188,20 @@ class Chapter10(object):
         _rtc_lwr = self.relativetimecounter & 0xFFFFFFFF
         _rtc_upr = self.relativetimecounter >> 32
 
-        hdr = struct.pack(Chapter10.CH10_HDR_FORMAT, self.syncpattern, self.channelID, self.packetlen, self.datalen,
-                          self.datatypeversion, self.sequence, self.packetflag, self.datatype, _rtc_lwr,_rtc_upr, checksum)
+        hdr = struct.pack(
+            Chapter10.CH10_HDR_FORMAT,
+            self.syncpattern,
+            self.channelID,
+            self.packetlen,
+            self.datalen,
+            self.datatypeversion,
+            self.sequence,
+            self.packetflag,
+            self.datatype,
+            _rtc_lwr,
+            _rtc_upr,
+            checksum,
+        )
         hdr = hdr[:-2] + struct.pack("<H", get_checksum_buf(hdr))
         return hdr + sec_hdr + self.payload + self.filler
 
@@ -198,45 +213,65 @@ class Chapter10(object):
         :type buffer: bytes
         :rtype: None
         """
-        (self.syncpattern, self.channelID, self.packetlen, self.datalen, self.datatypeversion, self.sequence,
-         self.packetflag, self.datatype, _rtc_lwr,_rtc_upr, checksum) = struct.unpack_from(Chapter10.CH10_HDR_FORMAT, buffer)
+        (
+            self.syncpattern,
+            self.channelID,
+            self.packetlen,
+            self.datalen,
+            self.datatypeversion,
+            self.sequence,
+            self.packetflag,
+            self.datatype,
+            _rtc_lwr,
+            _rtc_upr,
+            checksum,
+        ) = struct.unpack_from(Chapter10.CH10_HDR_FORMAT, buffer)
 
-        offset_hdr = struct.calcsize(Chapter10.CH10_HDR_FORMAT)-2
+        offset_hdr = struct.calcsize(Chapter10.CH10_HDR_FORMAT) - 2
         exp_checksum = get_checksum_buf(buffer[:offset_hdr])
         if checksum != exp_checksum:
             raise Exception("Ch10 Header checksum {:#0X} does not match expected={:#0X}".format(checksum, exp_checksum))
-            #print("Ch10 Header checksum does not match expected={:#0X}".format(exp_checksum))
+            # print("Ch10 Header checksum does not match expected={:#0X}".format(exp_checksum))
 
         self.relativetimecounter = _rtc_lwr + (_rtc_upr << 32)
 
         if (self.packetflag >> 7) == 1:
             self._secondary_header = True
-            pkt_hdr_time =  (self.packetflag >> 2) & 0x3
+            pkt_hdr_time = (self.packetflag >> 2) & 0x3
             (ts_ns, ts_s, _res, _checksum_sec) = struct.unpack_from(
-                Chapter10.CH10_OPT_HDR_FORMAT, buffer, Chapter10.CH10_HDR_FORMAT_LEN)
+                Chapter10.CH10_OPT_HDR_FORMAT, buffer, Chapter10.CH10_HDR_FORMAT_LEN
+            )
 
             sec_exp_checksum = get_checksum_buf(
-                buffer[Chapter10.CH10_HDR_FORMAT_LEN:Chapter10.CH10_HDR_FORMAT_LEN+Chapter10.CH10_OPT_HDR_FORMAT_LEN-2])
+                buffer[
+                    Chapter10.CH10_HDR_FORMAT_LEN : Chapter10.CH10_HDR_FORMAT_LEN
+                    + Chapter10.CH10_OPT_HDR_FORMAT_LEN
+                    - 2
+                ]
+            )
 
             if _checksum_sec != sec_exp_checksum:
-                raise Exception("Ch10 Secondary Header checksum ({:#0X}) does not match expected={:#0X}".format(
-                    _checksum_sec, sec_exp_checksum))
-                #print("Ch10 Secondary Header checksum does not match expected={:#0X}".format(sec_exp_checksum))
+                raise Exception(
+                    "Ch10 Secondary Header checksum ({:#0X}) does not match expected={:#0X}".format(
+                        _checksum_sec, sec_exp_checksum
+                    )
+                )
+                # print("Ch10 Secondary Header checksum does not match expected={:#0X}".format(sec_exp_checksum))
 
             if pkt_hdr_time == 0:
                 raise Exception("Ch4 Timestamp in secondary header not supported")
-                #print("Ch4 Timestamp in secondary header not supported")
+                # print("Ch4 Timestamp in secondary header not supported")
             elif pkt_hdr_time == 1:
                 self.ts_source = TS_IEEE1558
                 self.ptptimenanoseconds = ts_ns
                 self.ptptimeseconds = ts_s
             else:
                 raise Exception("Secondary Header Time Format not legal")
-                #print("Secondary Header Time Format not legal")
-            self.payload = buffer[(Chapter10.CH10_HDR_FORMAT_LEN + Chapter10.CH10_OPT_HDR_FORMAT_LEN):]
+                # print("Secondary Header Time Format not legal")
+            self.payload = buffer[(Chapter10.CH10_HDR_FORMAT_LEN + Chapter10.CH10_OPT_HDR_FORMAT_LEN) :]
         else:
             self._secondary_header = False
-            self.payload = buffer[Chapter10.CH10_HDR_FORMAT_LEN:]
+            self.payload = buffer[Chapter10.CH10_HDR_FORMAT_LEN :]
             self.ts_source = TS_RTC
 
         return True
@@ -245,9 +280,23 @@ class Chapter10(object):
         if not isinstance(other, Chapter10):
             return False
 
-        _match_att = ("syncpattern", "channelID", "packetlen", "datalen", "datatypeversion", "datatype", "_packetflag",
-                      "relativetimecounter", "ptptimeseconds", "ptptimenanoseconds", "ts_source", "payload",
-                      "data_checksum_size", "filler", "_secondary_header")
+        _match_att = (
+            "syncpattern",
+            "channelID",
+            "packetlen",
+            "datalen",
+            "datatypeversion",
+            "datatype",
+            "_packetflag",
+            "relativetimecounter",
+            "ptptimeseconds",
+            "ptptimenanoseconds",
+            "ts_source",
+            "payload",
+            "data_checksum_size",
+            "filler",
+            "_secondary_header",
+        )
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -264,12 +313,12 @@ class FileParser(object):
     Parse a Chapter10 file. Open the file and iterate through it
     """
 
-    def __init__(self, filename, mode='rb'):
+    def __init__(self, filename, mode="rb"):
         self.filename = filename
         self._mode = mode
         self.insync = False
         self._offset = 0
-        self._fd = None  
+        self._fd = None
 
     def write(self, ch10packet):
         # type: (Chapter10) -> None
@@ -281,7 +330,7 @@ class FileParser(object):
         if self._fd is None or self._mode != "wb":
             raise Exception("File name not defined")
         if not self._fd.writable():
-            raise  Exception("File {} not open for writing".format(self.filename))
+            raise Exception("File {} not open for writing".format(self.filename))
         self._fd.write(ch10packet.pack())
 
     def __enter__(self):
@@ -289,7 +338,7 @@ class FileParser(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        #Exception handling here
+        # Exception handling here
         self._fd.close()
 
     def close(self):

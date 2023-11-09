@@ -2,118 +2,6 @@ import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
 
-class UARTDataPacket(object):
-    """
-    Data Packet Format. Contains a list of UART Data Words
-
-    :type msgcount: int
-    :type uartwords: list[UARTDataWord]
-
-
-    >>> c = Chapter10UDP()
-    >>> uart_p = UARTDataPacket()
-    >>> uart_p.unpack(c.chapter10.payload))
-    >>> print uart_p
-
-
-    """
-
-    def __init__(self, ipts_source=TS_CH4):
-        self.uartwords = []  #: List of :class:`UARTDataWord`
-        self._ipts_source = ipts_source
-
-    def pack(self):
-        """
-        Pack the UART data packet object into a binary buffer
-
-        :rtype: str
-        """
-        # Some checks
-        if len(self) == 0:
-            raise Exception("No UARTDataWords defined")
-
-        # All words should have the same configuraiton of timestamps
-        if self._ipts_source is not None:
-            ret_buf = struct.pack("<I", 0x1 << 31)
-        else:
-            ret_buf = struct.pack("<I", 0x0 << 31)
-
-        for udw in self:
-            ret_buf += udw.pack()
-
-        return ret_buf
-
-    def unpack(self, mybuffer):
-        """
-        Unpack a string buffer into an UART data packet object
-
-        :param buffer: A string buffer representing an UART data  packet
-        :type buffer: str
-        :rtype: None
-        """
-
-        (ch_spec_word,) = struct.unpack_from("<I", mybuffer)
-        ts_present = bool(ch_spec_word >> 31)
-        offset = 4
-        while abs(offset - len(mybuffer)) > 4:
-            udw = UARTDataWord(self._ipts_source)
-            offset += udw.unpack(mybuffer[offset:])
-            self.uartwords.append(udw)
-
-        return True
-
-    def append(self, udw):
-        """
-        Add a UART DW to the DP
-
-        :type udw: UARTDataWord
-        :rtype: bool
-        """
-        if not isinstance(udw, UARTDataWord):
-            raise Exception("Can only append UARTDataWords")
-        return self.uartwords.append(udw)
-
-    def __eq__(self, other):
-        if not isinstance(other, UARTDataPacket):
-            return False
-
-        _match_att = ["uartwords"]
-
-        for attr in _match_att:
-            if getattr(self, attr) != getattr(other, attr):
-                return False
-
-        return True
-
-    def __repr__(self):
-        ret_str = "UARTPayload: UARTDataWordCount={}\n".format(len(self))
-
-        for a in self:
-            ret_str += "  {}\n".format(repr(a))
-
-        return ret_str
-
-    def __iter__(self):
-        self._index = 0
-        return self
-
-    def next(self):
-        if self._index < len(self.uartwords):
-            _dw = self.uartwords[self._index]
-            self._index += 1
-            return _dw
-        else:
-            raise StopIteration
-
-    __next__ = next
-
-    def __len__(self):
-        return len(self.uartwords)
-
-    def __getitem__(self, key):
-        return self.uartwords[key]
-
-
 class UARTDataWord(object):
     """
     The Chapter 10 standard defines specific payload formats for different data. This class handles UART packets
@@ -215,3 +103,115 @@ class UARTDataWord(object):
         return "UARTDataWord: Time={} ParityError={} DataLen={} SubChannel={}".format(
             self.ipts, self.parity_error, self.datalength, self.subchannel
         )
+
+
+class UARTDataPacket(object):
+    """
+    Data Packet Format. Contains a list of UART Data Words
+
+    :type msgcount: int
+    :type uartwords: list[UARTDataWord]
+
+
+    >>> c = Chapter10UDP()
+    >>> uart_p = UARTDataPacket()
+    >>> uart_p.unpack(c.chapter10.payload))
+    >>> print uart_p
+
+
+    """
+
+    def __init__(self, ipts_source=TS_CH4):
+        self.uartwords = []  #: List of :class:`UARTDataWord`
+        self._ipts_source = ipts_source
+
+    def pack(self):
+        """
+        Pack the UART data packet object into a binary buffer
+
+        :rtype: str
+        """
+        # Some checks
+        if len(self) == 0:
+            raise Exception("No UARTDataWords defined")
+
+        # All words should have the same configuraiton of timestamps
+        if self._ipts_source is not None:
+            ret_buf = struct.pack("<I", 0x1 << 31)
+        else:
+            ret_buf = struct.pack("<I", 0x0 << 31)
+
+        for udw in self:
+            ret_buf += udw.pack()
+
+        return ret_buf
+
+    def unpack(self, mybuffer):
+        """
+        Unpack a string buffer into an UART data packet object
+
+        :param buffer: A string buffer representing an UART data  packet
+        :type buffer: str
+        :rtype: None
+        """
+
+        (ch_spec_word,) = struct.unpack_from("<I", mybuffer)
+        ts_present = bool(ch_spec_word >> 31)
+        offset = 4
+        while abs(offset - len(mybuffer)) > 4:
+            udw = UARTDataWord(self._ipts_source)
+            offset += udw.unpack(mybuffer[offset:])
+            self.uartwords.append(udw)
+
+        return True
+
+    def append(self, udw):
+        """
+        Add a UART DW to the DP
+
+        :type udw: UARTDataWord
+        :rtype: bool
+        """
+        if not isinstance(udw, UARTDataWord):
+            raise Exception("Can only append UARTDataWords")
+        return self.uartwords.append(udw)
+
+    def __eq__(self, other):
+        if not isinstance(other, UARTDataPacket):
+            return False
+
+        _match_att = ["uartwords"]
+
+        for attr in _match_att:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        return True
+
+    def __repr__(self):
+        ret_str = "UARTPayload: UARTDataWordCount={}\n".format(len(self))
+
+        for a in self:
+            ret_str += "  {}\n".format(repr(a))
+
+        return ret_str
+
+    def __iter__(self):
+        self._index = 0
+        return self
+
+    def next(self) -> UARTDataWord:
+        if self._index < len(self.uartwords):
+            _dw = self.uartwords[self._index]
+            self._index += 1
+            return _dw
+        else:
+            raise StopIteration
+
+    __next__ = next
+
+    def __len__(self):
+        return len(self.uartwords)
+
+    def __getitem__(self, key):
+        return self.uartwords[key]

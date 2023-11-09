@@ -1,7 +1,3 @@
-import sys
-import os
-
-sys.path.append("../")
 import AcraNetwork.Chapter10.Chapter10 as ch10
 import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.Chapter10.ARINC429 as ch10arinc
@@ -9,7 +5,6 @@ import AcraNetwork.Chapter10.UART as ch10uart
 import AcraNetwork.Chapter10.PCM as ch10pcm
 import AcraNetwork.Chapter10.Analog as ch10analog
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
-from AcraNetwork.Chapter10 import PTPTime, RTCTime
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
 import argparse
@@ -29,8 +24,11 @@ from AcraNetwork.Chapter10 import (
     DATA_TYPE_TIMEFMT_2,
     DATA_TYPE_UART_FMT0,
     DATA_TYPE_ANALOG,
+    TS_CH4,
+    TS_IEEE1558,
+    PTPTime,
+    RTCTime,
 )
-
 import typing
 
 
@@ -118,25 +116,31 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int) -> bytes:
         bytes: _description_
     """
     if datatype == DATA_TYPE_ARINC429_FMT0:
-        p = ch10arinc.ARINC429DataPacket()
-        p.unpack(original_buffer)
+        return original_buffer
     elif datatype == DATA_TYPE_MILSTD1553_FMT1:
         p = ch10mil.MILSTD1553DataPacket()
         p.unpack(original_buffer)
+        for message in p:
+            message.ipts = RTCTime(message.ipts.to_rtc())
+        return p.pack()
     elif datatype == DATA_TYPE_UART_FMT0:
-        p = ch10uart.UARTDataPacket()
+        p = ch10uart.UARTDataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
+        for dataword in p:
+            if dataword.ipts is not None:
+                dataword.ipts = RTCTime(dataword.ipts.to_rtc())
+        return p.pack()
     elif datatype == DATA_TYPE_PCM_DATA_FMT1:
-        p = ch10pcm.PCMDataPacket(ipts_source=ch10pcm.TS_SECONDARY)
+        p = ch10pcm.PCMDataPacket(ipts_source=TS_IEEE1558)
         p.minor_frame_size_bytes = 272
         p.unpack(original_buffer)
+        p.channel_specific_word = 0x0
         for frame in p:
             logging.debug(f"PCMFrame ipts sec={frame.ipts.seconds} nsec={frame.ipts.nanoseconds}")
-            frame_time = PTPTime(frame.ipts.seconds, frame.ipts.nanoseconds)
-            frame.ipts = RTCTime(frame_time.to_rtc())
+            frame.ipts = RTCTime(frame.ipts.to_rtc())
         return p.pack()
     elif datatype == DATA_TYPE_ANALOG:
-        p = ch10analog.Analog()
+        return original_buffer
 
     else:
         raise Exception(f"Data type {datatype} not supported")
