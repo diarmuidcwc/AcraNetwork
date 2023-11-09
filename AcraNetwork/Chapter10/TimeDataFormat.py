@@ -1,7 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import struct
-import time
-
+from AcraNetwork.Chapter10 import PTPTime
 
 ITS_FREEWHEELING = 0x0 << 12
 ITS_FREEWHEELING_FROM_TIME = 0x0 << 12
@@ -78,8 +77,7 @@ class TimeDataFormat1(object):
 
     def __init__(self):
         self.channel_specific_data = ITS_FREEWHEELING + DATE_FMT_YEAR_AVAIL + TIME_FMT_GPS + SRC_EXTERNAL
-        self.seconds = 0
-        self.nanoseconds = 0
+        self.ptptime = PTPTime(0, 0)
 
     def pack(self):
         """
@@ -88,9 +86,9 @@ class TimeDataFormat1(object):
         :rtype: str
         """
 
-        dt = datetime.fromtimestamp(self.seconds)
+        dt = datetime.fromtimestamp(self.ptptime.seconds, tz=timezone.utc)
         packet_bytes = list()
-        packet_bytes.append(double_digits_to_bcd(self.nanoseconds / 1e7))
+        packet_bytes.append(double_digits_to_bcd(self.ptptime.nanoseconds / 1e7))
         packet_bytes.append(double_digits_to_bcd(dt.second))
         packet_bytes.append(double_digits_to_bcd(dt.minute))
         packet_bytes.append(double_digits_to_bcd(dt.hour))
@@ -117,7 +115,7 @@ class TimeDataFormat1(object):
         """
         (self.channel_specific_data, ms, s, mn, h) = struct.unpack_from("<IBBBB", buf)
         milliseconds = bcd_to_int(ms) * 10
-        self.nanoseconds = milliseconds * int(1e6)
+        nanoseconds = milliseconds * int(1e6)
         sec = bcd_to_int(s)
         mins = bcd_to_int(mn)
         hrs = bcd_to_int(h)
@@ -131,11 +129,13 @@ class TimeDataFormat1(object):
         else:
             (doy, hdoy) = struct.unpack_from("<BB", buf, 8)
             day_of_year = bcd_to_int(doy) + 100 * bcd_to_int(hdoy)
-            date_as_string = "{:02d}:{:02d}:{:02d} {:03d} 1970".format(hrs, mins, sec, day_of_year)
-            dt = datetime.strptime(date_as_string, "%H:%M:%S %j %Y")
+            date_as_string = "{:02d}:{:02d}:{:02d} {:03d} 1970 GMT".format(hrs, mins, sec, day_of_year)
+            dt = datetime.strptime(date_as_string, "%H:%M:%S %j %Y %Z")
 
-        epoch_time = datetime(1970, 1, 1)
-        self.seconds = int((dt - epoch_time).total_seconds())
+        dt = dt.replace(tzinfo=timezone.utc)
+
+        seconds = int(dt.timestamp())
+        self.ptptime = PTPTime(seconds, nanoseconds)
 
         return True
 
@@ -143,7 +143,7 @@ class TimeDataFormat1(object):
         if not isinstance(other, TimeDataFormat1):
             return False
 
-        _match_att = ("channel_specific_data", "seconds", "nanoseconds")
+        _match_att = ("channel_specific_data", "ptptime")
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -152,12 +152,7 @@ class TimeDataFormat1(object):
         return True
 
     def __repr__(self):
-        return "TimeFormat1 ChannelSpecificWord={:#0X} Time={} Seconds={} MilliSeconds={}".format(
-            self.channel_specific_data,
-            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %d-%b %Y"),
-            self.seconds,
-            int(self.nanoseconds / 1e6),
-        )
+        return "TimeFormat1 ChannelSpecificWord={:#0X} Time={}".format(self.channel_specific_data, self.ptptime)
 
     def __len__(self):
         if (self.channel_specific_data & DATE_FMT_YEAR_AVAIL) >> 9 == 0x1:
@@ -179,15 +174,12 @@ class TimeDataFormat2(object):
 
 
     :type channel_specific_data: int
-    :type nanoseconds: int
-    :type seconds: int
     :type filler: str
     """
 
     def __init__(self):
         self.channel_specific_data = TS_STATUS_VALID + TS_STATUS_IEEE2002
-        self.seconds = 0
-        self.nanoseconds = 0
+        self.ptptime = PTPTime()
 
     def pack(self):
         """
@@ -198,12 +190,12 @@ class TimeDataFormat2(object):
 
         if (self.channel_specific_data >> 4) & 0x1:
             # ptp
-            frac_sec = self.nanoseconds
+            frac_sec = self.ptptime.nanoseconds
         else:
             # ntp
-            frac_sec = int(self.nanoseconds * (pow(2, 32) / 1e9))
+            frac_sec = int(self.ptptime.nanoseconds * (pow(2, 32) / 1e9))
 
-        return struct.pack("<III", self.channel_specific_data, self.seconds, frac_sec)
+        return struct.pack("<III", self.channel_specific_data, self.ptptime.seconds, frac_sec)
 
     def unpack(self, buf):
         """
@@ -213,11 +205,11 @@ class TimeDataFormat2(object):
         """
         (self.channel_specific_data, s, fs) = struct.unpack("<III", buf)
         if (self.channel_specific_data >> 4) & 0xF != 0:  # Make PTP the default
-            self.nanoseconds = fs
+            nanoseconds = fs
         else:
-            self.nanoseconds = int(fs / (pow(2, 32) / 1e9))  # NTP
+            nanoseconds = int(fs / (pow(2, 32) / 1e9))  # NTP
 
-        self.seconds = s
+        self.ptptime = PTPTime(s, nanoseconds)
 
         return True
 
@@ -225,7 +217,7 @@ class TimeDataFormat2(object):
         if not isinstance(other, TimeDataFormat2):
             return False
 
-        _match_att = ("channel_specific_data", "seconds", "nanoseconds")
+        _match_att = ("channel_specific_data", "ptptime")
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -234,11 +226,7 @@ class TimeDataFormat2(object):
         return True
 
     def __repr__(self):
-        return "TimeFormat2 ChannelSpecificWord={:#0X} Time={} NanoSeconds={}".format(
-            self.channel_specific_data,
-            datetime.fromtimestamp(self.seconds).strftime("%H:%M:%S %x %d-%b %Y"),
-            self.nanoseconds,
-        )
+        return "TimeFormat2 ChannelSpecificWord={:#0X} Time={} ".format(self.channel_specific_data, self.ptptime)
 
     def __len__(self):
         return 3 * 4

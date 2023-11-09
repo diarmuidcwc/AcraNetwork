@@ -1,7 +1,7 @@
 import struct
 from functools import reduce
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 DATA_TYPE_TIMEFMT_1 = 0x11
 DATA_TYPE_TIMEFMT_2 = 0x12
@@ -45,7 +45,7 @@ class PTPTime(object):
         return True
 
     def to_rtc(self):
-        ptp_as_date = datetime.fromtimestamp(self.seconds)
+        ptp_as_date = datetime.fromtimestamp(self.seconds, tz=timezone.utc)
         start_of_year = datetime(ptp_as_date.year, 1, 1, 0, 0, 0)
         seconds_since_start_year = int((ptp_as_date - start_of_year).total_seconds())
         rtc_time = int(seconds_since_start_year * 1e7 + self.nanoseconds / 100)
@@ -53,7 +53,8 @@ class PTPTime(object):
 
     def __repr__(self):
         time_fmt = "%H:%M:%S %d-%b %Y"
-        date_str = datetime.fromtimestamp(self.seconds).strftime(time_fmt)
+        ts = datetime.fromtimestamp(self.seconds, tz=timezone.utc)
+        date_str = ts.strftime(time_fmt)
         return "PTP: {} nanosec={}".format(date_str, self.nanoseconds)
 
     def __eq__(self, __value):

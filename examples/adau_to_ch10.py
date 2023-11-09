@@ -5,6 +5,7 @@ import AcraNetwork.Chapter10.UART as ch10uart
 import AcraNetwork.Chapter10.PCM as ch10pcm
 import AcraNetwork.Chapter10.Analog as ch10analog
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
+import AcraNetwork.Chapter10.TimeDataFormat as ch10time
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
 import argparse
@@ -92,7 +93,7 @@ def encapsulate_tmats(tmats_file: str) -> ch10.Chapter10:
         return c
 
 
-def get_ch10_time(ptptime: PTPTime, rtctime: int) -> ch10.Chapter10:
+def get_ch10_time(ptptime: PTPTime) -> ch10.Chapter10:
     """Return a time packet that maps the seconds / nanoseconds to the rtctime
 
     Args:
@@ -103,7 +104,15 @@ def get_ch10_time(ptptime: PTPTime, rtctime: int) -> ch10.Chapter10:
     Returns:
         ch10.Chapter10: _description_
     """
-    return ch10.Chapter10()
+    c = ch10.Chapter10()
+    c.channelID = 2
+    c.sequence = 123
+    c.packetflag = 0
+    c.datatype = DATA_TYPE_TIMEFMT_1
+    c.relativetimecounter = ptptime.to_rtc()
+    time_pkt = ch10time.TimeDataFormat1()
+    time_pkt.seconds = ptptime.seconds
+    time_pkt.nanoseconds = ptptime.nanoseconds
 
 
 def clone_ch10_payload(original_buffer: bytes, datatype: int) -> bytes:
@@ -164,10 +173,9 @@ def clone_ch10(original_ch10: ch10.Chapter10) -> ch10.Chapter10:
     new_ch10.datatype = original_ch10.datatype
     logging.debug(f"Fkags={original_ch10.packetflag:#0X}")
     if original_ch10.packetflag & ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME != 0:
-        orig_ptp = PTPTime(original_ch10.ptptimeseconds, original_ch10.ptptimenanoseconds)
         new_ch10.packetflag &= 0x33
-        logging.debug(f"Converting time stmaps and overwrite packet flag {new_ch10.packetflag:#0X}")
-        new_ch10.relativetimecounter = orig_ptp.to_rtc()
+        logging.debug(f"Converting timestamps and overwrite packet flag {new_ch10.packetflag:#0X}")
+        new_ch10.relativetimecounter = original_ch10.ptptime.to_rtc()
     else:
         new_ch10.relativetimecounter = original_ch10.relativetimecounter
     new_ch10.ts_source = ch10.TS_RTC
