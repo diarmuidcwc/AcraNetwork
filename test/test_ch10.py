@@ -37,7 +37,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = tempfile.gettempdir()
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logging.info(f"Temp folder={TMP_DIR}")
 
 
@@ -213,8 +213,7 @@ class CH10UDPTest(unittest.TestCase):
         d.packetflag = ch10.Chapter10.PKT_FLAG_SECONDARY
         d.datatype = 4
         d.ts_source = ch10.TS_IEEE1558
-        d.ptptimeseconds = 101
-        d.ptptimenanoseconds = int(200e6)
+        d.ptptime = PTPTime(101, int(200e6))
         d.relativetimecounter = 0x0
         d.payload = struct.pack(">QQ", 33, 44)
         full_payload = getEthernetPacket(c.pack())
@@ -297,8 +296,8 @@ class CH10UDPTest(unittest.TestCase):
         self.assertEqual(d.channelID, 0x000080D6)
         self.assertEqual(d.datatypeversion, 0x44)
         # nanoseconds and seconds
-        self.assertEqual(d.ptptimenanoseconds, 1237463)
-        self.assertEqual(d.ptptimeseconds, 0)
+        self.assertEqual(d.ptptime.nanoseconds, 1237463)
+        self.assertEqual(d.ptptime.seconds, 0)
 
         self.assertEqual(repr(c), "CH10 UDP Full Packet: Format=1 Sequence=0")
         arinc_p = ch10arinc.ARINC429DataPacket()
@@ -344,8 +343,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.chfull.packetflag = 0xC4  # Secondary time + PTP
         self.chfull.datatype = 0x50
         self.chfull.relativetimecounter = 100
-        self.chfull.ptptimeseconds = 22
-        self.chfull.ptptimenanoseconds = 250000
+        self.chfull.ptptime = PTPTime(22, 250000)
         self.full.payload = self.chfull.pack()
 
     def test_basic_uart(self):
@@ -505,8 +503,7 @@ class GenPCAP(unittest.TestCase):
         rec = pcap.PcapRecord()
         for fmt in [1, 2, 3]:
             c = get_ch10(16)
-            c.ptptimeseconds = 333344
-            c.ptptimenanoseconds = 42322
+            c.ptptime = PTPTime(333344, 42322)
             c.packetflag = (
                 ch10.Chapter10.PKT_FLAG_SECONDARY
                 + ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME
@@ -537,13 +534,12 @@ class GenPCAP(unittest.TestCase):
 
 class Ch10Mil(unittest.TestCase):
     def test_mil(self):
-        m = ch10mil.MILSTD1553DataPacket()
+        m = ch10mil.MILSTD1553DataPacket(TS_IEEE1558)
         msg = ch10mil.MILSTD1553Message()
         msg.message = struct.pack(">II", 1, 2)
-        msg.ptptimeseconds = 100
-        msg.ptptimenanoseconds = 200
+        msg.ipts = PTPTime(100, 200)
         m.append(msg)
-        m2 = ch10mil.MILSTD1553DataPacket()
+        m2 = ch10mil.MILSTD1553DataPacket(TS_IEEE1558)
         m2.unpack(m.pack())
         self.assertEqual(m2, m)
 
