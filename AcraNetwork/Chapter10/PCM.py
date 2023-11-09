@@ -1,57 +1,7 @@
 import struct
 from datetime import datetime
-from . import TS_RTC, TS_SECONDARY
+from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, PTPTime, RTCTime
 import logging
-
-
-class PTPTime(object):
-    def __init__(self, sec=0, nanosec=0):
-        self.sec = sec
-        self.nanosec = nanosec
-
-    def pack(self):
-        return struct.pack("<II", self.nanosec, self.sec)
-
-    def unpack(self, buffer):
-        (self.nanosec, self.sec) = struct.unpack("<II", buffer)
-        return True
-
-    def __repr__(self):
-        time_fmt = "%H:%M:%S %d-%b %Y"
-        date_str = datetime.fromtimestamp(self.sec).strftime(time_fmt)
-        return "PTP: {} nanosec={}".format(date_str, self.nanosec)
-
-    def __eq__(self, __value):
-        if not isinstance(__value, PTPTime):
-            return False
-        if self.nanosec != __value.nanosec or self.sec != __value.sec:
-            return False
-        return True
-
-
-class RTCTime(object):
-    def __init__(self, count=0):
-        self.count = count
-
-    def pack(self):
-        msw = (self.count >> 32) & 0xFFFF
-        lsw = self.count & 0xFFFFFFFF
-        return struct.pack("<IHH", lsw, msw, 0)
-
-    def unpack(self, buffer):
-        (lsw, msw, _zero) = struct.unpack("<IHH", buffer)
-        self.count = lsw + (msw << 32)
-        return True
-
-    def __repr__(self):
-        return "RTC: count={}".format(self.count)
-
-    def __eq__(self, __value):
-        if not isinstance(__value, RTCTime):
-            return False
-        if self.count != __value.count:
-            return False
-        return True
 
 
 class PCMMinorFrame(object):
@@ -60,8 +10,8 @@ class PCMMinorFrame(object):
     Object that represents the PCM minor frame in a PCMPayload.
     """
 
-    def __init__(self, ipts_source=TS_RTC):
-        if ipts_source == TS_RTC:
+    def __init__(self, ipts_source=TS_CH4):
+        if ipts_source == TS_CH4:
             self.ipts = RTCTime()
         else:
             self.ipts = PTPTime()
@@ -77,7 +27,7 @@ class PCMMinorFrame(object):
         :type buffer: str
         :rtype: bool
         """
-        if self._ipts_source == TS_RTC:
+        if self._ipts_source == TS_CH4:
             self.ipts = RTCTime()
         else:
             self.ipts = PTPTime()
@@ -134,9 +84,9 @@ class PCMDataPacket(object):
     :type minor_frames: [PCMMinorFrame]
     """
 
-    def __init__(self, ipts_source=TS_RTC):
+    def __init__(self, ipts_source=TS_CH4):
         self.channel_specific_word = None
-        self.ipts_source = ipts_source
+        self._ipts_source = ipts_source
         self.minor_frame_size_bytes = 0
         self.minor_frames = []
 
@@ -151,7 +101,7 @@ class PCMDataPacket(object):
         offset = 4
         _byte_count_req = self.minor_frame_size_bytes + PCMMinorFrame.HDR_LEN
         while offset + _byte_count_req <= len(buffer):
-            minor_frame = PCMMinorFrame(self.ipts_source)
+            minor_frame = PCMMinorFrame(self._ipts_source)
             if (_byte_count_req) % 2 != 0:
                 padding = 1
             else:

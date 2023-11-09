@@ -9,6 +9,7 @@ import AcraNetwork.Chapter10.UART as ch10uart
 import AcraNetwork.Chapter10.PCM as ch10pcm
 import AcraNetwork.Chapter10.Analog as ch10analog
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
+from AcraNetwork.Chapter10 import PTPTime, RTCTime
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
 import argparse
@@ -34,19 +35,6 @@ import typing
 
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-@dataclass
-class PTPTime:
-    seconds: int
-    nanoseconds: int
-
-    def to_rtc(self):
-        ptp_as_date = datetime.fromtimestamp(self.seconds)
-        start_of_year = datetime(ptp_as_date.year, 1, 1, 0, 0, 0)
-        seconds_since_start_year = int((ptp_as_date - start_of_year).total_seconds())
-        rtc_time = int(seconds_since_start_year * 1e7 + self.nanoseconds / 100)
-        return rtc_time
 
 
 def create_parser():
@@ -85,7 +73,7 @@ def encapsulate_ch10_ptk(ch10payload: bytes) -> bytes:
     return ethpkt.pack()
 
 
-def encapsulate_tmats(tmats_data: bytes) -> ch10.Chapter10:
+def encapsulate_tmats(tmats_file: str) -> ch10.Chapter10:
     """Wrap the tmats data in a ch10 file for writing to a ch10 file
 
     Args:
@@ -94,7 +82,16 @@ def encapsulate_tmats(tmats_data: bytes) -> ch10.Chapter10:
     Returns:
         ch10.Chapter10: _description_
     """
-    return ch10.Chapter10()
+    with open(tmats_file, mode="rb") as f:
+        tmats = f.read()
+        c = ch10.Chapter10()
+        c.channelID = 0
+        c.sequence = 123
+        c.packetflag = 0
+        c.datatype = DATA_TYPE_COMPUTER_GENERATED_FORMAT_1
+        c.relativetimecounter = 0
+        c.payload = tmats
+        return c
 
 
 def get_ch10_time(ptptime: PTPTime, rtctime: int) -> ch10.Chapter10:
@@ -134,9 +131,9 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int) -> bytes:
         p.minor_frame_size_bytes = 272
         p.unpack(original_buffer)
         for frame in p:
-            logging.debug(f"PCMFrame ipts sec={frame.ipts.sec} nsec={frame.ipts.nanosec}")
-            frame_time = PTPTime(frame.ipts.sec, frame.ipts.nanosec)
-            frame.ipts = ch10pcm.RTCTime(frame_time.to_rtc())
+            logging.debug(f"PCMFrame ipts sec={frame.ipts.seconds} nsec={frame.ipts.nanoseconds}")
+            frame_time = PTPTime(frame.ipts.seconds, frame.ipts.nanoseconds)
+            frame.ipts = RTCTime(frame_time.to_rtc())
         return p.pack()
     elif datatype == DATA_TYPE_ANALOG:
         p = ch10analog.Analog()
@@ -184,6 +181,7 @@ def main(args):
 
     prev_time = None
     with fp as ch10file:
+        fp.write(encapsulate_tmats(args.tmats))
         for idx, record in enumerate(pf):
             eth_pkt = record.payload
             if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:

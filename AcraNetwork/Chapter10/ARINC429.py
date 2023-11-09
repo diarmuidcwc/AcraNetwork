@@ -4,18 +4,18 @@ import struct
 class ARINC429DataPacket(object):
     """
     Data Packet Format. Contains a list of Arinc Data Words
-    
+
     :type msgcount: int
     :type arincwords: list[ARINC429DataWord]
-    
-    
+
+
     >>> c = Chapter10UDP()
     >>> arinc_p = ARINC429DataPacket()
     >>> arinc_p.unpack(c.chapter10.payload))
     >>> print arinc_p
     ARINCPayload: MessageCount=0
       ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=0
-    
+
     """
 
     def __init__(self):
@@ -26,7 +26,7 @@ class ARINC429DataPacket(object):
         """
         Pack the ARINC-429 data packet object into a binary buffer
 
-        :rtype: str 
+        :rtype: str
         """
         ret_str = struct.pack("<HH", self.msgcount, 0)
         for a in self.arincwords:
@@ -49,14 +49,16 @@ class ARINC429DataPacket(object):
         for msg_idx in range(exp_msg):
             offset = (msg_idx * ARINC_WORD_LEN) + CH_SPECIFIC_HDR_LEN
             arinc_data = ARINC429DataWord()
-            arinc_msg_word_buffer = buffer[offset:offset+ARINC_WORD_LEN]
+            arinc_msg_word_buffer = buffer[offset : offset + ARINC_WORD_LEN]
             arinc_data.unpack(arinc_msg_word_buffer)
             self.arincwords.append(arinc_data)
-            
+
         if self.msgcount != len(self.arincwords):
-            raise Exception("The ARINC Message Count={} does not match number of messages in the packet={}".format(
-                self.msgcount, len(self.arincwords)
-            ))
+            raise Exception(
+                "The ARINC Message Count={} does not match number of messages in the packet={}".format(
+                    self.msgcount, len(self.arincwords)
+                )
+            )
         return True
 
     def __eq__(self, other):
@@ -72,7 +74,7 @@ class ARINC429DataPacket(object):
         return True
 
     def __repr__(self):
-        ret_str =  "ARINCPayload: MessageCount={}\n".format( self.msgcount)
+        ret_str = "ARINCPayload: MessageCount={}\n".format(self.msgcount)
 
         for a in self.arincwords:
             ret_str += "  {}\n".format(repr(a))
@@ -103,7 +105,7 @@ class ARINC429DataPacket(object):
 class ARINC429DataWord(object):
     """
     The Chapter 10 standard defines specific payload formats for different data. This class handles AROINC-429 packets
-    
+
     :type msgcount: int
     :type gaptime: int
     :type format_error: bool
@@ -147,8 +149,8 @@ class ARINC429DataWord(object):
         :type buffer: str
         :rtype: None
         """
-        ( _gap, _flag, self.bus) = struct.unpack_from(ARINC429DataWord.HDR_FORMAT, buffer)
-        self.payload = buffer[struct.calcsize(ARINC429DataWord.HDR_FORMAT):]
+        (_gap, _flag, self.bus) = struct.unpack_from(ARINC429DataWord.HDR_FORMAT, buffer)
+        self.payload = buffer[struct.calcsize(ARINC429DataWord.HDR_FORMAT) :]
         self.format_error = bool((_flag >> 7) & 0x1)
         self.parity_error = bool((_flag >> 6) & 0x1)
         self.bus_speed = (_flag >> 6) & 0x1
@@ -160,7 +162,7 @@ class ARINC429DataWord(object):
         if not isinstance(other, ARINC429DataWord):
             return False
 
-        _match_att = ( "gaptime", "format_error", "parity_error", "bus_speed", "bus", "payload")
+        _match_att = ("gaptime", "format_error", "parity_error", "bus_speed", "bus", "payload")
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -170,5 +172,5 @@ class ARINC429DataWord(object):
 
     def __repr__(self):
         return "ARINCData: GapTime={} FormatError={} ParityError={} BusSpeed={} Bus={}".format(
-             self.gaptime, self.format_error, self.parity_error, self.bus_speed, self.bus)
-
+            self.gaptime, self.format_error, self.parity_error, self.bus_speed, self.bus
+        )

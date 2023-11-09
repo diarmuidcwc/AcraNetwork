@@ -1,4 +1,5 @@
 import struct
+from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
 
 class MILSTD1553DataPacket(object):
@@ -17,10 +18,11 @@ class MILSTD1553DataPacket(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, ipts_source=TS_CH4):
         self.messages = []  #: List of :class:`MILSTD1553Message`
         self.msgcount = 0
         self.ttb = 0
+        self._ipts_source = ipts_source
 
     def pack(self):
         """
@@ -55,7 +57,7 @@ class MILSTD1553DataPacket(object):
 
         offset = 4
         while offset + 14 < len(mybuffer):  # Should have at least the timestamp
-            m = MILSTD1553Message()
+            m = MILSTD1553Message(self._ipts_source)
             offset += m.unpack(mybuffer[offset:])
             self.messages.append(m)
 
@@ -86,7 +88,7 @@ class MILSTD1553DataPacket(object):
         return True
 
     def __repr__(self):
-        ret_str = "MILSTD1553DataPacket: MessageCount={}\n".format(self.msgcount, self.messages)
+        ret_str = "MILSTD1553DataPacket: MessageCount={} {}\n".format(self.msgcount, self.messages)
 
         for a in self:
             ret_str += "  {}\n".format(repr(a))
@@ -116,7 +118,7 @@ class MILSTD1553DataPacket(object):
 
 class MILSTD1553Message(object):
     """
-    The Chapter 10 standard defines specific payload formats for different data. This class handles UART packets
+    The Chapter 10 standard defines specific payload formats for different data. This class handles MIL1553 packets
 
     :type ptptimeseconds: int
     :type ptptimenanoseconds: int
@@ -126,9 +128,13 @@ class MILSTD1553Message(object):
     :type payload: str
     """
 
-    def __init__(self):
-        self.ptptimeseconds = None  #: Timestamp of first parameter in the packet. EPOCH time
-        self.ptptimenanoseconds = None  #: Nanaosecond timestamp
+    def __init__(self, ipts_source=TS_CH4):
+        if ipts_source == TS_CH4:
+            self.ipts = RTCTime()
+        elif ipts_source == TS_IEEE1558:
+            self.ipts = PTPTime()
+        elif ipts_source is None:
+            raise Exception("Time stamp is not option for MIL-STD-1553")
         self.blockstatus = 0
         self.gaptimes = 0
         self.length = 0
@@ -140,10 +146,7 @@ class MILSTD1553Message(object):
 
         :rtype: str|bytes
         """
-        if self.ptptimeseconds is not None and self.ptptimenanoseconds is not None:
-            ch_spec_word = struct.pack("<II", self.ptptimenanoseconds, self.ptptimeseconds)
-        else:
-            raise Exception("No timestamp defined")
+        ch_spec_word = self.ipts.pack()
         self.length = len(self.message)
         intra_packet_data_header = struct.pack("<HHH", self.blockstatus, self.gaptimes, self.length)
 
@@ -159,11 +162,10 @@ class MILSTD1553Message(object):
         """
         offset = 0
         # bytes = struct.unpack_from(">8B", mybuffer)
-        (self.ptptimenanoseconds, self.ptptimeseconds) = struct.unpack_from("<II", mybuffer, offset)
+        self.ipts.unpack(mybuffer[:8])
         offset += 8
         (self.blockstatus, self.gaptimes, self.length) = struct.unpack_from("<HHH", mybuffer, offset)
         offset += 6
-
         self.message = mybuffer[offset : offset + self.length]
         offset += self.length
 
@@ -173,7 +175,7 @@ class MILSTD1553Message(object):
         if not isinstance(other, MILSTD1553Message):
             return False
 
-        _match_att = ["ptptimeseconds", "ptptimenanoseconds", "blockstatus", "gaptimes", "length", "message"]
+        _match_att = ["ipts", "blockstatus", "gaptimes", "length", "message"]
 
         for attr in _match_att:
             if getattr(self, attr) != getattr(other, attr):
@@ -182,6 +184,6 @@ class MILSTD1553Message(object):
         return True
 
     def __repr__(self):
-        return "MILSTD1553Message: PTPSec={} PTPNSec={} BlockStatus={} GapTimes={} Length={}".format(
-            self.ptptimeseconds, self.ptptimenanoseconds, self.blockstatus, self.gaptimes, self.length
+        return "MILSTD1553Message: Time={}  BlockStatus={} GapTimes={} Length={}".format(
+            self.ipts, self.blockstatus, self.gaptimes, self.length
         )
