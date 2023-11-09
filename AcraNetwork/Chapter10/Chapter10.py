@@ -17,8 +17,9 @@ import struct
 from functools import reduce
 from datetime import datetime
 import time
-from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY
+from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY, RTCTime, PTPTime
 import logging
+import typing
 
 
 logger = logging.getLogger(__name__)
@@ -115,8 +116,7 @@ class Chapter10(object):
         )
         self.datatype = 0  #:(1 Byte) contains a value representing the type and format of the data
         self.relativetimecounter = 0  #:(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
-        self.ptptimeseconds = 0  #: PTP Timestamp seconds
-        self.ptptimenanoseconds = 0  #: PTP Timestamp nanoseconds
+        self.ptptime = PTPTime()  #: PTP Timestamp
         self.ts_source = TS_RTC  #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
         self.payload = b""  #:The payload
         self.data_checksum_size = 0
@@ -162,7 +162,7 @@ class Chapter10(object):
             if self.ts_source == TS_CH4:
                 raise Exception("Ch4 Timestamp in secondary header not supported")
 
-            sec_hdr = struct.pack(Chapter10.CH10_OPT_HDR_FORMAT, self.ptptimenanoseconds, self.ptptimeseconds, 0, 0)
+            sec_hdr = self.ptptime.pack() + struct.pack(">HH", 0, 0)
             # Replace the checksum
             cs = get_checksum_buf(sec_hdr)
             sec_hdr = sec_hdr[:-2] + struct.pack("<H", cs)
@@ -263,8 +263,7 @@ class Chapter10(object):
                 # print("Ch4 Timestamp in secondary header not supported")
             elif pkt_hdr_time == 1:
                 self.ts_source = TS_IEEE1558
-                self.ptptimenanoseconds = ts_ns
-                self.ptptimeseconds = ts_s
+                self.ptptime = PTPTime(ts_s, ts_ns)
             else:
                 raise Exception("Secondary Header Time Format not legal")
                 # print("Secondary Header Time Format not legal")
@@ -289,8 +288,7 @@ class Chapter10(object):
             "datatype",
             "_packetflag",
             "relativetimecounter",
-            "ptptimeseconds",
-            "ptptimenanoseconds",
+            "ptptime",
             "ts_source",
             "payload",
             "data_checksum_size",
