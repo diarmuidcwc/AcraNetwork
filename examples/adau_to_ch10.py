@@ -33,7 +33,7 @@ from AcraNetwork.Chapter10 import (
 import typing
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def create_parser():
@@ -111,8 +111,9 @@ def get_ch10_time(ptptime: PTPTime) -> ch10.Chapter10:
     c.datatype = DATA_TYPE_TIMEFMT_1
     c.relativetimecounter = ptptime.to_rtc()
     time_pkt = ch10time.TimeDataFormat1()
-    time_pkt.seconds = ptptime.seconds
-    time_pkt.nanoseconds = ptptime.nanoseconds
+    time_pkt.ptptime = ptptime
+    c.payload = time_pkt.pack()
+    return c
 
 
 def clone_ch10_payload(original_buffer: bytes, datatype: int) -> bytes:
@@ -196,11 +197,15 @@ def main(args):
         fp.write(encapsulate_tmats(args.tmats))
         for idx, record in enumerate(pf):
             eth_pkt = record.payload
+            newrec = pcap.PcapRecord()
+            newrec.sec = record.sec
+            newrec.usec = record.usec
             if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:
                 logging.debug(f"Reading record {idx}")
                 pkt_payload = eth_pkt[CH10_DATA_OFFSET:]
                 ch10udp_pkt = ch10udp.Chapter10UDP()
                 ch10_pkt = ch10.Chapter10()
+
                 try:
                     ch10udp_pkt.unpack(pkt_payload)
                     ch10_pkt.unpack(ch10udp_pkt.payload)
@@ -208,10 +213,20 @@ def main(args):
                     logging.debug(f"Failed to unpacket record #{idx}. len_buf={len(pkt_payload)} Err={e}")
                     continue
                 else:
+                    if idx == 0:
+                        time_pkt = get_ch10_time(ch10_pkt.ptptime)
+                        newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
+                        pf_tmp.write(newrec)
+                        prev_time = ch10_pkt.ptptime  #
+                    elif prev_time is not None and ch10_pkt.ptptime is not None:
+                        dlt = ch10_pkt.ptptime - prev_time
+                        if dlt >= PTPTime(1, 0):
+                            time_pkt = get_ch10_time(ch10_pkt.ptptime)
+                            newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
+                            pf_tmp.write(newrec)
+                            prev_time = ch10_pkt.ptptime  #
+
                     new_ch10_pkt = clone_ch10(ch10_pkt)
-                    newrec = pcap.PcapRecord()
-                    newrec.sec = record.sec
-                    newrec.usec = record.usec
                     newrec.payload = encapsulate_ch10_ptk(new_ch10_pkt.pack())
                     pf_tmp.write(newrec)
                     ch10file.write(new_ch10_pkt)
