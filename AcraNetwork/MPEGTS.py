@@ -17,6 +17,9 @@ import struct
 import datetime
 import sys
 import typing
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 NAL_HEADER = 0x00000001
@@ -84,7 +87,7 @@ class MPEGTS(object):
             MpegBlock.unpack(buf[remainingbytes : remainingbytes + 188])
             block_count += 1
             self.blocks.append(MpegBlock)
-            if MpegBlock.invalidsync == True:
+            if MpegBlock.invalidsync:
                 self.invalidsync = True
                 self.invalidsyncblock.append(block_count)
             remainingbytes += 188
@@ -126,6 +129,60 @@ class MPEGTS(object):
         return self.blocks[self.NumberOfBlocks() - 1].continuitycounter
 
 
+class ADTS(object):
+    def __init__(self) -> None:
+        self.aac: bytes = bytes()
+        self.version: int = 0
+        self.sampling_freq: int = 0
+        self._length: int = 0
+        self.no_crc: bool = True
+
+    def unpack(self, buffer):
+        words = struct.unpack_from(">7B", buffer)
+        sw = ((words[1] >> 4) << 8) + words[0]
+        if sw != 0xFFF:
+            raise Exception(f"Sync word = {sw:#0X}")
+        self.sampling_freq = (words[2] >> 2) & 0xF
+        self.no_crc = bool(words[1] & 0x1)
+        self._length = (words[5] >> 5) + (words[4] << 3) + ((words[3] & 0x3) << 11)
+        if self.no_crc:
+            self.aac = buffer[7:]
+        else:
+            self.aac = buffer[9:]
+
+    def __repr__(self) -> str:
+        return f"ADTS: NoCRC={self.no_crc} SamplFreq={self.sampling_freq} len={self._length} lenaac={len(self.aac)}"
+
+
+TSC = {0: "Not Scrambled", 1: "Reserved", 2: "Scrambled even key", 3: "Scrambled odd key"}
+ADAPTION_CTRL = {1: "Payload Only", 2: "Adaption Only", 3: "Adaption and Payload", 0: "Reserved"}
+
+
+class PES(object):
+    def __init__(self) -> None:
+        self.streamid: int = 0
+        self.length: int = 0
+        self.data: bytes = bytes()
+
+    def unpack(self, buffer: bytes):
+        (_prefix1, _prefix2, self.streamid, self.length) = struct.unpack_from(">BHBH", buffer)
+        prefix = (_prefix1 << 16) + _prefix2
+        if prefix != 1:
+            raise Exception(f"PES Prefix {prefix:#0X} should be 0x1")
+        (optional_hdr, _miscbits, _pes_hdr_len) = struct.unpack_from(">BBB", buffer, 6)
+        marker = optional_hdr >> 4
+        if marker != 0x8:
+            logger.debug("No optional PES header")
+            self.data = buffer[6:]
+        else:
+            self.data = buffer[(6 + 3 + _pes_hdr_len) :]
+        (datafword,) = struct.unpack_from(">H", self.data)
+        logger.debug(f"PES First Dataw={datafword:#0X}")
+
+    def __repr__(self) -> str:
+        return f"PES: Stream ID={self.streamid:#0X} Len={self.length}"
+
+
 class MPEGPacket(object):
     """
     The MPEGPacket is the elementary unit in an MPEG Transport Stream
@@ -133,9 +190,13 @@ class MPEGPacket(object):
     """
 
     def __init__(self):
-        self.packetstrut = struct.Struct(">BHB")
+        self._packetstrut = struct.Struct(">BHB")
+        self._packetstrutlen = struct.calcsize(">BHB")
         self.sync: int = 0
         self.pid: int = 0
+        self.pusi: int = 0
+        self.tsc: int = 0
+        self.adaption_ctrl: int = 0
         self.continuitycounter: int = 0
         self.invalidsync: bool = False
         self.payload: bytes = bytes()
@@ -148,13 +209,29 @@ class MPEGPacket(object):
         :type buf: str
         :rtype: bool
         """
-        (self.syncbyte, pid_full, counter_full) = self.packetstrut.unpack_from(buf)
+        (self.syncbyte, pid_full, counter_full) = self._packetstrut.unpack_from(buf)
         if self.syncbyte != 0x47:
             self.invalidsync = True
 
         self.pid = pid_full % 8192
+        self.pusi = (pid_full >> 14) & 0x1
         self.continuitycounter = counter_full % 16
-        self.payload = buf[struct.calcsize(">BHB") :]
+        self.tsc = (counter_full >> 6) & 0x3
+        self.adaption_ctrl = (counter_full >> 4) & 0x3
+
+        if self.adaption_ctrl == 0x3:  # payload + adaption
+            (adaption_len,) = struct.unpack_from(">B", buf[self._packetstrutlen :])
+            # logger.debug(f"Adaption len ={adaption_len}")
+            self.payload = buf[(self._packetstrutlen + 1 + adaption_len) :]
+        elif self.adaption_ctrl == 0x2:
+            self.payload = bytes()
+        elif self.adaption_ctrl == 0x1:
+            self.payload = buf[self._packetstrutlen :]
+        else:
+            raise Exception("Adaption control of 0 is reserved")
+
+    def __repr__(self) -> str:
+        return f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
 
 
 class H264(object):
