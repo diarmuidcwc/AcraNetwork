@@ -47,6 +47,7 @@ class PTPTime(object):
     def to_rtc(self):
         ptp_as_date = datetime.fromtimestamp(self.seconds, tz=timezone.utc)
         start_of_year = datetime(ptp_as_date.year, 1, 1, 0, 0, 0)
+        start_of_year = start_of_year.replace(tzinfo=timezone.utc)
         seconds_since_start_year = int((ptp_as_date - start_of_year).total_seconds())
         rtc_time = int(seconds_since_start_year * 1e7 + self.nanoseconds / 100)
         return rtc_time
@@ -63,6 +64,32 @@ class PTPTime(object):
         if self.nanoseconds != __value.nanoseconds or self.seconds != __value.seconds:
             return False
         return True
+
+    def __add__(self, val):
+        if isinstance(val, PTPTime):
+            addns = self.nanoseconds + val.nanoseconds
+            ns = int(addns % 1e9)
+            sec = self.seconds + val.seconds + int(addns // 1e9)
+            return PTPTime(sec, ns)
+
+    def __sub__(self, val):
+        if isinstance(val, PTPTime):
+            if val.nanoseconds > self.nanoseconds:
+                sec = self.seconds - val.seconds - 1
+                nsec = int(1e9) - (val.nanoseconds - self.nanoseconds)
+            else:
+                sec = self.seconds - val.seconds
+                nsec = self.nanoseconds - val.nanoseconds
+            return PTPTime(sec, nsec)
+
+    def __lt__(self, val):
+        if isinstance(val, PTPTime):
+            return (self.seconds + self.nanoseconds / 1e9) < (val.seconds + val.nanoseconds / 1e9)
+
+    def __le__(self, val):
+        if isinstance(val, PTPTime):
+            _d = (self.seconds + self.nanoseconds / 1e9) <= (val.seconds + val.nanoseconds / 1e9)
+            return _d
 
 
 class RTCTime(object):

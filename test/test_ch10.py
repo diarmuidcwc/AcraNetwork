@@ -636,5 +636,27 @@ class CH10SampleFile(unittest.TestCase):
         print(f"{total_len:,d}")
 
 
+class PTPRTCTime(unittest.TestCase):
+    def test_ptptime(self):
+        t0 = PTPTime(0, 0)
+        t0b = PTPTime(0, 0)
+        t1 = PTPTime(2, 1)
+        t2 = PTPTime(1, 999_999_999)
+        t2b = PTPTime(1, 999_999_999)
+        dlt = PTPTime(0, 22)
+        t3 = PTPTime(1, 0)
+
+        self.assertTrue(t0 == t0b)
+        self.assertTrue(t1 > t0)
+        self.assertTrue(t2 < t1)
+        self.assertTrue(t0 >= t0)
+        self.assertTrue(t0 <= t0)
+        self.assertEqual(t1 + t2, PTPTime(4, 0))
+        self.assertEqual(t1 - t2, PTPTime(0, 2))
+        self.assertEqual(t2 + t2, PTPTime(3, 999_999_998))
+        self.assertEqual(t2 - t2b, PTPTime(0, 0))
+        self.assertFalse(dlt >= t3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -81,7 +81,7 @@ class Chapter10(object):
     :type filler: bytes
     """
 
-    SYNC_WORD = 0xEB25  #:(Object Constant) Sync word
+    SYNC_WORD = 0xEB25  # :(Object Constant) Sync word
 
     CH10_HDR_FORMAT = "<HHIIBBBBIHH"
     CH10_HDR_FORMAT_LEN = struct.calcsize(CH10_HDR_FORMAT)
@@ -89,36 +89,36 @@ class Chapter10(object):
     CH10_OPT_HDR_FORMAT = "<IIHH"
     CH10_OPT_HDR_FORMAT_LEN = struct.calcsize(CH10_OPT_HDR_FORMAT)
 
-    TS_SOURCES = [TS_RTC, TS_SECONDARY]  #:(Object Constant) Valid timesources, assign to :attr:`Chapter10.ts_source`
+    TS_SOURCES = [TS_RTC, TS_SECONDARY]  # :(Object Constant) Valid timesources, assign to :attr:`Chapter10.ts_source`
     TS_SECONDARY_SOURCES = [TS_CH4, TS_IEEE1558, TS_ERTC]
 
-    PKT_FLAG_SECONDARY = 0x80  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_SEC_HDR_TIME = 0x40  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_RTC_SYNC_ERROR = 0x20  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_DATA_OVERFLOW = 0x10  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_RCC_TIME = 0x0  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_1588_TIME = 0x04  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_8BIT_CHKSUM = 0x1  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_16BIT_CHKSUM = 0x2  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
-    PKT_FLAG_32BIT_CHKSUM = 0x3  #:(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_SECONDARY = 0x80  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_SEC_HDR_TIME = 0x40  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_RTC_SYNC_ERROR = 0x20  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_DATA_OVERFLOW = 0x10  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_RCC_TIME = 0x0  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_1588_TIME = 0x04  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_8BIT_CHKSUM = 0x1  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_16BIT_CHKSUM = 0x2  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
+    PKT_FLAG_32BIT_CHKSUM = 0x3  # :(Object Constant) add to :attr:`Chapter10.packetflag` to enable
 
     def __init__(self):
         self.syncpattern = (
             Chapter10.SYNC_WORD
-        )  #:(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25
-        self.channelID = 0  #:(2 Bytes) contains a value representing the Packet Channel ID.
-        self.packetlen = 0  #:(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four
-        self.datalen = 0  #:(4 Bytes) contains a value representing the valid data length within the packet
+        )  # :(2 Bytes) contains a static sync value for the every packet. The Packet Sync Pattern value shall be 0xEB25
+        self.channelID = 0  # :(2 Bytes) contains a value representing the Packet Channel ID.
+        self.packetlen = 0  # :(4 Bytes) contains a value representing the length of the entire packet. The value shall be in bytes and is always a multiple of four
+        self.datalen = 0  # :(4 Bytes) contains a value representing the valid data length within the packet
         self.datatypeversion = 0x5  #: RCC released versions
-        self.sequence = 0  #:(1 Byte) contains a value representing the packet sequence number for each Channel ID.
+        self.sequence = 0  # :(1 Byte) contains a value representing the packet sequence number for each Channel ID.
         self._packetflag = (
-            0  #:(1 Byte) contains bits representing information on the content and format of the packet(s)
+            0  # :(1 Byte) contains bits representing information on the content and format of the packet(s)
         )
-        self.datatype = 0  #:(1 Byte) contains a value representing the type and format of the data
-        self.relativetimecounter = 0  #:(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
+        self.datatype = 0  # :(1 Byte) contains a value representing the type and format of the data
+        self.relativetimecounter = 0  # :(6 Bytes) contains a value representing the 10 MHz Relative Time Counter (RTC)
         self.ptptime = PTPTime()  #: PTP Timestamp
-        self.ts_source = TS_RTC  #:The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
-        self.payload = b""  #:The payload
+        self.ts_source = TS_RTC  # :The timestamp source. Select from :attr:`Chapter10.TS_SOURCES`
+        self.payload = b""  # :The payload
         self.data_checksum_size = 0
         self.filler = b""
         self._secondary_header = False
