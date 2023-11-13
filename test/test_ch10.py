@@ -635,6 +635,16 @@ class CH10SampleFile(unittest.TestCase):
                 # self.assertTrue(False)
         print(f"{total_len:,d}")
 
+    def test_read_ch10(self):
+        fileparser = ch10.FileParser(THIS_DIR + "/../examples/out.ch10")
+        total_len = 0
+        with fileparser as chf:
+            for pkt in chf:
+                pkt_repr = repr(pkt)
+                total_len += pkt.packetlen
+                # self.assertTrue(False)
+        print(f"{total_len:,d}")
+
 
 class PTPRTCTime(unittest.TestCase):
     def test_ptptime(self):

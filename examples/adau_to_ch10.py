@@ -194,12 +194,16 @@ def main(args):
 
     prev_time = None
     with fp as ch10file:
-        fp.write(encapsulate_tmats(args.tmats))
+        tmats_ch10 = encapsulate_tmats(args.tmats)
+        fp.write(tmats_ch10)
         for idx, record in enumerate(pf):
             eth_pkt = record.payload
             newrec = pcap.PcapRecord()
             newrec.sec = record.sec
             newrec.usec = record.usec
+            if idx == 0:
+                newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
+                pf_tmp.write(newrec)
             if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:
                 logging.debug(f"Reading record {idx}")
                 pkt_payload = eth_pkt[CH10_DATA_OFFSET:]
@@ -217,6 +221,7 @@ def main(args):
                         time_pkt = get_ch10_time(ch10_pkt.ptptime)
                         newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
                         pf_tmp.write(newrec)
+                        ch10file.write(time_pkt)
                         prev_time = ch10_pkt.ptptime  #
                     elif prev_time is not None and ch10_pkt.ptptime is not None:
                         dlt = ch10_pkt.ptptime - prev_time
@@ -224,6 +229,7 @@ def main(args):
                             time_pkt = get_ch10_time(ch10_pkt.ptptime)
                             newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
                             pf_tmp.write(newrec)
+                            ch10file.write(time_pkt)
                             prev_time = ch10_pkt.ptptime  #
 
                     new_ch10_pkt = clone_ch10(ch10_pkt)
