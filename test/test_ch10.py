@@ -26,6 +26,7 @@ from AcraNetwork.Chapter10 import (
 )
 import struct
 import os
+import os.path
 import random
 import copy
 import datetime
@@ -636,7 +637,7 @@ class CH10SampleFile(unittest.TestCase):
         print(f"{total_len:,d}")
 
     def test_read_ch10(self):
-        fileparser = ch10.FileParser(THIS_DIR + "/../examples/out.ch10")
+        fileparser = ch10.FileParser("C://ACRA//WORK//AcraNetwork_git//examples//ch10//out.ch10")
         total_len = 0
         with fileparser as chf:
             for pkt in chf:
@@ -644,6 +645,15 @@ class CH10SampleFile(unittest.TestCase):
                 total_len += pkt.packetlen
                 # self.assertTrue(False)
         print(f"{total_len:,d}")
+
+    def test_extract_tmats(self):
+        fileparser = ch10.FileParser("C://ACRA//WORK//AcraNetwork_git//examples//ch10//Kulite Recording.ch10")
+        tmats_f = open("C://ACRA//WORK//AcraNetwork_git//examples//ch10//Kulite.tmats", mode="wb")
+        with fileparser as chf:
+            for idx, pkt in enumerate(chf):
+                if idx == 0:
+                    tmats_f.write(pkt.payload[4:])
+                    break
 
 
 class PTPRTCTime(unittest.TestCase):
