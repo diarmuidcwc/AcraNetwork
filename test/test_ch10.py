@@ -646,6 +646,7 @@ class CH10SampleFile(unittest.TestCase):
                 # self.assertTrue(False)
         print(f"{total_len:,d}")
 
+    @unittest.skip("Not a test")
     def test_extract_tmats(self):
         fileparser = ch10.FileParser("C://ACRA//WORK//AcraNetwork_git//examples//ch10//Kulite Recording.ch10")
         tmats_f = open("C://ACRA//WORK//AcraNetwork_git//examples//ch10//Kulite.tmats", mode="wb")
