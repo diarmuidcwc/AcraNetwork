@@ -230,7 +230,7 @@ def print_stats(pkt_details: dict[PktDetails, int]):
 def main(args):
     pf = pcap.Pcap(args.pcap, mode="r")
     if args.pcapdebug is not None:
-        pf_tmp = pcap.Pcap("temp.pcap", mode="w")
+        pf_tmp = pcap.Pcap(args.pcapdebug, mode="w")
     else:
         pf_tmp = None
     fp = ch10.FileParser(args.ch10, mode="wb")
