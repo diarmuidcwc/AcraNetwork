@@ -57,4 +57,6 @@
 # 0.15.28 - Fixed line endings
 # 0.16.0  - Refactored Chapter10 module
 # 0.16.1  - Initialized attributes
-__version__ = '0.16.1'
+# 0.16.2  - Lots of chapter10 updates.
+
+__version__ = "0.16.2"
