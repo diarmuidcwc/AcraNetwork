@@ -163,7 +163,7 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcm_payload_size_b
         p = ch10pcm.PCMDataPacket(ipts_source=TS_IEEE1558)
         p.minor_frame_size_bytes = pcm_payload_size_bytes
         p.unpack(original_buffer)
-        p.channel_specific_word = 0x0
+        # p.channel_specific_word = 0x0
         for frame in p:
             logging.debug(f"PCMFrame ipts sec={frame.ipts.seconds} nsec={frame.ipts.nanoseconds}")
             frame.ipts = RTCTime(frame.ipts.to_rtc())
@@ -241,6 +241,7 @@ def main(args):
     prev_time = None
     time_sequnece = 0
     pkt_type_count = {}
+    aligned_to_10_ms = False
 
     with fp as ch10file:
         # Generate the TMATs ch10 packet and write to the output file
@@ -272,15 +273,18 @@ def main(args):
                     logging.debug(f"Failed to unpacket record #{idx}. len_buf={len(pkt_payload)} Err={e}")
                     continue
                 else:
-                    if idx == 0:
-                        # Get the first timepacket and write it to the ch10 file
-                        time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece)
-                        ch10file.write(time_pkt)
-                        prev_time = ch10_pkt.ptptime
-                        time_sequnece += 1
-                        if pf_tmp is not None:  # debug
-                            newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
-                            pf_tmp.write(newrec)
+                    if prev_time is None:
+                        time_in_ms = int(ch10_pkt.ptptime.nanoseconds // 1e6)
+                        if time_in_ms % 10 == 0:
+                            # Get the first timepacket and write it to the ch10 file
+                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece)
+                            ch10file.write(time_pkt)
+                            prev_time = ch10_pkt.ptptime
+                            time_sequnece += 1
+                            if pf_tmp is not None:  # debug
+                                newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
+                                pf_tmp.write(newrec)
+                            aligned_to_10_ms = True
                     elif prev_time is not None and ch10_pkt.ptptime is not None:
                         # Check if 1 second has elapsed since the previous time packet
                         dlt = ch10_pkt.ptptime - prev_time
@@ -292,13 +296,16 @@ def main(args):
                             if pf_tmp:  # debug
                                 newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
                                 pf_tmp.write(newrec)
-                    # Convert the chapter10 packet to the RTC compatiable one
-                    new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmframelength)
-                    # Update the stats
-                    update_stats(pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype)))
-                    ch10file.write(new_ch10_pkt)
+                    if aligned_to_10_ms:
+                        # Convert the chapter10 packet to the RTC compatiable one
+                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmframelength)
+                        # Update the stats
+                        update_stats(
+                            pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
+                        )
+                        ch10file.write(new_ch10_pkt)
 
-                    if pf_tmp is not None:  # debug
+                    if pf_tmp is not None and aligned_to_10_ms:  # debug
                         newrec.payload = encapsulate_ch10_ptk(new_ch10_pkt.pack())
                         pf_tmp.write(newrec)
 
