@@ -7,7 +7,7 @@ __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Prototype"
-__version__ = "0.1"
+__version__ = "0.1.1"
 
 import AcraNetwork.Chapter10.Chapter10 as ch10
 import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
