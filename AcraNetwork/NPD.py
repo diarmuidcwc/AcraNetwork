@@ -34,7 +34,9 @@ class NPDSegment(object):
 
     def __init__(self):
         self.timedelta: int = 0  #: The R-bit in the Flags field of the packet header dictates the format of this field.
-        self.segmentlen: int = 0  #: The length of the segment header and data in bytes excluding padding.
+        self.segmentlen: int = (
+            NPDSegment.NPD_SEGMENT_HDR_LEN
+        )  #: The length of the segment header and data in bytes excluding padding.
         self.errorcode: int = 0  #: This field has a zero value if there are no errors
         self.flags: int = 0  #: [2:1] Fragmentation state flag
         self._payload: bytes = bytes()  #: Payload of segment
@@ -133,6 +135,17 @@ class ACQSegment(NPDSegment):
             "PCM NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X} sfid={:#0X} "
             "WordCnt={}"
             "".format(self.timedelta, self.segmentlen, self.errorcode, self.flags, self.sfid, len(self.words))
+        )
+
+
+class PCMPacketizer(NPDSegment):
+    """
+    PCM Packetizer Segments
+    """
+
+    def __repr__(self):
+        return "PCM Packetizer NPD Segment. TimeDelta={} Segment Len={} ErrorCode={:#0X} Flags={:#0X}" "".format(
+            self.timedelta, self.segmentlen, self.errorcode, self.flags
         )
 
 
@@ -284,7 +297,7 @@ class NPD(object):
     NPD_HEADER_LENGTH = struct.calcsize(NPD_HEADER_FORMAT)
     NPD_VERSION = 3
 
-    NPD_DT = {0x50: RS232Segment, 0x38: A429Segment, 0xA1: ACQSegment, 0xD0: MIL1553Segment}
+    NPD_DT = {0x50: RS232Segment, 0x38: A429Segment, 0xA1: ACQSegment, 0xD0: MIL1553Segment, 0x60: PCMPacketizer}
 
     def __init__(self):
         """Creator method for a UDP class"""
