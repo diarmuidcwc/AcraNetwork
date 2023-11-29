@@ -4,7 +4,6 @@ The application creates a new ch10 file, adds in the TMATs file, adds in Time pa
 and then converts all PTP timestamps to RTC
 """
 __author__ = "Diarmuid Collins"
-__copyright__ = "Copyright 2018"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Prototype"
 __version__ = "0.1.1"

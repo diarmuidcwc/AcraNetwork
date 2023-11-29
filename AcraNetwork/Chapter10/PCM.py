@@ -1,5 +1,4 @@
 import struct
-from datetime import datetime
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, PTPTime, RTCTime
 import logging
 
@@ -10,14 +9,17 @@ class PCMMinorFrame(object):
     Object that represents the PCM minor frame in a PCMPayload.
     """
 
-    def __init__(self, ipts_source=TS_CH4):
-        if ipts_source == TS_CH4:
+    def __init__(self, ipts_source=TS_CH4, throughput: bool = False):
+        if throughput:
+            self.ipts = None
+        elif ipts_source == TS_CH4:
             self.ipts = RTCTime()
         else:
             self.ipts = PTPTime()
         self._ipts_source = ipts_source
-        self.intra_packet_data_header = 0x0
-        self.minor_frame_data = b""
+        self.throughput = throughput
+        self.intra_packet_data_header = None
+        self.minor_frame_data = bytes()
         self.syncword = None
         self.sfid = None
 
@@ -27,17 +29,16 @@ class PCMMinorFrame(object):
         :type buffer: str
         :rtype: bool
         """
-        if self._ipts_source == TS_CH4:
-            self.ipts = RTCTime()
+        if self.ipts is not None:
+            self.ipts.unpack(buffer[:8])
+        if not self.throughput:
+            (self.intra_packet_data_header,) = struct.unpack_from("<H", buffer, 8)
+            if extract_sync_sfid:
+                (msw, lsw, self.sfid) = struct.unpack_from("<HHH", buffer, 10)
+                self.syncword = lsw + (msw << 16)
+            self.minor_frame_data = buffer[PCMMinorFrame.HDR_LEN :]
         else:
-            self.ipts = PTPTime()
-
-        self.ipts.unpack(buffer[:8])
-        (self.intra_packet_data_header,) = struct.unpack_from("<H", buffer, 8)
-        if extract_sync_sfid:
-            (msw, lsw, self.sfid) = struct.unpack_from("<HHH", buffer, 10)
-            self.syncword = lsw + (msw << 16)
-        self.minor_frame_data = buffer[PCMMinorFrame.HDR_LEN :]
+            self.minor_frame_data = buffer
         return True
 
     def pack(self):
@@ -45,26 +46,33 @@ class PCMMinorFrame(object):
         Convert a PCMFrame object into a string buffer
         :return:
         """
-        if self.ipts is None:
-            raise Exception("Timestamp should be defined")
-        buf = self.ipts.pack() + struct.pack("<H", self.intra_packet_data_header)
-        if self.syncword is not None:
-            buf += struct.pack(">I", self.syncword)
-        if self.sfid is not None:
-            buf += struct.pack(">H", self.sfid)
-        buf += self.minor_frame_data
+        if self.throughput:
+            buf = self.minor_frame_data
+        else:
+            if self.ipts is None:
+                raise Exception("Timestamp should be defined in non-throughput mode")
+            buf = self.ipts.pack() + struct.pack("<H", self.intra_packet_data_header)
+            if self.syncword is not None:
+                buf += struct.pack(">I", self.syncword)
+            if self.sfid is not None:
+                buf += struct.pack(">H", self.sfid)
+            buf += self.minor_frame_data
 
         return buf
 
     def __repr__(self):
-        return "Minor Frame. Time={} DataHdr={:#0X} Payload_len={}".format(
-            self.ipts, self.intra_packet_data_header, len(self.minor_frame_data)
-        )
+        if self.throughput:
+            _str = f"Minor Frame Throughput mode Time={self.ipts} Payload_len={len(self.minor_frame_data)}"
+        else:
+            _str = "Minor Frame. Time={} DataHdr={:#0X} Payload_len={}".format(
+                self.ipts, self.intra_packet_data_header, len(self.minor_frame_data)
+            )
+        return _str
 
     def __eq__(self, other):
         if not isinstance(other, PCMMinorFrame):
             return False
-        for attr in ["ipts", "intra_packet_data_header", "minor_frame_data", "syncword", "sfid"]:
+        for attr in ["ipts", "intra_packet_data_header", "minor_frame_data", "syncword", "sfid", "throughput"]:
             if getattr(self, attr) != getattr(other, attr):
                 return False
 
@@ -75,6 +83,7 @@ class PCMMinorFrame(object):
 
 
 PCM_DATA_FRAME_FILL = 0x0
+MODE_THROUGHPUT = 0x1 << 20
 
 
 class PCMDataPacket(object):
@@ -85,7 +94,7 @@ class PCMDataPacket(object):
     """
 
     def __init__(self, ipts_source=TS_CH4):
-        self.channel_specific_word = None
+        self.channel_specific_word = 0
         self._ipts_source = ipts_source
         self.minor_frame_size_bytes = 0
         self.minor_frames = []
@@ -98,25 +107,34 @@ class PCMDataPacket(object):
         """
 
         (self.channel_specific_word,) = struct.unpack_from("<I", buffer, 0)
-        offset = 4
-        _byte_count_req = self.minor_frame_size_bytes + PCMMinorFrame.HDR_LEN
-        while offset + _byte_count_req <= len(buffer):
-            minor_frame = PCMMinorFrame(self._ipts_source)
-            if (_byte_count_req) % 2 != 0:
-                padding = 1
-            else:
-                padding = 0
-            try:
-                minor_frame.unpack(buffer[offset : offset + _byte_count_req], extract_sync_sfid=extract_sync_sfid)
-            except Exception as e:
-                raise Exception("Unpacking payload at offset {} of {} failed. Err={}".format(offset, len(buffer), e))
-            offset += _byte_count_req + padding
+        throughput_mode = bool(self.channel_specific_word & MODE_THROUGHPUT == MODE_THROUGHPUT)
+        if throughput_mode:
+            minor_frame = PCMMinorFrame(throughput=True)
+            minor_frame.unpack(buffer[4:])
             self.minor_frames.append(minor_frame)
+        else:
+            offset = 4
+            _byte_count_req = self.minor_frame_size_bytes + PCMMinorFrame.HDR_LEN
+            while offset + _byte_count_req <= len(buffer):
+                minor_frame = PCMMinorFrame(self._ipts_source)
+                if (_byte_count_req) % 2 != 0:
+                    padding = 1
+                else:
+                    padding = 0
+                try:
+                    minor_frame.unpack(buffer[offset : offset + _byte_count_req], extract_sync_sfid=extract_sync_sfid)
+                except Exception as e:
+                    raise Exception(
+                        "Unpacking payload at offset {} of {} failed. Err={}".format(offset, len(buffer), e)
+                    )
+                offset += _byte_count_req + padding
+                self.minor_frames.append(minor_frame)
 
         return True
 
     def pack(self):
         buf = struct.pack("<I", self.channel_specific_word)
+        throughput_mode = bool(self.channel_specific_word & MODE_THROUGHPUT == MODE_THROUGHPUT)
         for mf in self.minor_frames:
             buf += mf.pack()
             if len(mf.pack()) % 2 == 1:

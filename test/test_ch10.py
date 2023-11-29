@@ -578,6 +578,21 @@ class PCMData(unittest.TestCase):
         pcmdf2.unpack(packed_data)
         self.assertEqual(pcmdf, pcmdf2)
 
+    def test_pcm_throughput(self):
+        pcmdf = ch10pcm.PCMDataPacket()
+        pcmdf.channel_specific_word = 0x100000  #
+        mf = ch10pcm.PCMMinorFrame(throughput=True)
+        mf.minor_frame_data = struct.pack(">H", 0)
+        pcmdf.minor_frames.append(mf)
+        packed = pcmdf.pack()
+        pcmdf2 = ch10pcm.PCMDataPacket()
+        pcmdf2.unpack(packed)
+        self.assertEqual(pcmdf, pcmdf2)
+        self.assertEqual(
+            repr(pcmdf2),
+            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=2\n",
+        )
+
 
 class MnACQData(unittest.TestCase):
     def test_pcap(self):
