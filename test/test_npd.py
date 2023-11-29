@@ -137,6 +137,34 @@ class testNPD(unittest.TestCase):
         self.assertEqual(n.segments[0].sfid, 0x0)
         pcapr.close()
 
+    def test_ndp_packetizer(self):
+        n = NPD.NPD()
+        n.datasrcid = 1
+        n.datatype = 0x60
+        n.cfgcnt = 3
+        n.flags = 4
+        n.timestamp = 5
+        n.sequence = 10
+        n.mcastaddr = "235.0.0.1"
+
+        ns = NPD.PCMPacketizer()
+        ns.timedelta = 0
+        ns.errorcode = 0
+        ns.flags = 0
+        n.segments.append(ns)
+        buf = n.pack()
+        n2 = NPD.NPD()
+        n2.unpack(buf)
+        self.assertEqual(n, n2)
+
+        ns.payload = struct.pack(">B", 1)
+        n.segments = [ns]
+        self.assertTrue(len(ns.pack()) % 4 == 0)
+        buf = n.pack()
+        n2 = NPD.NPD()
+        n2.unpack(buf)
+        self.assertEqual(n, n2)
+
     def test_rs232(self):
         self.n.datatype = 0x50
         for segment in range(3, 7):

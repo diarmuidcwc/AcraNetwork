@@ -1,6 +1,7 @@
 import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, PTPTime, RTCTime
 import logging
+import typing
 
 
 class PCMMinorFrame(object):
@@ -9,7 +10,7 @@ class PCMMinorFrame(object):
     Object that represents the PCM minor frame in a PCMPayload.
     """
 
-    def __init__(self, ipts_source=TS_CH4, throughput: bool = False):
+    def __init__(self, ipts_source: typing.Optional[int] = TS_CH4, throughput: bool = False):
         if throughput:
             self.ipts = None
         elif ipts_source == TS_CH4:
@@ -22,6 +23,10 @@ class PCMMinorFrame(object):
         self.minor_frame_data = bytes()
         self.syncword = None
         self.sfid = None
+
+    @property
+    def payload(self):
+        return self.minor_frame_data
 
     def unpack(self, buffer, extract_sync_sfid=False):
         """
@@ -94,12 +99,12 @@ class PCMDataPacket(object):
     """
 
     def __init__(self, ipts_source=TS_CH4):
-        self.channel_specific_word = 0
-        self._ipts_source = ipts_source
-        self.minor_frame_size_bytes = 0
-        self.minor_frames = []
+        self.channel_specific_word: int = 0
+        self._ipts_source: typing.Optional[int] = ipts_source
+        self.minor_frame_size_bytes: int = 0
+        self.minor_frames: typing.List[PCMMinorFrame] = []
 
-    def unpack(self, buffer, extract_sync_sfid=False):
+    def unpack(self, buffer: bytes, extract_sync_sfid: bool = False):
         """
         Convert a string buffer into a PCMDataPacket
         :type buffer: bytes
@@ -165,6 +170,9 @@ class PCMDataPacket(object):
             raise StopIteration
 
     __next__ = next
+
+    def __getitem__(self, key):
+        return self.minor_frames[key]
 
     def __eq__(self, other):
         """
