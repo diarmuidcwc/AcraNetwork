@@ -58,5 +58,6 @@
 # 0.16.0  - Refactored Chapter10 module
 # 0.16.1  - Initialized attributes
 # 0.16.2  - Lots of chapter10 updates.
+# 0.16.3  - Added support for PCM throughput mode
 
-__version__ = "0.16.2"
+__version__ = "0.16.3"

@@ -15,8 +15,6 @@ __status__ = "Production"
 
 import struct
 from functools import reduce
-from datetime import datetime
-import time
 from . import TS_CH4, TS_ERTC, TS_IEEE1558, TS_RTC, TS_SECONDARY, RTCTime, PTPTime
 import logging
 import typing
