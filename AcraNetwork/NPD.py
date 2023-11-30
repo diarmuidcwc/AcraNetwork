@@ -292,7 +292,7 @@ class NPD(object):
         )
         self.flags: int = 0  #: Flags [0]-Unlocked timestamp [1]-Packet fragmentation [2]-Relative Time Count Present
         self.sequence: int = 0  #: Sequence number
-        self.datasrcid: typing.Optional[int] = None  #: A unique data source identifier for each data source.
+        self.datasrcid: int = 0  #: A unique data source identifier for each data source.
         self.mcastaddr: str = ""  #: The 32-bit IP multicast address used as the destination address of the packet.
         self.timestamp = None  #: The content of this field is based upon the R bit in the flags field of the NPD Packet Protocol header.
         self.segments: typing.List[

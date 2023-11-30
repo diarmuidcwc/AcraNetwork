@@ -61,5 +61,6 @@
 # 0.16.3  - Added support for PCM throughput mode
 # 0.16.4  - Added custom NPD segment for PCM Packetizer (0x60)
 # 0.16.5  - NDP clean up.
+# 0.16.6  - NDP clean up #2
 
-__version__ = "0.16.5"
+__version__ = "0.16.6"
