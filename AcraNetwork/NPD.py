@@ -22,11 +22,6 @@ class NPDSegment(object):
     """
     NPD Payloads are split into segments. This class will pack and unpack segments
 
-    :type timedelta: int
-    :type segmentlen: int
-    :type errorcode: int
-    :type flags: int
-    :type payload: str
     """
 
     NPD_SEGMENT_HDR_FORMAT = ">IHBB"
@@ -42,7 +37,7 @@ class NPDSegment(object):
         self._payload: bytes = bytes()  #: Payload of segment
 
     @property
-    def payload(self):
+    def payload(self) -> bytes:
         """
         Payload of segment
         :return:
@@ -50,7 +45,7 @@ class NPDSegment(object):
         return self._payload
 
     @payload.setter
-    def payload(self, buf: bytes):
+    def payload(self, buf: bytes) -> None:
         self._payload = buf
         self.segmentlen = len(self.payload) + NPDSegment.NPD_SEGMENT_HDR_LEN
 
@@ -58,11 +53,6 @@ class NPDSegment(object):
         """
         Unpack a string buffer into an NPD segment. Return the remaining buffer so that the next segment can iteratively
         be unpacked
-
-        :param buffer: A string buffer representing an NPD segment
-        :type buffer: str
-
-        :rtype: str
         """
         (self.timedelta, self.segmentlen, self.errorcode, self.flags) = struct.unpack_from(
             NPDSegment.NPD_SEGMENT_HDR_FORMAT, buffer
@@ -120,7 +110,7 @@ class ACQSegment(NPDSegment):
         NPDSegment.__init__(self)
         self.sfid: int = 0
         self.cal: int = 0
-        self.words = []
+        self.words: typing.List[int] = []
 
     def unpack(self, buffer):
         remaining = NPDSegment.unpack(self, buffer)
@@ -178,8 +168,8 @@ class RS232Segment(NPDSegment):
 
     def __init__(self):
         NPDSegment.__init__(self)
-        self.block_status = None
-        self.sync_bytes = []
+        self.block_status: int = 0
+        self.sync_bytes: typing.List[int] = []
         self.data: bytes = bytes()
 
     def unpack(self, buffer):
@@ -242,12 +232,13 @@ class RS232Segment(NPDSegment):
 class MIL1553Segment(NPDSegment):
     def __init__(self):
         NPDSegment.__init__(self)
-        self.blockstatus = 0
-        self.gap1 = 0
-        self.gap2 = 0
-        self.data = ""
+        self.blockstatus: int = 0
+        self.gap1: int = 0
+        self.gap2: int = 0
+        self.data: bytes = bytes()
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes) -> bytes:
+        """Unpack the buffer into the MIL1553Segment object. Return the remaining bytes after unpacking"""
         remaining = NPDSegment.unpack(self, buffer)
         (self.blockstatus, self.gap2, self.gap2) = struct.unpack_from(">HBB", self.payload)
         self.data = self.payload[4:]
@@ -280,17 +271,6 @@ class NPD(object):
     ...  print segment.errorcode
     2
 
-    :type version: int
-    :type hdrlen: int
-    :type datatype: int
-    :type packetlen: int
-    :type cfgcnt: int
-    :type flags: int
-    :type sequence: int
-    :type datasrcid: int
-    :type mcastaddr: str
-    :type timestamp: int
-    :type segments: list[NPDSegment|ACQSegment|RS232Segment|A429Segment]
     """
 
     NPD_HEADER_FORMAT = ">BBHBBHIII"
@@ -301,23 +281,25 @@ class NPD(object):
 
     def __init__(self):
         """Creator method for a UDP class"""
-        self.version = NPD.NPD_VERSION  #: Version
-        self.hdrlen = NPD.NPD_HEADER_LENGTH // 4  #: Header Length
-        self.datatype = None  #: A unique identifier for the type of data collected in the packet
-        self.packetlen = (
-            None  #: The number of 32-bit words in the data packet including the NPD header and data segments.
+        self.version: int = NPD.NPD_VERSION  #: Version
+        self.hdrlen: int = NPD.NPD_HEADER_LENGTH // 4  #: Header Length
+        self.datatype: typing.Optional[int] = None  #: A unique identifier for the type of data collected in the packet
+        self.packetlen: int = (
+            0  #: The number of 32-bit words in the data packet including the NPD header and data segments.
         )
-        self.cfgcnt = (
-            None  #: Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.
+        self.cfgcnt: int = (
+            0  #: Stores an 8-bit number that is incremented (mod 256) each time the network device is configured.
         )
-        self.flags = None  #: Flags [0]-Unlocked timestamp [1]-Packet fragmentation [2]-Relative Time Count Present
-        self.sequence = None  #: Sequence number
-        self.datasrcid = None  #: A unique data source identifier for each data source.
-        self.mcastaddr = ""  #: The 32-bit IP multicast address used as the destination address of the packet.
+        self.flags: int = 0  #: Flags [0]-Unlocked timestamp [1]-Packet fragmentation [2]-Relative Time Count Present
+        self.sequence: int = 0  #: Sequence number
+        self.datasrcid: typing.Optional[int] = None  #: A unique data source identifier for each data source.
+        self.mcastaddr: str = ""  #: The 32-bit IP multicast address used as the destination address of the packet.
         self.timestamp = None  #: The content of this field is based upon the R bit in the flags field of the NPD Packet Protocol header.
-        self.segments = []  #: List of all the data segments
+        self.segments: typing.List[
+            NPDSegment | ACQSegment | PCMPacketizer | RS232Segment | MIL1553Segment
+        ] = []  #: List of all the data segments
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes) -> bool:
         """
         Unpack a string buffer into an NPD object
 
@@ -360,11 +342,9 @@ class NPD(object):
 
         return True
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the NPD object into a binary buffer
-
-        :rtype: str
         """
         _ver_hdr = (self.version << 4) + self.hdrlen
         (_mc,) = struct.unpack(">I", inet_aton(self.mcastaddr))
@@ -388,7 +368,7 @@ class NPD(object):
 
         return hdr_buf + _payload
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         det = "NPD: DataType={:#0X} Seq={} DataSrcID={:#0X} MCastAddr={}".format(
             self.datatype, self.sequence, self.datasrcid, self.mcastaddr
         )
