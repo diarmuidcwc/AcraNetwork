@@ -62,5 +62,6 @@
 # 0.16.4  - Added custom NPD segment for PCM Packetizer (0x60)
 # 0.16.5  - NDP clean up.
 # 0.16.6  - NDP clean up #2
+# 0.16.7  - Minor clean up
 
-__version__ = "0.16.6"
+__version__ = "0.16.7"

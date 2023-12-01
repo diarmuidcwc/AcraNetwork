@@ -7,7 +7,6 @@
 
 """
 __author__ = "Diarmuid Collins"
-__copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
@@ -56,15 +55,6 @@ class IENA(object):
     True
     >>> print("{:#0X}".format(i.key))
     0X1A
-
-    :type key: int
-    :type size: int
-    :type timeusec: int
-    :type keystatus: int
-    :type status: int
-    :type sequence: int
-    :type endfield: int
-    :type payload: bytes
 
     """
 
