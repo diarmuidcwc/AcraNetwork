@@ -98,7 +98,7 @@ class PCMDataPacket(object):
     :type minor_frames: [PCMMinorFrame]
     """
 
-    def __init__(self, ipts_source=TS_CH4):
+    def __init__(self, ipts_source: typing.Optional[int] = TS_CH4):
         self.channel_specific_word: int = 0
         self._ipts_source: typing.Optional[int] = ipts_source
         self.minor_frame_size_bytes: int = 0

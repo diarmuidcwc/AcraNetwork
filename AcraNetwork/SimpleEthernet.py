@@ -8,7 +8,6 @@
 """
 
 __author__ = "Diarmuid Collins"
-__copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
@@ -88,11 +87,6 @@ class Ethernet(object):
     >>> print e
     SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800
 
-    :type type: int
-    :type srcmac: int
-    :type dstmac: int
-    :type payload: bytes
-
     """
 
     HEADERLEN = 14
@@ -124,7 +118,7 @@ class Ethernet(object):
         if buf is not None:
             self.unpack(buf)
 
-    def unpack(self, buf: bytes, fcs=False):
+    def unpack(self, buf: bytes, fcs=False) -> bool:
         """
         Unpack a raw byte stream to an Ethernet object
 
@@ -154,7 +148,7 @@ class Ethernet(object):
             self.payload = buf[hdr_len:]
         return True
 
-    def pack(self, fcs=False):
+    def pack(self, fcs: bool = False) -> bytes:
         """
         Pack the Ethernet object into a buffer
 
@@ -317,7 +311,7 @@ class IP(object):
 
         for word in [self.dscp, self.id, self.flags, self.ttl, self.protocol, self.srcip, self.dstip]:
             if word is None:
-                raise ValueError("All required IP payloads not defined")
+                raise ValueError(f"All required IP payloads not defined.")
 
         (srcip_as_int,) = struct.unpack("!I", socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack("!I", socket.inet_aton(self.dstip))

@@ -405,7 +405,7 @@ class NPD(object):
         self._index = 0
         return self
 
-    def next(self):
+    def next(self) -> NPDSegment:
         if self._index < len(self.segments):
             _dw = self.segments[self._index]
             self._index += 1
@@ -415,8 +415,8 @@ class NPD(object):
 
     __next__ = next
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.segments)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> NPDSegment:
         return self.segments[key]
