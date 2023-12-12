@@ -1,6 +1,8 @@
-import sys
-import os
-sys.path.append("../")
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+
+
 import AcraNetwork.Chapter10.Chapter10 as ch10
 import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.Pcap as pcap
@@ -10,22 +12,23 @@ import sys
 
 
 def create_parser():
-    #----------------------------------
+    # ----------------------------------
     # Setup the command line parser
-    #----------------------------------
-    parser = argparse.ArgumentParser(description='Covert a chapter 10 file to a pcap')
-    parser.add_argument('--pcap',  required=True,  help='The output pcap file')
-    parser.add_argument('--ch10',  required=True,  help='The input chapter 10 file')
-    parser.add_argument('--tmats',  required=False,  default=None, help='Optional TMATS output file')
+    # ----------------------------------
+    parser = argparse.ArgumentParser(description="Covert a chapter 10 file to a pcap")
+    parser.add_argument("--pcap", required=True, help="The output pcap file")
+    parser.add_argument("--ch10", required=True, help="The input chapter 10 file")
+    parser.add_argument("--tmats", required=False, default=None, help="Optional TMATS output file")
     return parser
+
 
 def encapsulate_udppayload_in_eth(udp_payload: bytes):
     """
     Encapsulte the udp payload in an Ethernet packet
     """
     ethpkt = eth.Ethernet()
-    ethpkt.dstmac = 0x01005e000001
-    ethpkt.srcmac = 0x000c4dac7aaa
+    ethpkt.dstmac = 0x01005E000001
+    ethpkt.srcmac = 0x000C4DAC7AAA
     ethpkt.type = eth.Ethernet.TYPE_IP
     #
     ippkt = eth.IP()
@@ -42,12 +45,12 @@ def encapsulate_udppayload_in_eth(udp_payload: bytes):
     ethpkt.payload = ippkt.pack()
     return ethpkt.pack()
 
-def main(args):
 
-    pf = pcap.Pcap(args.pcap, mode='w')
+def main(args):
+    pf = pcap.Pcap(args.pcap, mode="w")
     fp = ch10.FileParser(args.ch10)
     if args.tmats is not None:
-        tf = open(args.tmats, mode='wb')
+        tf = open(args.tmats, mode="wb")
 
     idx = 0
     with fp as ch10file:
@@ -69,7 +72,8 @@ def main(args):
     pf.close()
     print(f"Create a pcap with {idx} records")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     ret = main(args)

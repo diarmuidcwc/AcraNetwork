@@ -64,5 +64,6 @@
 # 0.16.6  - NDP clean up #2
 # 0.16.7  - Minor clean up
 # 0.16.8  - Added pcap to ch10 conversion script
+# 0.16.9  - Made script executable
 
-__version__ = "0.16.8"
+__version__ = "0.16.9"
