@@ -6,7 +6,6 @@ and then converts all PTP timestamps to RTC
 __author__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Prototype"
-__version__ = "0.1.1"
 
 import AcraNetwork.Chapter10.Chapter10 as ch10
 import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
@@ -16,11 +15,13 @@ import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
 import AcraNetwork.Chapter10.TimeDataFormat as ch10time
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
+from AcraNetwork import __version__
 import argparse
 import sys
 from dataclasses import dataclass
 import logging
 import struct
+from functools import reduce
 from AcraNetwork.Chapter10 import (
     TS_CH4,
     TS_IEEE1558,
@@ -31,7 +32,9 @@ from AcraNetwork.Chapter10 import (
 import typing
 
 
-logging.basicConfig(level=logging.INFO)
+# Handle integers and hex representations for command line argu,ents
+def auto_int(x):
+    return int(x, 0)
 
 
 @dataclass
@@ -53,12 +56,19 @@ def create_parser():
         description="Convert an ADAU pcap to chapter10 file. User must provide the TMATs file. The packet format is converted to RTC time"
     )
     parser.add_argument("--pcap", required=True, help="The input pcap file")
-    parser.add_argument("--pcmframelength", required=False, default=272, help="The length of the PCM frame in bytes")
+    parser.add_argument(
+        "--pcmsyncword",
+        type=auto_int,
+        required=False,
+        default=None,
+        help="The sync word for all PCM payloads found. Set to 0xFE6B_2840 for the standard Sync word",
+    )
     parser.add_argument("--ch10", required=True, help="The out chapter 10 file")
     parser.add_argument(
         "--pcapdebug", required=False, default=None, help="Create a debug pcap file which matches the chapter 10 file"
     )
     parser.add_argument("--tmats", required=True, help="The TMATS input file")
+    parser.add_argument("--verbose", action="store_true", required=False, default=False, help="verbose mode")
     parser.add_argument("--version", action="version", version=f"{__version__}")
     return parser
 
@@ -132,7 +142,7 @@ def get_ch10_time(ptptime: PTPTime, sequence: int = 0) -> ch10.Chapter10:
     return c
 
 
-def clone_ch10_payload(original_buffer: bytes, datatype: int, pcm_payload_size_bytes: int) -> bytes:
+def clone_ch10_payload(original_buffer: bytes, datatype: int, pcmsyncword: typing.Optional[int] = None) -> bytes:
     """Return the payload with the secondary header removed
 
     Args:
@@ -147,8 +157,10 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcm_payload_size_b
         p = ch10mil.MILSTD1553DataPacket()
         p.unpack(original_buffer)
         # Go through each message and conver the timestamp to RTC
-        for message in p:
-            message.ipts = RTCTime(message.ipts.to_rtc())
+        for milpayload in p:
+            milpayload.ipts = RTCTime(milpayload.ipts.to_rtc())
+            # Swap the endianness of the message
+            milpayload.message = endianness_swap(milpayload.message)
         return p.pack()
     elif datatype == DataType.UART:
         p = ch10uart.UARTDataPacket(TS_IEEE1558)
@@ -159,13 +171,16 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcm_payload_size_b
                 dataword.ipts = RTCTime(dataword.ipts.to_rtc())
         return p.pack()
     elif datatype == DataType.PCM:
-        p = ch10pcm.PCMDataPacket(ipts_source=TS_IEEE1558)
-        p.minor_frame_size_bytes = pcm_payload_size_bytes
+        p = ch10pcm.PCMDataPacket(ipts_source=TS_IEEE1558, syncword=pcmsyncword)
         p.unpack(original_buffer)
         # p.channel_specific_word = 0x0
         for frame in p:
-            logging.debug(f"PCMFrame ipts sec={frame.ipts.seconds} nsec={frame.ipts.nanoseconds}")
+            logging.debug(f"PCMFrame={frame}")
             frame.ipts = RTCTime(frame.ipts.to_rtc())
+            # Swap the endianness of the message
+            frame.minor_frame_data = endianness_swap(frame.minor_frame_data[:4], 4) + endianness_swap(
+                frame.minor_frame_data[4:], 2
+            )
         return p.pack()
     elif datatype == DataType.ANALOG:
         return original_buffer
@@ -174,7 +189,19 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcm_payload_size_b
         raise Exception(f"Data type {datatype} not supported")
 
 
-def clone_ch10(original_ch10: ch10.Chapter10, pcm_payload_size_bytes: int) -> ch10.Chapter10:
+def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
+    """Swap the endianness of the buffer and return it
+
+    Args:
+        buffer (bytes): _description_
+
+    Returns:
+        bytes: _description_
+    """
+    return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])
+
+
+def clone_ch10(original_ch10: ch10.Chapter10, syncword: typing.Optional[int] = None) -> ch10.Chapter10:
     """Clone the ch10 packet but remove the secondary header
 
     Args:
@@ -198,7 +225,7 @@ def clone_ch10(original_ch10: ch10.Chapter10, pcm_payload_size_bytes: int) -> ch
     else:
         new_ch10.relativetimecounter = original_ch10.relativetimecounter
     new_ch10.ts_source = ch10.TS_RTC
-    new_ch10.payload = clone_ch10_payload(original_ch10.payload, new_ch10.datatype, pcm_payload_size_bytes)
+    new_ch10.payload = clone_ch10_payload(original_ch10.payload, new_ch10.datatype, syncword)
     return new_ch10
 
 
@@ -297,7 +324,7 @@ def main(args):
                                 pf_tmp.write(newrec)
                     if aligned_to_10_ms:
                         # Convert the chapter10 packet to the RTC compatiable one
-                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmframelength)
+                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmsyncword)
                         # Update the stats
                         update_stats(
                             pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
@@ -318,5 +345,11 @@ def main(args):
 if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+        pcmlogger = logging.getLogger("AcraNetwork.Chapter10.PCM")
+        pcmlogger.setLevel(logging.DEBUG)
+
     ret = main(args)
     sys.exit(ret)

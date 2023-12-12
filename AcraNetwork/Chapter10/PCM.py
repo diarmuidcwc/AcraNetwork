@@ -1,16 +1,30 @@
 import struct
+from AcraNetwork import KMP
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, PTPTime, RTCTime
 import logging
 import typing
 
+DFLT_SYNC_WORD = 0xFE6B_2840
+
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
+
 
 class PCMMinorFrame(object):
-    HDR_LEN = 10
+
     """
     Object that represents the PCM minor frame in a PCMPayload.
     """
 
-    def __init__(self, ipts_source: typing.Optional[int] = TS_CH4, throughput: bool = False):
+    TS_LEN = 8
+    ALIGN_16b = 0
+    ALIGN_32b = 1
+    DATA_HEADER_LEN = {ALIGN_16b: 2, ALIGN_32b: 4}
+    DATA_HEADER_FORMAT = {ALIGN_16b: "<H", ALIGN_32b: "<I"}
+
+    def __init__(
+        self, ipts_source: typing.Optional[int] = TS_CH4, throughput: bool = False, alignment: int = ALIGN_16b
+    ):
         if throughput:
             self.ipts = None
         elif ipts_source == TS_CH4:
@@ -21,11 +35,12 @@ class PCMMinorFrame(object):
         self.throughput = throughput
         self.intra_packet_data_header = None
         self.minor_frame_data = bytes()
+        self.alignment = alignment
         self.syncword = None
         self.sfid = None
 
     @property
-    def payload(self):
+    def payload(self) -> bytes:
         return self.minor_frame_data
 
     def unpack(self, buffer, extract_sync_sfid=False):
@@ -37,11 +52,15 @@ class PCMMinorFrame(object):
         if self.ipts is not None:
             self.ipts.unpack(buffer[:8])
         if not self.throughput:
-            (self.intra_packet_data_header,) = struct.unpack_from("<H", buffer, 8)
+            (self.intra_packet_data_header,) = struct.unpack_from(
+                PCMMinorFrame.DATA_HEADER_FORMAT[self.alignment], buffer, 8
+            )
             if extract_sync_sfid:
-                (msw, lsw, self.sfid) = struct.unpack_from("<HHH", buffer, 10)
+                (msw, lsw, self.sfid) = struct.unpack_from(
+                    "<HHH", buffer, 8 + PCMMinorFrame.DATA_HEADER_LEN[self.alignment]
+                )
                 self.syncword = lsw + (msw << 16)
-            self.minor_frame_data = buffer[PCMMinorFrame.HDR_LEN :]
+            self.minor_frame_data = buffer[PCMMinorFrame.DATA_HEADER_LEN[self.alignment] + PCMMinorFrame.TS_LEN :]
         else:
             self.minor_frame_data = buffer
         return True
@@ -56,7 +75,9 @@ class PCMMinorFrame(object):
         else:
             if self.ipts is None:
                 raise Exception("Timestamp should be defined in non-throughput mode")
-            buf = self.ipts.pack() + struct.pack("<H", self.intra_packet_data_header)
+            buf = self.ipts.pack() + struct.pack(
+                PCMMinorFrame.DATA_HEADER_FORMAT[self.alignment], self.intra_packet_data_header
+            )
             if self.syncword is not None:
                 buf += struct.pack(">I", self.syncword)
             if self.sfid is not None:
@@ -89,6 +110,7 @@ class PCMMinorFrame(object):
 
 PCM_DATA_FRAME_FILL = 0x0
 MODE_THROUGHPUT = 0x1 << 20
+MODE_ALIGNMENT = 0x1 << 21
 
 
 class PCMDataPacket(object):
@@ -98,13 +120,14 @@ class PCMDataPacket(object):
     :type minor_frames: [PCMMinorFrame]
     """
 
-    def __init__(self, ipts_source: typing.Optional[int] = TS_CH4):
+    def __init__(self, ipts_source: typing.Optional[int] = TS_CH4, syncword: typing.Optional[int] = None):
         self.channel_specific_word: int = 0
         self._ipts_source: typing.Optional[int] = ipts_source
-        self.minor_frame_size_bytes: int = 0
+        self.minor_frame_size_bytes: typing.Optional[int] = None
+        self.syncword = syncword
         self.minor_frames: typing.List[PCMMinorFrame] = []
 
-    def unpack(self, buffer: bytes, extract_sync_sfid: bool = False):
+    def unpack(self, buffer: bytes, extract_sync_sfid: bool = False) -> bool:
         """
         Convert a string buffer into a PCMDataPacket
         :type buffer: bytes
@@ -112,16 +135,50 @@ class PCMDataPacket(object):
         """
 
         (self.channel_specific_word,) = struct.unpack_from("<I", buffer, 0)
+        channel_specific_len = 4
         throughput_mode = bool(self.channel_specific_word & MODE_THROUGHPUT == MODE_THROUGHPUT)
+        alignment_mode = int(self.channel_specific_word & MODE_ALIGNMENT == MODE_ALIGNMENT)
         if throughput_mode:
-            minor_frame = PCMMinorFrame(throughput=True)
-            minor_frame.unpack(buffer[4:])
+            minor_frame = PCMMinorFrame(throughput=True, alignment=alignment_mode)
+            minor_frame.unpack(buffer[channel_specific_len:])
             self.minor_frames.append(minor_frame)
         else:
-            offset = 4
-            _byte_count_req = self.minor_frame_size_bytes + PCMMinorFrame.HDR_LEN
+            offset = channel_specific_len
+            if self.minor_frame_size_bytes is None and self.syncword is None:
+                self.minor_frame_size_bytes = (
+                    len(buffer)
+                    - PCMMinorFrame.TS_LEN
+                    - PCMMinorFrame.DATA_HEADER_LEN[alignment_mode]
+                    - channel_specific_len
+                )
+            elif self.minor_frame_size_bytes is None:
+                # Search the payload for some sync words
+                kmp = KMP()
+                sync_word_offsets = kmp.search(buffer, struct.pack(">I", self.syncword))
+                # More than one sync word. So split the payload
+                if len(sync_word_offsets) < 2:
+                    self.minor_frame_size_bytes = (
+                        len(buffer)
+                        - PCMMinorFrame.TS_LEN
+                        - PCMMinorFrame.DATA_HEADER_LEN[alignment_mode]
+                        - channel_specific_len
+                    )
+                else:
+                    self.minor_frame_size_bytes = (
+                        sync_word_offsets[1]
+                        - sync_word_offsets[0]
+                        - PCMMinorFrame.TS_LEN
+                        - PCMMinorFrame.DATA_HEADER_LEN[alignment_mode]
+                    )
+                    logger.debug(
+                        f"Found multiple sync words. Getting minor frame size as {self.minor_frame_size_bytes}"
+                    )
+
+            _byte_count_req = (
+                self.minor_frame_size_bytes + PCMMinorFrame.TS_LEN + PCMMinorFrame.DATA_HEADER_LEN[alignment_mode]
+            )
             while offset + _byte_count_req <= len(buffer):
-                minor_frame = PCMMinorFrame(self._ipts_source)
+                minor_frame = PCMMinorFrame(self._ipts_source, alignment=alignment_mode)
                 if (_byte_count_req) % 2 != 0:
                     padding = 1
                 else:
