@@ -549,7 +549,8 @@ class Ch10Mil(unittest.TestCase):
 
 class PCMData(unittest.TestCase):
     def test_pcm(self):
-        payload_len = 10
+        payload_len = 100
+        sync_word = 0xFE6B_2842
         pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_pcm.pcap", mode="w")
         rec = pcap.PcapRecord()
         u = ch10udp.Chapter10UDP()
@@ -559,24 +560,28 @@ class PCMData(unittest.TestCase):
         c = get_ch10()
         c.datatype = 0x9
         pcmdf = ch10pcm.PCMDataPacket()
-        pcmdf.channel_specific_word = 0x1234
+        pcmdf.channel_specific_word = 0x7F080000
         for mfcount in range(1, 4):
             mf = ch10pcm.PCMMinorFrame()
             mf.intra_packet_data_header = mfcount
             mf.ipts.count = 2 * mfcount
-            mf.minor_frame_data = os.urandom(payload_len)
+            mf.minor_frame_data = struct.pack(">I", sync_word) + os.urandom(payload_len - 4)
             pcmdf.minor_frames.append(mf)
         packed_data = pcmdf.pack()
         c.payload = packed_data
+        u.payload = c.pack()
         rec.set_current_time()
         rec.payload = getEthernetPacket(u.pack())
         pcapw.write(rec)
         pcapw.close()
 
-        pcmdf2 = ch10pcm.PCMDataPacket()
-        pcmdf2.minor_frame_size_bytes = payload_len
+        pcmdf2 = ch10pcm.PCMDataPacket(syncword=sync_word)
+        # pcmdf2.minor_frame_size_bytes = payload_len
         pcmdf2.unpack(packed_data)
         self.assertEqual(pcmdf, pcmdf2)
+        pcmdf3 = ch10pcm.PCMDataPacket(syncword=None)
+        self.assertTrue(pcmdf3.unpack(packed_data))
+        print(pcmdf3)
 
     def test_pcm_throughput(self):
         pcmdf = ch10pcm.PCMDataPacket()
@@ -590,7 +595,7 @@ class PCMData(unittest.TestCase):
         self.assertEqual(pcmdf, pcmdf2)
         self.assertEqual(
             repr(pcmdf2),
-            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=2\n",
+            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=4\n",
         )
 
     def test_pcm_endianness(self):
@@ -708,8 +713,8 @@ class PTPRTCTime(unittest.TestCase):
         t1 = PTPTime(4096, 1)
 
         time_vector = struct.pack(">II", 4096, 1)
-        time_vector_64b = struct.unpack(">Q", time_vector)
-        trunc = time_vector_64b & F8BITS
+        (time_vector_64b,) = struct.unpack(">Q", time_vector)
+        trunc = int(time_vector_64b // 100) & F8BITS
         self.assertEqual(t1.to_pinksheet_rtc(), trunc)
 
 
