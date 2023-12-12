@@ -582,7 +582,7 @@ class PCMData(unittest.TestCase):
         pcmdf = ch10pcm.PCMDataPacket()
         pcmdf.channel_specific_word = 0x100000  #
         mf = ch10pcm.PCMMinorFrame(throughput=True)
-        mf.minor_frame_data = struct.pack(">H", 0)
+        mf.minor_frame_data = struct.pack("<HH", 0xFE6B, 0x2840)
         pcmdf.minor_frames.append(mf)
         packed = pcmdf.pack()
         pcmdf2 = ch10pcm.PCMDataPacket()
@@ -592,6 +592,13 @@ class PCMData(unittest.TestCase):
             repr(pcmdf2),
             "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=2\n",
         )
+
+    def test_pcm_endianness(self):
+        mf = ch10pcm.PCMMinorFrame(throughput=True)
+        mf.minor_frame_data = struct.pack("<I", 0xFE6B2840) + struct.pack(">I", 0xFE6B2840)
+        f = open("mf.hex", mode="wb")
+        f.write(mf.pack())
+        f.close()
 
 
 class MnACQData(unittest.TestCase):
@@ -692,6 +699,18 @@ class PTPRTCTime(unittest.TestCase):
         self.assertEqual(t2 + t2, PTPTime(3, 999_999_998))
         self.assertEqual(t2 - t2b, PTPTime(0, 0))
         self.assertFalse(dlt >= t3)
+
+    def test_ptptime_conversion(self):
+        F8BITS = pow(2, 48) - 1
+        t0 = PTPTime(0, 0)
+        self.assertEqual(t0.to_pinksheet_rtc(), 0)
+        self.assertEqual(t0.to_rtc(), 0)
+        t1 = PTPTime(4096, 1)
+
+        time_vector = struct.pack(">II", 4096, 1)
+        time_vector_64b = struct.unpack(">Q", time_vector)
+        trunc = time_vector_64b & F8BITS
+        self.assertEqual(t1.to_pinksheet_rtc(), trunc)
 
 
 if __name__ == "__main__":
