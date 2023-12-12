@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
 """
 ADAU generates pcap files which contain a chapter10 UDP header, and timestamps as PTP secondard header.
 The application creates a new ch10 file, adds in the TMATs file, adds in Time packets ever second
