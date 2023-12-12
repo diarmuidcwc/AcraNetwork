@@ -66,6 +66,12 @@ class PTPTime(object):
         rtc_time = int(seconds_since_start_year * 1e7 + self.nanoseconds / 100)
         return rtc_time
 
+    def to_pinksheet_rtc(self):
+        ptp_vector = (self.seconds << 32) + self.nanoseconds
+        ptp_vector_100ns = int(ptp_vector // 100)
+        ptp_vector_truncated = ptp_vector_100ns & (pow(2, 48) - 1)
+        return ptp_vector_truncated
+
     def __repr__(self):
         time_fmt = "%H:%M:%S %d-%b %Y"
         ts = datetime.fromtimestamp(self.seconds, tz=timezone.utc)
@@ -85,6 +91,8 @@ class PTPTime(object):
             ns = int(addns % 1e9)
             sec = self.seconds + val.seconds + int(addns // 1e9)
             return PTPTime(sec, ns)
+        else:
+            raise Exception("Addition of other PTPTime instances")
 
     def __sub__(self, val):
         if isinstance(val, PTPTime):
@@ -95,6 +103,8 @@ class PTPTime(object):
                 sec = self.seconds - val.seconds
                 nsec = self.nanoseconds - val.nanoseconds
             return PTPTime(sec, nsec)
+        else:
+            raise Exception("Subtraction of other PTPTime instances")
 
     def __lt__(self, val):
         if isinstance(val, PTPTime):
