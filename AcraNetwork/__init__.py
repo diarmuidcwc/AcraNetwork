@@ -1,4 +1,5 @@
 from .__version__ import __version__
+from functools import reduce
 
 
 class KMP:
@@ -35,3 +36,15 @@ class KMP:
                 j = partial[j - 1]
 
         return ret
+
+
+def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
+    """Swap the endianness of the buffer and return it
+
+    Args:
+        buffer (bytes): _description_
+
+    Returns:
+        bytes: _description_
+    """
+    return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])

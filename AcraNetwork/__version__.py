@@ -65,5 +65,6 @@
 # 0.16.7  - Minor clean up
 # 0.16.8  - Added pcap to ch10 conversion script
 # 0.16.9  - Made script executable
+# 0.16.10 - Fixed wrapping of TMATs
 
-__version__ = "0.16.9"
+__version__ = "0.16.10"
