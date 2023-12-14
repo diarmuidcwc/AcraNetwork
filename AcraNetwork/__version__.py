@@ -66,5 +66,6 @@
 # 0.16.8  - Added pcap to ch10 conversion script
 # 0.16.9  - Made script executable
 # 0.16.10 - Fixed wrapping of TMATs
+# 0.16.11 - Added attribute to ch10 to indicate presence of secondary header
 
-__version__ = "0.16.10"
+__version__ = "0.16.11"
