@@ -119,7 +119,7 @@ class Chapter10(object):
         self.payload = b""  # :The payload
         self.data_checksum_size = 0
         self.filler = b""
-        self._secondary_header = False
+        self.has_secondary_header = False
 
     @property
     def packetflag(self):
@@ -144,9 +144,9 @@ class Chapter10(object):
             else:
                 raise Exception("Time format is illegal")
 
-            self._secondary_header = True
+            self.has_secondary_header = True
         else:
-            self._secondary_header = False
+            self.has_secondary_header = False
             self.ts_source = TS_RTC
 
     def pack(self):
@@ -156,7 +156,7 @@ class Chapter10(object):
         :rtype: bytes
         """
 
-        if self._secondary_header:
+        if self.has_secondary_header:
             if self.ts_source == TS_CH4:
                 raise Exception("Ch4 Timestamp in secondary header not supported")
 
@@ -234,7 +234,7 @@ class Chapter10(object):
         self.relativetimecounter = _rtc_lwr + (_rtc_upr << 32)
 
         if (self.packetflag >> 7) == 1:
-            self._secondary_header = True
+            self.has_secondary_header = True
             pkt_hdr_time = (self.packetflag >> 2) & 0x3
             (ts_ns, ts_s, _res, _checksum_sec) = struct.unpack_from(
                 Chapter10.CH10_OPT_HDR_FORMAT, buffer, Chapter10.CH10_HDR_FORMAT_LEN
@@ -267,7 +267,7 @@ class Chapter10(object):
                 # print("Secondary Header Time Format not legal")
             self.payload = buffer[(Chapter10.CH10_HDR_FORMAT_LEN + Chapter10.CH10_OPT_HDR_FORMAT_LEN) :]
         else:
-            self._secondary_header = False
+            self.has_secondary_header = False
             self.payload = buffer[Chapter10.CH10_HDR_FORMAT_LEN :]
             self.ts_source = TS_RTC
 
@@ -291,7 +291,7 @@ class Chapter10(object):
             "payload",
             "data_checksum_size",
             "filler",
-            "_secondary_header",
+            "has_secondary_header",
         )
 
         for attr in _match_att:
