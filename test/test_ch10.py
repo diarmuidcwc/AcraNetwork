@@ -663,6 +663,7 @@ class CH10SampleFile(unittest.TestCase):
                 # self.assertTrue(False)
         print(f"{total_len:,d}")
 
+    @unittest.skip("Not a test")
     def test_read_ch10(self):
         fileparser = ch10.FileParser("C://ACRA//WORK//AcraNetwork_git//examples//ch10//out.ch10")
         total_len = 0
