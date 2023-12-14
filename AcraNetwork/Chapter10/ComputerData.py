@@ -31,8 +31,8 @@ FRMT[FRMT_ASCII] = "ASCII Format"
 FRMT[FRMT_XML] = "XML Format"
 
 SRCC = defaultdict(lambda: "undefined")
-SRCC_NO_CHANGE = 1
-SRCC_CHANGE = 0
+SRCC_NO_CHANGE = 0
+SRCC_CHANGE = 1
 SRCC[SRCC_NO_CHANGE] = "No Change to Setup"
 SRCC[SRCC_CHANGE] = "Change to Setup"
 
@@ -57,7 +57,7 @@ class ComputerGeneratedFormat1(_ComputerGeneratedData):
         super().__init__()
         self.frmt = FRMT_ASCII
         self.srcc = SRCC_NO_CHANGE
-        self.rccver = RCCVER.IRIG_106_15
+        self.rccver = RCCVER.IRIG_106_07
 
     def unpack(self, buffer):
         super().unpack(buffer)
