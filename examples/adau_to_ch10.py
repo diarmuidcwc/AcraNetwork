@@ -16,6 +16,8 @@ import AcraNetwork.Chapter10.UART as ch10uart
 import AcraNetwork.Chapter10.PCM as ch10pcm
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
 import AcraNetwork.Chapter10.TimeDataFormat as ch10time
+import AcraNetwork.Chapter10.ComputerData as chcomputer
+from AcraNetwork import endianness_swap
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
 from AcraNetwork import __version__
@@ -24,7 +26,6 @@ import sys
 from dataclasses import dataclass
 import logging
 import struct
-from functools import reduce
 from AcraNetwork.Chapter10 import (
     TS_CH4,
     TS_IEEE1558,
@@ -101,7 +102,7 @@ def encapsulate_ch10_ptk(ch10payload: bytes) -> bytes:
     return ethpkt.pack()
 
 
-def encapsulate_tmats(tmats_file: str) -> ch10.Chapter10:
+def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter10:
     """Wrap the tmats data in a ch10 file for writing to a ch10 file
 
     Args:
@@ -114,11 +115,13 @@ def encapsulate_tmats(tmats_file: str) -> ch10.Chapter10:
         tmats = f.read()
         c = ch10.Chapter10()
         c.channelID = 0
-        c.sequence = 123
+        c.sequence = 0
         c.packetflag = 0
         c.datatype = DataType.COMPUTER_FORMAT_1
-        c.relativetimecounter = 0
-        c.payload = tmats
+        c.relativetimecounter = rtctime
+        ctmats = chcomputer.ComputerGeneratedFormat1()
+        ctmats.payload = tmats
+        c.payload = ctmats.pack()
         return c
 
 
@@ -179,29 +182,16 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcmsyncword: typin
         # p.channel_specific_word = 0x0
         for frame in p:
             logging.debug(f"PCMFrame={frame}")
-            frame.ipts = RTCTime(frame.ipts.to_rtc())
+            if frame.ipts is not None:
+                frame.ipts = RTCTime(frame.ipts.to_rtc())
             # Swap the endianness of the message
-            frame.minor_frame_data = endianness_swap(frame.minor_frame_data[:4], 4) + endianness_swap(
-                frame.minor_frame_data[4:], 2
-            )
+            frame.minor_frame_data = endianness_swap(frame.minor_frame_data, 2)
         return p.pack()
     elif datatype == DataType.ANALOG:
         return original_buffer
 
     else:
         raise Exception(f"Data type {datatype} not supported")
-
-
-def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
-    """Swap the endianness of the buffer and return it
-
-    Args:
-        buffer (bytes): _description_
-
-    Returns:
-        bytes: _description_
-    """
-    return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])
 
 
 def clone_ch10(original_ch10: ch10.Chapter10, syncword: typing.Optional[int] = None) -> ch10.Chapter10:
@@ -274,20 +264,17 @@ def main(args):
 
     with fp as ch10file:
         # Generate the TMATs ch10 packet and write to the output file
-        tmats_ch10 = encapsulate_tmats(args.tmats)
-        fp.write(tmats_ch10)
+        new_ch10_pkt = None
         for idx, record in enumerate(pf):
             # Pull out the ethernet packet
             eth_pkt = record.payload
+
             # Debug output record
             newrec = pcap.PcapRecord()
             newrec.sec = record.sec
             newrec.usec = record.usec
-            # Write out the TMATS to the debug pcap
-            if idx == 0 and pf_tmp is not None:
-                newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
-                pf_tmp.write(newrec)
-            # Sanity check on the input packlet
+
+            # Sanity check on the input packet
             if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:
                 logging.debug(f"Reading record {idx}")
                 # Get the UDP payload (ie the chapter10 packet)
@@ -307,10 +294,18 @@ def main(args):
                         if time_in_ms % 10 == 0:
                             # Get the first timepacket and write it to the ch10 file
                             time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece)
+                            # Now that we have the time, write the TMATs file
+                            tmats_ch10 = encapsulate_tmats(args.tmats, time_pkt.relativetimecounter)
+                            ch10file.write(tmats_ch10)
+                            # Followed by the time packet
                             ch10file.write(time_pkt)
+
                             prev_time = ch10_pkt.ptptime
                             time_sequnece += 1
-                            if pf_tmp is not None:  # debug
+                            # write out the packets to the debug pcap
+                            if pf_tmp is not None:
+                                newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
+                                pf_tmp.write(newrec)
                                 newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
                                 pf_tmp.write(newrec)
                             aligned_to_10_ms = True
@@ -334,7 +329,7 @@ def main(args):
                         )
                         ch10file.write(new_ch10_pkt)
 
-                    if pf_tmp is not None and aligned_to_10_ms:  # debug
+                    if pf_tmp is not None and aligned_to_10_ms and new_ch10_pkt is not None:  # debug
                         newrec.payload = encapsulate_ch10_ptk(new_ch10_pkt.pack())
                         pf_tmp.write(newrec)
 
