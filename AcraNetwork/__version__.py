@@ -67,5 +67,5 @@
 # 0.16.9  - Made script executable
 # 0.16.10 - Fixed wrapping of TMATs
 # 0.16.11 - Added attribute to ch10 to indicate presence of secondary header
-
-__version__ = "0.16.11"
+# 0.16.12 - Added timeid argument to the adau script
+__version__ = "0.16.12"

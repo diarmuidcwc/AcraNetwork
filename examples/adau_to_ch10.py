@@ -67,6 +67,13 @@ def create_parser():
         default=None,
         help="The sync word for all PCM payloads found. Set to 0xFE6B_2840 for the standard Sync word",
     )
+    parser.add_argument(
+        "--timeid",
+        type=int,
+        required=False,
+        default=512,
+        help="The channel ID of the time packet",
+    )
     parser.add_argument("--ch10", required=True, help="The out chapter 10 file")
     parser.add_argument(
         "--pcapdebug", required=False, default=None, help="Create a debug pcap file which matches the chapter 10 file"
@@ -125,7 +132,7 @@ def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter10:
         return c
 
 
-def get_ch10_time(ptptime: PTPTime, sequence: int = 0) -> ch10.Chapter10:
+def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> ch10.Chapter10:
     """Return a time packet that maps the seconds / nanoseconds to the rtctime
 
     Args:
@@ -137,7 +144,7 @@ def get_ch10_time(ptptime: PTPTime, sequence: int = 0) -> ch10.Chapter10:
         ch10.Chapter10: _description_
     """
     c = ch10.Chapter10()
-    c.channelID = 2
+    c.channelID = channelid
     c.sequence = sequence
     c.packetflag = 0
     c.datatype = DataType.TIMEFORMAT_1
@@ -293,7 +300,7 @@ def main(args):
                         time_in_ms = int(ch10_pkt.ptptime.nanoseconds // 1e6)
                         if time_in_ms % 10 == 0:
                             # Get the first timepacket and write it to the ch10 file
-                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece)
+                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
                             # Now that we have the time, write the TMATs file
                             tmats_ch10 = encapsulate_tmats(args.tmats, time_pkt.relativetimecounter)
                             ch10file.write(tmats_ch10)
@@ -313,7 +320,7 @@ def main(args):
                         # Check if 1 second has elapsed since the previous time packet
                         dlt = ch10_pkt.ptptime - prev_time
                         if dlt >= PTPTime(1, 0):
-                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece)
+                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
                             ch10file.write(time_pkt)
                             prev_time = ch10_pkt.ptptime  #
                             time_sequnece += 1
