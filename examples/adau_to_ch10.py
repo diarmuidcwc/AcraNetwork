@@ -308,7 +308,7 @@ def main(args):
                             ch10file.write(time_pkt)
 
                             prev_time = ch10_pkt.ptptime
-                            time_sequnece += 1
+                            time_sequnece = (time_sequnece + 1) % 256
                             # write out the packets to the debug pcap
                             if pf_tmp is not None:
                                 newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
@@ -323,7 +323,7 @@ def main(args):
                             time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
                             ch10file.write(time_pkt)
                             prev_time = ch10_pkt.ptptime  #
-                            time_sequnece += 1
+                            time_sequnece = (time_sequnece + 1) % 256
                             if pf_tmp:  # debug
                                 newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
                                 pf_tmp.write(newrec)

@@ -68,4 +68,5 @@
 # 0.16.10 - Fixed wrapping of TMATs
 # 0.16.11 - Added attribute to ch10 to indicate presence of secondary header
 # 0.16.12 - Added timeid argument to the adau script
-__version__ = "0.16.12"
+# 0.16.13 - Fixed sequence number rollover in adau_to_ch10 conversion
+__version__ = "0.16.13"
