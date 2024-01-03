@@ -155,17 +155,22 @@ def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> 
     return c
 
 
-def clone_ch10_payload(original_buffer: bytes, datatype: int, pcmsyncword: typing.Optional[int] = None) -> bytes:
+def clone_ch10_payload(
+    original_buffer: bytes,
+    datatype: int,
+    pcmsyncword: typing.Optional[int] = None,
+    minor_frame_size_bytes: typing.Optional[int] = None,
+) -> typing.Tuple[bytes, typing.Optional[int]]:
     """Return the payload with the secondary header removed
 
     Args:
         original_buffer (bytes): _description_
 
     Returns:
-        bytes: _description_
+        tuple of bytes and minor frame length
     """
     if datatype == DataType.ARINC429:
-        return original_buffer
+        return original_buffer, None
     elif datatype == DataType.MILSTD1553:
         p = ch10mil.MILSTD1553DataPacket()
         p.unpack(original_buffer)
@@ -174,7 +179,7 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcmsyncword: typin
             milpayload.ipts = RTCTime(milpayload.ipts.to_rtc())
             # Swap the endianness of the message
             milpayload.message = endianness_swap(milpayload.message)
-        return p.pack()
+        return p.pack(), None
     elif datatype == DataType.UART:
         p = ch10uart.UARTDataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
@@ -182,26 +187,32 @@ def clone_ch10_payload(original_buffer: bytes, datatype: int, pcmsyncword: typin
         for dataword in p:
             if dataword.ipts is not None:
                 dataword.ipts = RTCTime(dataword.ipts.to_rtc())
-        return p.pack()
+        return p.pack(), None
     elif datatype == DataType.PCM:
-        p = ch10pcm.PCMDataPacket(ipts_source=TS_IEEE1558, syncword=pcmsyncword)
+        p = ch10pcm.PCMDataPacket(
+            ipts_source=TS_IEEE1558, syncword=pcmsyncword, minor_frame_size_bytes=minor_frame_size_bytes
+        )
         p.unpack(original_buffer)
         # p.channel_specific_word = 0x0
         for frame in p:
-            logging.debug(f"PCMFrame={frame}")
+            # logging.debug(f"PCMFrame={frame}")
             if frame.ipts is not None:
                 frame.ipts = RTCTime(frame.ipts.to_rtc())
             # Swap the endianness of the message
-            frame.minor_frame_data = endianness_swap(frame.minor_frame_data, 2)
-        return p.pack()
+            frame.minor_frame_data = endianness_swap(frame.minor_frame_data)
+        return p.pack(), p.minor_frame_size_bytes
     elif datatype == DataType.ANALOG:
-        return original_buffer
+        return original_buffer, None
 
     else:
         raise Exception(f"Data type {datatype} not supported")
 
 
-def clone_ch10(original_ch10: ch10.Chapter10, syncword: typing.Optional[int] = None) -> ch10.Chapter10:
+def clone_ch10(
+    original_ch10: ch10.Chapter10,
+    syncword: typing.Optional[int] = None,
+    minor_frame_size_bytes: typing.Optional[int] = None,
+) -> typing.Tuple[ch10.Chapter10, typing.Optional[int]]:
     """Clone the ch10 packet but remove the secondary header
 
     Args:
@@ -217,7 +228,7 @@ def clone_ch10(original_ch10: ch10.Chapter10, syncword: typing.Optional[int] = N
     new_ch10.sequence = original_ch10.sequence
     new_ch10.packetflag = original_ch10.packetflag
     new_ch10.datatype = original_ch10.datatype
-    logging.debug(f"Fkags={original_ch10.packetflag:#0X}")
+    # logging.debug(f"Fkags={original_ch10.packetflag:#0X}")
     if original_ch10.packetflag & ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME != 0:
         new_ch10.packetflag &= 0x33
         logging.debug(f"Converting timestamps and overwrite packet flag {new_ch10.packetflag:#0X}")
@@ -225,8 +236,10 @@ def clone_ch10(original_ch10: ch10.Chapter10, syncword: typing.Optional[int] = N
     else:
         new_ch10.relativetimecounter = original_ch10.relativetimecounter
     new_ch10.ts_source = ch10.TS_RTC
-    new_ch10.payload = clone_ch10_payload(original_ch10.payload, new_ch10.datatype, syncword)
-    return new_ch10
+    new_ch10.payload, minor_frame_size_bytes = clone_ch10_payload(
+        original_ch10.payload, new_ch10.datatype, syncword, minor_frame_size_bytes
+    )
+    return new_ch10, minor_frame_size_bytes
 
 
 def update_stats(pkt_details: dict[PktDetails, int], detail: PktDetails) -> None:
@@ -268,6 +281,7 @@ def main(args):
     time_sequnece = 0
     pkt_type_count = {}
     aligned_to_10_ms = False
+    minor_frame_size_bytes = None
 
     with fp as ch10file:
         # Generate the TMATs ch10 packet and write to the output file
@@ -329,7 +343,9 @@ def main(args):
                                 pf_tmp.write(newrec)
                     if aligned_to_10_ms:
                         # Convert the chapter10 packet to the RTC compatiable one
-                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmsyncword)
+                        new_ch10_pkt, _new_size = clone_ch10(ch10_pkt, args.pcmsyncword, minor_frame_size_bytes)
+                        if _new_size is not None:
+                            minor_frame_size_bytes = _new_size
                         # Update the stats
                         update_stats(
                             pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
