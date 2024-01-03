@@ -38,7 +38,7 @@ class KMP:
         return ret
 
 
-def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
+def endianness_swap(buffer: bytes) -> bytes:
     """Swap the endianness of the buffer and return it
 
     Args:
@@ -47,4 +47,7 @@ def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
     Returns:
         bytes: _description_
     """
-    return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])
+    buffer = bytearray(buffer)
+    buffer[0::2], buffer[1::2] = buffer[1::2], buffer[0::2]
+    return buffer
+    # return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])
