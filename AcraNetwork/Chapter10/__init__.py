@@ -133,6 +133,9 @@ class RTCTime(object):
     def to_rtc(self):
         return self.count
 
+    def to_pinksheet_rtc(self):
+        return self.count
+
     def __repr__(self):
         return "RTC: count={}".format(self.count)
 
