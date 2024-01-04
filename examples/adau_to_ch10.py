@@ -25,6 +25,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 import logging
+from collections import defaultdict
 import struct
 from AcraNetwork.Chapter10 import (
     TS_CH4,
@@ -211,8 +212,8 @@ def clone_ch10_payload(
 def clone_ch10(
     original_ch10: ch10.Chapter10,
     syncword: typing.Optional[int] = None,
-    minor_frame_size_bytes: typing.Optional[int] = None,
-) -> typing.Tuple[ch10.Chapter10, typing.Optional[int]]:
+    minor_frame_size_bytes: typing.Dict[int, int | None] = {},
+) -> ch10.Chapter10:
     """Clone the ch10 packet but remove the secondary header
 
     Args:
@@ -228,6 +229,7 @@ def clone_ch10(
     new_ch10.sequence = original_ch10.sequence
     new_ch10.packetflag = original_ch10.packetflag
     new_ch10.datatype = original_ch10.datatype
+
     # logging.debug(f"Fkags={original_ch10.packetflag:#0X}")
     if original_ch10.packetflag & ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME != 0:
         new_ch10.packetflag &= 0x33
@@ -236,10 +238,11 @@ def clone_ch10(
     else:
         new_ch10.relativetimecounter = original_ch10.relativetimecounter
     new_ch10.ts_source = ch10.TS_RTC
-    new_ch10.payload, minor_frame_size_bytes = clone_ch10_payload(
-        original_ch10.payload, new_ch10.datatype, syncword, minor_frame_size_bytes
+    new_ch10.payload, framesize = clone_ch10_payload(
+        original_ch10.payload, new_ch10.datatype, syncword, minor_frame_size_bytes[new_ch10.channelID]
     )
-    return new_ch10, minor_frame_size_bytes
+    minor_frame_size_bytes[new_ch10.channelID] = framesize
+    return new_ch10
 
 
 def update_stats(pkt_details: dict[PktDetails, int], detail: PktDetails) -> None:
@@ -281,7 +284,8 @@ def main(args):
     time_sequnece = 0
     pkt_type_count = {}
     aligned_to_10_ms = False
-    minor_frame_size_bytes = None
+    # The key is the channelID. So keep track of the minor frames per channelID
+    minor_frame_size_bytes: typing.Dict[int, int | None] = defaultdict(lambda: None)
 
     with fp as ch10file:
         # Generate the TMATs ch10 packet and write to the output file
@@ -343,9 +347,8 @@ def main(args):
                                 pf_tmp.write(newrec)
                     if aligned_to_10_ms:
                         # Convert the chapter10 packet to the RTC compatiable one
-                        new_ch10_pkt, _new_size = clone_ch10(ch10_pkt, args.pcmsyncword, minor_frame_size_bytes)
-                        if _new_size is not None:
-                            minor_frame_size_bytes = _new_size
+                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmsyncword, minor_frame_size_bytes)
+
                         # Update the stats
                         update_stats(
                             pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
