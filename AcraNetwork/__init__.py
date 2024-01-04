@@ -38,16 +38,25 @@ class KMP:
         return ret
 
 
-def endianness_swap(buffer: bytes) -> bytes:
+def endianness_swap(buffer: bytes, bytecount: int = 2) -> bytes:
     """Swap the endianness of the buffer and return it
 
     Args:
-        buffer (bytes): _description_
+        buffer (bytes): bytebuffer to swap
+        bytecount (int): Two or Four word swaps
 
     Returns:
         bytes: _description_
     """
+    if len(buffer) % bytecount != 0:
+        raise Exception("Lenght of buffer should be multiple of bytecount")
     buffer = bytearray(buffer)
-    buffer[0::2], buffer[1::2] = buffer[1::2], buffer[0::2]
+    if bytecount == 2:
+        buffer[0::2], buffer[1::2] = buffer[1::2], buffer[0::2]
+    elif bytecount == 4:
+        buffer[0::4], buffer[1::4], buffer[2::4], buffer[3::4] = buffer[3::4], buffer[2::4], buffer[1::4], buffer[0::4]
+    else:
+        raise Exception("Only supports two or four byte swapping")
+
     return buffer
     # return reduce(lambda a, b: a + b, [buffer[i : i + bytecount][::-1] for i in range(0, len(buffer), bytecount)])

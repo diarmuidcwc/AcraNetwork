@@ -149,7 +149,7 @@ def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> 
     c.sequence = sequence
     c.packetflag = 0
     c.datatype = DataType.TIMEFORMAT_1
-    c.relativetimecounter = ptptime.to_rtc()
+    c.relativetimecounter = ptptime.to_pinksheet_rtc()
     time_pkt = ch10time.TimeDataFormat1()
     time_pkt.ptptime = ptptime
     c.payload = time_pkt.pack()
@@ -171,13 +171,13 @@ def clone_ch10_payload(
         tuple of bytes and minor frame length
     """
     if datatype == DataType.ARINC429:
-        return original_buffer, None
+        return endianness_swap(original_buffer, 4), None
     elif datatype == DataType.MILSTD1553:
         p = ch10mil.MILSTD1553DataPacket()
         p.unpack(original_buffer)
         # Go through each message and conver the timestamp to RTC
         for milpayload in p:
-            milpayload.ipts = RTCTime(milpayload.ipts.to_rtc())
+            milpayload.ipts = RTCTime(milpayload.ipts.to_pinksheet_rtc())
             # Swap the endianness of the message
             milpayload.message = endianness_swap(milpayload.message)
         return p.pack(), None
@@ -187,7 +187,7 @@ def clone_ch10_payload(
         # Go through each message and conver the timestamp to RTC
         for dataword in p:
             if dataword.ipts is not None:
-                dataword.ipts = RTCTime(dataword.ipts.to_rtc())
+                dataword.ipts = RTCTime(dataword.ipts.to_pinksheet_rtc())
         return p.pack(), None
     elif datatype == DataType.PCM:
         p = ch10pcm.PCMDataPacket(
@@ -198,7 +198,7 @@ def clone_ch10_payload(
         for frame in p:
             # logging.debug(f"PCMFrame={frame}")
             if frame.ipts is not None:
-                frame.ipts = RTCTime(frame.ipts.to_rtc())
+                frame.ipts = RTCTime(frame.ipts.to_pinksheet_rtc())
             # Swap the endianness of the message
             frame.minor_frame_data = endianness_swap(frame.minor_frame_data)
         return p.pack(), p.minor_frame_size_bytes
@@ -234,7 +234,7 @@ def clone_ch10(
     if original_ch10.packetflag & ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME != 0:
         new_ch10.packetflag &= 0x33
         logging.debug(f"Converting timestamps and overwrite packet flag {new_ch10.packetflag:#0X}")
-        new_ch10.relativetimecounter = original_ch10.ptptime.to_rtc()
+        new_ch10.relativetimecounter = original_ch10.ptptime.to_pinksheet_rtc()
     else:
         new_ch10.relativetimecounter = original_ch10.relativetimecounter
     new_ch10.ts_source = ch10.TS_RTC
