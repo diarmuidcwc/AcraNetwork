@@ -17,6 +17,7 @@ import AcraNetwork.Chapter10.PCM as ch10pcm
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
 import AcraNetwork.Chapter10.TimeDataFormat as ch10time
 import AcraNetwork.Chapter10.ComputerData as chcomputer
+import AcraNetwork.Chapter10.ARINC429 as charinc
 from AcraNetwork import endianness_swap
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
@@ -171,7 +172,12 @@ def clone_ch10_payload(
         tuple of bytes and minor frame length
     """
     if datatype == DataType.ARINC429:
-        return endianness_swap(original_buffer, 4), None
+        p = charinc.ARINC429DataPacket()
+        p.unpack(original_buffer)
+        for arincpay in p:
+            arincpay.payload = endianness_swap(arincpay.payload, 4)
+        return p.pack(), None
+
     elif datatype == DataType.MILSTD1553:
         p = ch10mil.MILSTD1553DataPacket()
         p.unpack(original_buffer)
@@ -181,6 +187,7 @@ def clone_ch10_payload(
             # Swap the endianness of the message
             milpayload.message = endianness_swap(milpayload.message)
         return p.pack(), None
+
     elif datatype == DataType.UART:
         p = ch10uart.UARTDataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
@@ -189,6 +196,7 @@ def clone_ch10_payload(
             if dataword.ipts is not None:
                 dataword.ipts = RTCTime(dataword.ipts.to_pinksheet_rtc())
         return p.pack(), None
+
     elif datatype == DataType.PCM:
         p = ch10pcm.PCMDataPacket(
             ipts_source=TS_IEEE1558, syncword=pcmsyncword, minor_frame_size_bytes=minor_frame_size_bytes
@@ -202,6 +210,7 @@ def clone_ch10_payload(
             # Swap the endianness of the message
             frame.minor_frame_data = endianness_swap(frame.minor_frame_data)
         return p.pack(), p.minor_frame_size_bytes
+
     elif datatype == DataType.ANALOG:
         return original_buffer, None
 
