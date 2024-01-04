@@ -67,7 +67,7 @@ class PTPTime(object):
         return rtc_time
 
     def to_pinksheet_rtc(self):
-        ptp_vector = (self.seconds << 32) + self.nanoseconds
+        ptp_vector = (self.seconds * 1e9) + self.nanoseconds
         ptp_vector_100ns = int(ptp_vector // 100)
         ptp_vector_truncated = ptp_vector_100ns & (pow(2, 48) - 1)
         return ptp_vector_truncated
