@@ -69,4 +69,5 @@
 # 0.16.11 - Added attribute to ch10 to indicate presence of secondary header
 # 0.16.12 - Added timeid argument to the adau script
 # 0.16.13 - Fixed sequence number rollover in adau_to_ch10 conversion. Makde optimisations to the PCM sync word length
-__version__ = "0.16.13"
+# 0.16.14 - use pinksheet RTC time conversion. Add verification to endianness swap. Swap endianness on ARINC payloads
+__version__ = "0.16.14"
