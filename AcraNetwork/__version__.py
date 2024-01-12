@@ -72,4 +72,5 @@
 # 0.16.14 - use pinksheet RTC time conversion. Add verification to endianness swap. Swap endianness on ARINC payloads
 # 0.16.15 - fixed bug on ARINC conversion
 # 0.16.16 - fixed bug in PTP -> RTC conversion
-__version__ = "0.16.16"
+# 0.16.17 - fixed python3.11 only code in adau conversion script
+__version__ = "0.16.17"
