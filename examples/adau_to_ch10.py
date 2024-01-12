@@ -221,7 +221,7 @@ def clone_ch10_payload(
 def clone_ch10(
     original_ch10: ch10.Chapter10,
     syncword: typing.Optional[int] = None,
-    minor_frame_size_bytes: typing.Dict[int, int | None] = {},
+    minor_frame_size_bytes: typing.Dict[int, typing.Optional[int]] = {},
 ) -> ch10.Chapter10:
     """Clone the ch10 packet but remove the secondary header
 
@@ -254,7 +254,7 @@ def clone_ch10(
     return new_ch10
 
 
-def update_stats(pkt_details: dict[PktDetails, int], detail: PktDetails) -> None:
+def update_stats(pkt_details: typing.Dict[PktDetails, int], detail: PktDetails) -> None:
     """Keep a count of the packets received
 
     Args:
@@ -268,7 +268,7 @@ def update_stats(pkt_details: dict[PktDetails, int], detail: PktDetails) -> None
         pkt_details[detail] += 1
 
 
-def print_stats(pkt_details: dict[PktDetails, int]):
+def print_stats(pkt_details: typing.Dict[PktDetails, int]):
     """Print the stats at the end
 
     Args:
