@@ -77,7 +77,7 @@ class IENA(object):
         self._packetStrut = struct.Struct(IENA.IENA_HEADER_FORMAT)
         # only calculate this once TODO: This is wrong
         self._startOfYear = datetime.datetime(datetime.datetime.today().year, 1, 1, 0, 0, 0, 0)
-        self.lengthError = False  # Flag to verify the buffer length
+        self.lengthError = True  # Flag to verify the buffer length
 
         # The required attributes
         self._req_attr = IENA.REQ_ATTR
@@ -140,7 +140,7 @@ class IENA(object):
         ) = self._packetStrut.unpack_from(buf)
         self.timeusec = timelo + timehi * 2**32
 
-        if self.size * 2 != len(buf):
+        if self.size * 2 != len(buf) and self.lengthError:
             raise Exception("Length field does not match the size of the packet")
 
         self.payload = buf[IENA.IENA_HEADER_LENGTH : -2]
