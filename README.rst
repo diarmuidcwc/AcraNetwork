@@ -65,5 +65,6 @@ To Make a Distribution
 .. code-block::
 
 	pip  install --upgrade pip wheel setuptools twine
-	python ./setup.py bdist_wheel --universal
+	rm dist/*
+	python ./setup.py bdist_wheel --universal sdist
 	twine upload dist/*
