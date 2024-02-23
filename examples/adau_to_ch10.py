@@ -82,6 +82,7 @@ def create_parser():
     )
     parser.add_argument("--tmats", required=True, help="The TMATS input file")
     parser.add_argument("--verbose", action="store_true", required=False, default=False, help="verbose mode")
+    parser.add_argument("--debug", action="store_true", required=False, default=False, help="debug mode")
     parser.add_argument("--version", action="version", version=f"{__version__}")
     return parser
 
@@ -179,7 +180,7 @@ def clone_ch10_payload(
         return p.pack(), None
 
     elif datatype == DataType.MILSTD1553:
-        p = ch10mil.MILSTD1553DataPacket()
+        p = ch10mil.MILSTD1553DataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
         # Go through each message and conver the timestamp to RTC
         for milpayload in p:
@@ -325,7 +326,7 @@ def main(args):
                 else:
                     if prev_time is None:
                         time_in_ms = int(ch10_pkt.ptptime.nanoseconds // 1e6)
-                        if time_in_ms % 10 == 0:
+                        if time_in_ms % 10 == 0 or args.debug:
                             # Get the first timepacket and write it to the ch10 file
                             time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
                             # Now that we have the time, write the TMATs file
