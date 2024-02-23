@@ -75,4 +75,4 @@
 # 0.16.17 - fixed python3.11 only code in adau conversion script
 # 0.16.18 - added source distribution
 # 0.16.19 - Fixed timestamp bug in adau conversion script
-__version__ = "0.16.18"
+__version__ = "0.16.19"
