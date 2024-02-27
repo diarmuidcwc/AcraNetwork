@@ -3,6 +3,7 @@ from functools import reduce
 import logging
 from datetime import datetime, timezone
 from enum import IntEnum
+from decimal import Decimal
 
 
 DATA_TYPE_TIMEFMT_1 = 0x11
@@ -67,9 +68,9 @@ class PTPTime(object):
         return rtc_time
 
     def to_pinksheet_rtc(self):
-        ptp_vector = (self.seconds * 1e9) + self.nanoseconds
-        ptp_vector_100ns = int(ptp_vector // 100)
-        ptp_vector_truncated = ptp_vector_100ns & (pow(2, 48) - 1)
+        ptp_vector = (Decimal(self.seconds) * Decimal(1e9)) + Decimal(self.nanoseconds)
+        ptp_vector_100ns = ptp_vector // Decimal(100)
+        ptp_vector_truncated = int(ptp_vector_100ns) & (pow(2, 48) - 1)
         return ptp_vector_truncated
 
     def __repr__(self):
