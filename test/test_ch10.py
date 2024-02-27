@@ -714,9 +714,14 @@ class PTPRTCTime(unittest.TestCase):
         t1 = PTPTime(4096, 1)
 
         time_vector = struct.pack(">II", 4096, 1)
-        (time_vector_64b,) = struct.unpack(">Q", time_vector)
-        trunc = int(time_vector_64b // 100) & F8BITS
+        (sec, nsec) = struct.unpack(">II", time_vector)
+        trunc = int((sec * 1e9 + nsec) // 100) & F8BITS
         self.assertEqual(t1.to_pinksheet_rtc(), trunc)
+
+    def test_accuracy_conversion(self):
+        t0 = PTPTime(1704299074, 472711723)
+        rtc_time = int(1.54492142087757e14)
+        self.assertEqual(rtc_time, t0.to_pinksheet_rtc())
 
 
 if __name__ == "__main__":
