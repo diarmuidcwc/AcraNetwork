@@ -76,4 +76,5 @@
 # 0.16.18 - added source distribution
 # 0.16.19 - Fixed timestamp bug in adau conversion script
 # 0.16.20 - Changed RTC conversion to use Decimal as integer resolution was not sufficient to convert the timestamp
-__version__ = "0.16.20"
+# 0.16.21 - adau conversion script accepts a folder input
+__version__ = "0.16.21"
