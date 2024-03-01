@@ -36,11 +36,24 @@ from AcraNetwork.Chapter10 import (
     DataType,
 )
 import typing
+import glob
+import re
 
 
 # Handle integers and hex representations for command line argu,ents
 def auto_int(x):
     return int(x, 0)
+
+
+def natural_sort(mylist):
+    """
+    Natural sort of a list.
+    :param l:
+    :return:
+    """
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split("([0-9]+)", key)]
+    return sorted(mylist, key=alphanum_key)
 
 
 @dataclass
@@ -61,7 +74,8 @@ def create_parser():
     parser = argparse.ArgumentParser(
         description="Convert an ADAU pcap to chapter10 file. User must provide the TMATs file. The packet format is converted to RTC time"
     )
-    parser.add_argument("--pcap", required=True, help="The input pcap file")
+    parser.add_argument("--pcap", required=False, help="Select a single input file")
+    parser.add_argument("--pcapfolder", required=False, help="Select a folder and parse all pcap files in the folder")
     parser.add_argument(
         "--pcmsyncword",
         type=auto_int,
@@ -280,7 +294,14 @@ def print_stats(pkt_details: typing.Dict[PktDetails, int]):
 
 
 def main(args):
-    pf = pcap.Pcap(args.pcap, mode="r")
+    if args.pcap:
+        pcap_files = [args.pcap]
+    elif args.pcapfolder:
+        pcap_files = natural_sort(glob.glob("{}/*.pcap".format(args.pcapfolder)))
+    else:
+        print("ERROR: Please specify an input pcap file or an input pcap folder")
+        return 1
+
     if args.pcapdebug is not None:
         pf_tmp = pcap.Pcap(args.pcapdebug, mode="w")
     else:
@@ -300,74 +321,77 @@ def main(args):
     with fp as ch10file:
         # Generate the TMATs ch10 packet and write to the output file
         new_ch10_pkt = None
-        for idx, record in enumerate(pf):
-            # Pull out the ethernet packet
-            eth_pkt = record.payload
+        for pfile in pcap_files:
+            pf = pcap.Pcap(pfile, mode="r")
+            print(f"Converting {pfile}")
+            for idx, record in enumerate(pf):
+                # Pull out the ethernet packet
+                eth_pkt = record.payload
 
-            # Debug output record
-            newrec = pcap.PcapRecord()
-            newrec.sec = record.sec
-            newrec.usec = record.usec
+                # Debug output record
+                newrec = pcap.PcapRecord()
+                newrec.sec = record.sec
+                newrec.usec = record.usec
 
-            # Sanity check on the input packet
-            if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:
-                logging.debug(f"Reading record {idx}")
-                # Get the UDP payload (ie the chapter10 packet)
-                pkt_payload = eth_pkt[CH10_DATA_OFFSET:]
-                ch10udp_pkt = ch10udp.Chapter10UDP()
-                ch10_pkt = ch10.Chapter10()
-                # Unpack the ch10 UDP and ch10 packets
-                try:
-                    ch10udp_pkt.unpack(pkt_payload)
-                    ch10_pkt.unpack(ch10udp_pkt.payload)
-                except Exception as e:
-                    logging.debug(f"Failed to unpacket record #{idx}. len_buf={len(pkt_payload)} Err={e}")
-                    continue
-                else:
-                    if prev_time is None:
-                        time_in_ms = int(ch10_pkt.ptptime.nanoseconds // 1e6)
-                        if time_in_ms % 10 == 0 or args.debug:
-                            # Get the first timepacket and write it to the ch10 file
-                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
-                            # Now that we have the time, write the TMATs file
-                            tmats_ch10 = encapsulate_tmats(args.tmats, time_pkt.relativetimecounter)
-                            ch10file.write(tmats_ch10)
-                            # Followed by the time packet
-                            ch10file.write(time_pkt)
+                # Sanity check on the input packet
+                if len(eth_pkt) > CH10_DATA_OFFSET + CH10_DATA_LEN_MIN:
+                    logging.debug(f"Reading record {idx}")
+                    # Get the UDP payload (ie the chapter10 packet)
+                    pkt_payload = eth_pkt[CH10_DATA_OFFSET:]
+                    ch10udp_pkt = ch10udp.Chapter10UDP()
+                    ch10_pkt = ch10.Chapter10()
+                    # Unpack the ch10 UDP and ch10 packets
+                    try:
+                        ch10udp_pkt.unpack(pkt_payload)
+                        ch10_pkt.unpack(ch10udp_pkt.payload)
+                    except Exception as e:
+                        logging.debug(f"Failed to unpacket record #{idx}. len_buf={len(pkt_payload)} Err={e}")
+                        continue
+                    else:
+                        if prev_time is None:
+                            time_in_ms = int(ch10_pkt.ptptime.nanoseconds // 1e6)
+                            if time_in_ms % 10 == 0 or args.debug:
+                                # Get the first timepacket and write it to the ch10 file
+                                time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
+                                # Now that we have the time, write the TMATs file
+                                tmats_ch10 = encapsulate_tmats(args.tmats, time_pkt.relativetimecounter)
+                                ch10file.write(tmats_ch10)
+                                # Followed by the time packet
+                                ch10file.write(time_pkt)
 
-                            prev_time = ch10_pkt.ptptime
-                            time_sequnece = (time_sequnece + 1) % 256
-                            # write out the packets to the debug pcap
-                            if pf_tmp is not None:
-                                newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
-                                pf_tmp.write(newrec)
-                                newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
-                                pf_tmp.write(newrec)
-                            aligned_to_10_ms = True
-                    elif prev_time is not None and ch10_pkt.ptptime is not None:
-                        # Check if 1 second has elapsed since the previous time packet
-                        dlt = ch10_pkt.ptptime - prev_time
-                        if dlt >= PTPTime(1, 0):
-                            time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
-                            ch10file.write(time_pkt)
-                            prev_time = ch10_pkt.ptptime  #
-                            time_sequnece = (time_sequnece + 1) % 256
-                            if pf_tmp:  # debug
-                                newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
-                                pf_tmp.write(newrec)
-                    if aligned_to_10_ms:
-                        # Convert the chapter10 packet to the RTC compatiable one
-                        new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmsyncword, minor_frame_size_bytes)
+                                prev_time = ch10_pkt.ptptime
+                                time_sequnece = (time_sequnece + 1) % 256
+                                # write out the packets to the debug pcap
+                                if pf_tmp is not None:
+                                    newrec.payload = encapsulate_ch10_ptk(tmats_ch10.pack())
+                                    pf_tmp.write(newrec)
+                                    newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
+                                    pf_tmp.write(newrec)
+                                aligned_to_10_ms = True
+                        elif prev_time is not None and ch10_pkt.ptptime is not None:
+                            # Check if 1 second has elapsed since the previous time packet
+                            dlt = ch10_pkt.ptptime - prev_time
+                            if dlt >= PTPTime(1, 0):
+                                time_pkt = get_ch10_time(ch10_pkt.ptptime, time_sequnece, args.timeid)
+                                ch10file.write(time_pkt)
+                                prev_time = ch10_pkt.ptptime  #
+                                time_sequnece = (time_sequnece + 1) % 256
+                                if pf_tmp:  # debug
+                                    newrec.payload = encapsulate_ch10_ptk(time_pkt.pack())
+                                    pf_tmp.write(newrec)
+                        if aligned_to_10_ms:
+                            # Convert the chapter10 packet to the RTC compatiable one
+                            new_ch10_pkt = clone_ch10(ch10_pkt, args.pcmsyncword, minor_frame_size_bytes)
 
-                        # Update the stats
-                        update_stats(
-                            pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
-                        )
-                        ch10file.write(new_ch10_pkt)
+                            # Update the stats
+                            update_stats(
+                                pkt_type_count, PktDetails(new_ch10_pkt.channelID, DataType(new_ch10_pkt.datatype))
+                            )
+                            ch10file.write(new_ch10_pkt)
 
-                    if pf_tmp is not None and aligned_to_10_ms and new_ch10_pkt is not None:  # debug
-                        newrec.payload = encapsulate_ch10_ptk(new_ch10_pkt.pack())
-                        pf_tmp.write(newrec)
+                        if pf_tmp is not None and aligned_to_10_ms and new_ch10_pkt is not None:  # debug
+                            newrec.payload = encapsulate_ch10_ptk(new_ch10_pkt.pack())
+                            pf_tmp.write(newrec)
 
     pf.close()
     print_stats(pkt_type_count)
