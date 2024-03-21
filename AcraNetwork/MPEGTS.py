@@ -50,6 +50,136 @@ SEI_UNREG_DATA = 5
 PY3 = sys.version_info > (3,)
 
 
+class MPEGAdaptionExtension(object):
+    """
+    The MPEG Adaptation extension format https://en.wikipedia.org/wiki/MPEG_transport_stream#Packet
+
+    """
+
+    def __init__(self) -> None:
+        self.ltw_flag: bool = False
+        self.piecewise_rate_flag: bool = False
+        self.seamless_splice_flag: bool = False
+        self.ltw = bytes()
+        self.piecewise = bytes()
+        self.seamless_splice = bytes()
+
+    def pack(self) -> bytes:
+        if len(self.ltw) == 2:
+            self.ltw_flag = True
+        elif len(self.ltw) == 0:
+            self.ltw_flag = False
+        else:
+            raise Exception(f"ltw should be 2 bytes")
+
+        if len(self.piecewise) == 3:
+            self.piecewise_rate_flag = True
+        elif len(self.piecewise) == 0:
+            self.piecewise_rate_flag = False
+        else:
+            raise Exception(f"piecewise should be 3 bytes")
+
+        if len(self.seamless_splice) == 5:
+            self.seamless_splice_flag = True
+        elif len(self.seamless_splice) == 0:
+            self.seamless_splice_flag = False
+        else:
+            raise Exception(f"seamless should be 5 bytes")
+
+        _len = 4 + len(self.ltw) + len(self.piecewise) + len(self.seamless_splice)
+        _flags = (
+            0x1F
+            + (int(self.ltw_flag) << 7)
+            + (int(self.piecewise_rate_flag) << 6)
+            + (int(self.seamless_splice_flag << 5))
+        )
+        return struct.pack(">BB", _len, _flags) + self.ltw + self.piecewise + self.seamless_splice
+
+    def unpack(self, buffer: bytes):
+        _len, _flags = struct.unpack_from(">BB", buffer)
+        self.ltw_flag = bool((_flags >> 7) & 0x1)
+        self.piecewise_rate_flag = bool((_flags >> 6) & 0x1)
+        self.seamless_splice_flag = bool((_flags >> 5) & 0x1)
+        offset = 4
+        if self.ltw_flag:
+            self.ltw = buffer[offset : offset + 2]
+            offset += 2
+        if self.piecewise_rate_flag:
+            self.piecewise = buffer[offset : offset + 3]
+            offset += 3
+        if self.seamless_splice_flag:
+            self.seamless_splice = buffer[offset : offset + 5]
+
+    def __repr__(self) -> str:
+        return f"ltw_flag={self.ltw_flag}, piecewise_flag={self.piecewise_rate_flag}, seamless_flag={self.seamless_splice_flag}"
+
+
+class MPEGAdaption(object):
+    """
+    The MPEG Adaptation field format https://en.wikipedia.org/wiki/MPEG_transport_stream#Packet
+
+    """
+
+    def __init__(self) -> None:
+        self.discontinutiy: bool = False
+        self.random_access: bool = False
+        self.es_priority: bool = False
+        self.pcr_flag: bool = False
+        self.opcr_flag: bool = False
+        self.splicing_flag: bool = False
+        self.transpart_flag: bool = False
+        self.extension_flag: bool = False
+        self.pcr = bytes()
+        self.opcr = bytes()
+        self.splice_countdown = 0
+        self.private_data = bytes()
+        self.adaption_extension: typing.Optional[MPEGAdaptionExtension] = None
+
+    def __repr__(self) -> str:
+        _r = (
+            f"discontunity={self.discontinutiy}, random={self.random_access} es={self.es_priority} PCR={self.pcr_flag} "
+        )
+        _r += (
+            f"OPCR={self.opcr_flag} splic={self.splicing_flag} trans={self.transpart_flag}, ext={self.extension_flag} "
+        )
+        if self.adaption_extension is not None:
+            _r += repr(self.adaption_extension)
+        return _r
+
+    def unpack(self, buffer: bytes):
+        _len, _flags = struct.unpack_from(">BB", buffer)
+        self.discontinutiy = bool((_flags >> 7) & 1)
+        self.random_access = bool((_flags >> 6) & 1)
+        self.es_priority = bool((_flags >> 5) & 1)
+        self.pcr_flag = bool((_flags >> 4) & 1)
+        self.opcr_flag = bool((_flags >> 3) & 1)
+        self.splicing_flag = bool((_flags >> 2) & 1)
+        self.transpart_flag = bool((_flags >> 1) & 1)
+        self.extension_flag = bool((_flags >> 0) & 1)
+
+        offset = 2
+        if self.pcr_flag:
+            self.pcr = buffer[offset : offset + 6]
+            offset += 6
+
+        if self.opcr_flag:
+            self.opcr = buffer[offset : offset + 6]
+            offset += 6
+
+        if self.splicing_flag:
+            self.splice_countdown = struct.unpack_from(">B", buffer, offset)
+            offset += 1
+
+        if self.transpart_flag:
+            _transport_len = struct.unpack_from(">B", buffer, offset)
+            offset += 1
+            self.private_data = buffer[offset : offset + _transport_len]
+            offset += _transport_len
+        if self.extension_flag:
+            self.adaption_extension = MPEGAdaptionExtension()
+            self.adaption_extension.unpack(buffer[offset:])
+
+
 class MPEGTS(object):
     """
     This class handles MPEG Transport Streams.
@@ -119,6 +249,17 @@ class MPEGTS(object):
                 return False
 
         return True
+
+    def __repr__(self) -> str:
+        _r = ""
+        for _block in self:
+            _r += f"{repr(_block)}\n"
+        return _r
+
+    def __getitem__(self, _key):
+        if _key >= len(self):
+            raise IndexError
+        return self.blocks[_key]
 
     def NumberOfBlocks(self):
         raise DeprecationWarning("This is being deprecated")
@@ -227,9 +368,9 @@ class MPEGPacket(object):
             (adaption_len,) = struct.unpack_from(">B", buf[4:])
             # logger.debug(f"Adaption len ={adaption_len}")
             self.payload = buf[(4 + 1 + adaption_len) :]
-            self.adaption_field = buf[: (4 + 1 + adaption_len)]
+            self.adaption_field = buf[4 : (adaption_len + 1 + 4)]
         elif self.adaption_ctrl == 0x2:
-            self.adaption_field = buf[: (4 + 1 + adaption_len)]
+            self.adaption_field = buf[4 : (1 + 4 + adaption_len)]
             self.payload = bytes()
         elif self.adaption_ctrl == 0x1:
             self.payload = buf[4:]
