@@ -179,6 +179,39 @@ class MPEGAdaption(object):
             self.adaption_extension = MPEGAdaptionExtension()
             self.adaption_extension.unpack(buffer[offset:])
 
+    def pack(self):
+
+        if len(self.pcr) > 0:
+            self.pcr_flag = True
+        if len(self.opcr) > 0:
+            self.opcr_flag = True
+        if self.splice_countdown > 0:
+            self.splicing_flag = True
+            splice_buf = struct.pack(">B", self.splice_countdown)
+        else:
+            splice_buf = bytes()
+        if len(self.private_data) > 0:
+            self.transpart_flag = True
+        if self.adaption_extension is not None:
+            self.extension_flag = True
+            _extension_buffer = self.adaption_extension.pack()
+        else:
+            _extension_buffer = bytes()
+        _len = len(self.pcr) + len(self.opcr) + len(self.private_data) + len(_extension_buffer) + len(splice_buf)
+        _flags = (
+            (int(self.discontinutiy) << 7)
+            + (int(self.random_access) << 6)
+            + (int(self.es_priority) << 5)
+            + (int(self.pcr_flag) << 4)
+            + (int(self.opcr_flag) << 3)
+            + (int(self.splicing_flag << 2))
+            + (int(self.transpart_flag << 1))
+            + int(self.extension_flag)
+        )
+        return (
+            struct.pack(">BB", _len, _flags) + self.pcr + self.opcr + splice_buf + self.private_data + _extension_buffer
+        )
+
 
 class MPEGTS(object):
     """
@@ -341,7 +374,7 @@ class MPEGPacket(object):
         self.adaption_ctrl: int = 0
         self.continuitycounter: int = 0
         self.payload: bytes = bytes()
-        self.adaption_field: bytes = bytes()
+        self.adaption_field: typing.Optional[MPEGAdaption] = None
 
     def unpack(self, buf: bytes):
         """
@@ -368,9 +401,12 @@ class MPEGPacket(object):
             (adaption_len,) = struct.unpack_from(">B", buf[4:])
             # logger.debug(f"Adaption len ={adaption_len}")
             self.payload = buf[(4 + 1 + adaption_len) :]
-            self.adaption_field = buf[4 : (adaption_len + 1 + 4)]
+
+            self.adaption_field = MPEGAdaption()
+            self.adaption_field.unpack(buf[4 : (adaption_len + 1 + 4)])
         elif self.adaption_ctrl == 0x2:
-            self.adaption_field = buf[4 : (1 + 4 + adaption_len)]
+            self.adaption_field = MPEGAdaption()
+            self.adaption_field.unpack(buf[4 : (1 + 4 + adaption_len)])
             self.payload = bytes()
         elif self.adaption_ctrl == 0x1:
             self.payload = buf[4:]
@@ -381,8 +417,11 @@ class MPEGPacket(object):
         pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
         continuity = self.continuitycounter + (self.adaption_ctrl << 4) + (self.tsc << 6)
         _payload = struct.pack(">BHB", self.sync, pid_full, continuity)
-
-        return _payload + self.adaption_field + self.payload
+        if self.adaption_field is not None:
+            _adaption_fieldn_paylad = self.adaption_field.pack()
+        else:
+            _adaption_fieldn_paylad = bytes()
+        return _payload + _adaption_fieldn_paylad + self.payload
 
     def __repr__(self) -> str:
         return f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
