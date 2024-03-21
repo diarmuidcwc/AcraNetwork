@@ -65,11 +65,24 @@ class MPEGTSBasicTest(unittest.TestCase):
         mpegts = MPEGTS.MPEGTS()
         payload = mypcaprecord.payload[0x46:]
         mpegts.unpack(payload)
-        self.assertEqual("", repr(mpegts))
+        # self.assertEqual("", repr(mpegts))
         self.assertEqual(len(mpegts), 7)
         p.close()
         packed = mpegts.pack()
         self.assertEqual(packed, payload)
+
+        mpegts2 = MPEGTS.MPEGTS()
+        mpegts2.unpack(packed)
+        self.assertEqual(mpegts, mpegts2)
+
+        for block in mpegts:
+            if block.adaption_ctrl == 2 or block.adaption_ctrl == 3:
+                extension = MPEGTS.MPEGAdaption()
+                extension.unpack(block.adaption_field)
+                self.assertEqual(
+                    "discontunity=False, random=True es=False PCR=True OPCR=False splic=False trans=False, ext=False ",
+                    repr(extension),
+                )
 
     def test_readAllMPEGTS(self):
         """
@@ -110,6 +123,10 @@ class MPEGTSBasicTest(unittest.TestCase):
         self.assertEqual(nal_counts[0], 35)
         self.assertEqual(nal_counts[6], 70)
 
+
+if "unittest.util" in __import__("sys").modules:
+    # Show full diff in self.assertEqual.
+    __import__("sys").modules["unittest.util"]._MAX_LENGTH = 999999999
 
 if __name__ == "__main__":
     unittest.main()
