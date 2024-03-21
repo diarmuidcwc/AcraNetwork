@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -62,12 +63,7 @@ class MPEGTS(object):
     """
 
     def __init__(self):
-        self.previouscounter = {}
-        self.discontinuity = {}
         self.blocks: typing.List[MPEGPacket] = []  #: List of MPEGPacket objects
-        self.contunityerror = False
-        self.invalidsync = False
-        self.invalidsyncblock = list()
 
     def unpack(self, buf: bytes):
         """
@@ -80,53 +76,58 @@ class MPEGTS(object):
         """
 
         remainingbytes = 0
-        prevcount = self.previouscounter
-        block_count = 0
         while remainingbytes < len(buf):
             MpegBlock = MPEGPacket()
             MpegBlock.unpack(buf[remainingbytes : remainingbytes + 188])
-            block_count += 1
             self.blocks.append(MpegBlock)
-            if MpegBlock.invalidsync:
-                self.invalidsync = True
-                self.invalidsyncblock.append(block_count)
             remainingbytes += 188
-            if MpegBlock.pid not in prevcount:
-                prevcount[MpegBlock.pid] = MpegBlock.continuitycounter
-            elif ((prevcount[MpegBlock.pid] + 1) % 16) != MpegBlock.continuitycounter:
-                self.contunityerror = True
-                self.discontinuity[MpegBlock.pid] = (prevcount[MpegBlock.pid], MpegBlock.continuitycounter)
-                prevcount[MpegBlock.pid] = MpegBlock.continuitycounter
-            else:
-                prevcount[MpegBlock.pid] = MpegBlock.continuitycounter
 
-        self.previouscounter = prevcount
         return True
 
-    def NumberOfBlocks(self):
-        """
-        How many MPEG blocks in the current TS
+    def pack(self) -> bytes:
+        __bytes = bytes()
+        for block in self:
+            __bytes += block.pack()
 
-        :rtype: int
-        """
+        return __bytes
+
+    def __len__(self):
 
         return len(self.blocks)
 
-    def FirstCount(self):
-        """
-        Get the value of the first continuity counter
+    def __iter__(self):
+        self._index = 0
+        return self
 
-        :rtype: int
-        """
-        return self.blocks[0].continuitycounter
+    def next(self):
+        if self._index < len(self.blocks):
+            _block = self.blocks[self._index]
+            self._index += 1
+            return _block
+        else:
+            raise StopIteration
+
+    __next__ = next
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, MPEGTS):
+            return False
+        if len(self) != len(__value):
+            return False
+        for idx in range(len(self)):
+            if self[idx] != __value[idx]:
+                return False
+
+        return True
+
+    def NumberOfBlocks(self):
+        raise DeprecationWarning("This is being deprecated")
+
+    def FirstCount(self):
+        raise DeprecationWarning("This is being deprecated")
 
     def LastCount(self):
-        """
-        Get the value of the final continuity counter
-
-        :rtype: int
-        """
-        return self.blocks[self.NumberOfBlocks() - 1].continuitycounter
+        raise DeprecationWarning("This is being deprecated")
 
 
 class ADTS(object):
@@ -190,16 +191,16 @@ class MPEGPacket(object):
     """
 
     def __init__(self):
-        self._packetstrut = struct.Struct(">BHB")
-        self._packetstrutlen = struct.calcsize(">BHB")
         self.sync: int = 0
         self.pid: int = 0
-        self.pusi: int = 0
+        self.tei: bool = False
+        self.pusi: bool = False
+        self.transport_priority = 0
         self.tsc: int = 0
         self.adaption_ctrl: int = 0
         self.continuitycounter: int = 0
-        self.invalidsync: bool = False
         self.payload: bytes = bytes()
+        self.adaption_field: bytes = bytes()
 
     def unpack(self, buf: bytes):
         """
@@ -209,29 +210,61 @@ class MPEGPacket(object):
         :type buf: str
         :rtype: bool
         """
-        (self.syncbyte, pid_full, counter_full) = self._packetstrut.unpack_from(buf)
-        if self.syncbyte != 0x47:
-            self.invalidsync = True
+        (self.sync, pid_full, counter_full) = struct.unpack_from(">BHB", buf)
+        if self.sync != 0x47:
+            raise Exception(f"Sync word={self.sync:#0X} not 0x47")
 
-        self.pid = pid_full % 8192
-        self.pusi = (pid_full >> 14) & 0x1
-        self.continuitycounter = counter_full % 16
-        self.tsc = (counter_full >> 6) & 0x3
+        self.pid = pid_full & 0x1FFF
+        self.transport_priority = (pid_full >> 15) & 0x1
+        self.tei = bool((pid_full >> 16) & 0x1)
+        self.pusi = bool((pid_full >> 14) & 0x1)
+
+        self.continuitycounter = counter_full & 0xF
         self.adaption_ctrl = (counter_full >> 4) & 0x3
+        self.tsc = (counter_full >> 6) & 0x3
 
         if self.adaption_ctrl == 0x3:  # payload + adaption
-            (adaption_len,) = struct.unpack_from(">B", buf[self._packetstrutlen :])
+            (adaption_len,) = struct.unpack_from(">B", buf[4:])
             # logger.debug(f"Adaption len ={adaption_len}")
-            self.payload = buf[(self._packetstrutlen + 1 + adaption_len) :]
+            self.payload = buf[(4 + 1 + adaption_len) :]
+            self.adaption_field = buf[: (4 + 1 + adaption_len)]
         elif self.adaption_ctrl == 0x2:
+            self.adaption_field = buf[: (4 + 1 + adaption_len)]
             self.payload = bytes()
         elif self.adaption_ctrl == 0x1:
-            self.payload = buf[self._packetstrutlen :]
+            self.payload = buf[4:]
         else:
             raise Exception("Adaption control of 0 is reserved")
 
+    def pack(self) -> bytes:
+        pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
+        continuity = self.continuitycounter + (self.adaption_ctrl << 4) + (self.tsc << 6)
+        _payload = struct.pack(">BHB", self.sync, pid_full, continuity)
+
+        return _payload + self.adaption_field + self.payload
+
     def __repr__(self) -> str:
         return f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, MPEGPacket):
+            return False
+        match_attr = [
+            "sync",
+            "pid",
+            "transport_priority",
+            "tei",
+            "pusi",
+            "continuitycounter",
+            "tsc",
+            "adaption_ctrl",
+            "payload",
+            "adaption_field",
+        ]
+        for attr in match_attr:
+            if getattr(self, attr) != getattr(__value, attr):
+                return False
+        return True
 
 
 class H264(object):
