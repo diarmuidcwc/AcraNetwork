@@ -64,6 +64,14 @@ class MPEGAdaptionExtension(object):
         self.piecewise = bytes()
         self.seamless_splice = bytes()
 
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, MPEGAdaptionExtension):
+            return False
+        for attr in self.__dict__.keys():
+            if getattr(self, attr) != getattr(__value, attr):
+                return False
+        return True
+
     def pack(self) -> bytes:
         if len(self.ltw) == 2:
             self.ltw_flag = True
@@ -135,13 +143,17 @@ class MPEGAdaption(object):
         self.private_data = bytes()
         self.adaption_extension: typing.Optional[MPEGAdaptionExtension] = None
 
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, MPEGAdaption):
+            return False
+        for attr in self.__dict__.keys():
+            if getattr(self, attr) != getattr(__value, attr):
+                return False
+        return True
+
     def __repr__(self) -> str:
-        _r = (
-            f"discontunity={self.discontinutiy}, random={self.random_access} es={self.es_priority} PCR={self.pcr_flag} "
-        )
-        _r += (
-            f"OPCR={self.opcr_flag} splic={self.splicing_flag} trans={self.transpart_flag}, ext={self.extension_flag} "
-        )
+        _r = f"Discontunity={self.discontinutiy}, random={self.random_access} Elementary Stream Indicator={self.es_priority} PCR={self.pcr_flag} "
+        _r += f"OPCR={self.opcr_flag} Splicing Point Flag={self.splicing_flag} Transport Private Data={self.transpart_flag}, Adaption Extension={self.extension_flag}"
         if self.adaption_extension is not None:
             _r += repr(self.adaption_extension)
         return _r
@@ -197,7 +209,7 @@ class MPEGAdaption(object):
             _extension_buffer = self.adaption_extension.pack()
         else:
             _extension_buffer = bytes()
-        _len = len(self.pcr) + len(self.opcr) + len(self.private_data) + len(_extension_buffer) + len(splice_buf)
+        _len = len(self.pcr) + len(self.opcr) + len(self.private_data) + len(_extension_buffer) + len(splice_buf) + 1
         _flags = (
             (int(self.discontinutiy) << 7)
             + (int(self.random_access) << 6)
@@ -424,7 +436,10 @@ class MPEGPacket(object):
         return _payload + _adaption_fieldn_paylad + self.payload
 
     def __repr__(self) -> str:
-        return f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
+        r = f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
+        if self.adaption_field is not None:
+            r += "\n Adaption=" + repr(self.adaption_field)
+        return r
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, MPEGPacket):
