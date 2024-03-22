@@ -14,6 +14,17 @@ import AcraNetwork.MPEGTS as MPEGTS
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+mpeg_ts_repr = """PID=0X0 PUSI=True TSC=Not Scrambled Adaption=Payload Only
+PID=0X1000 PUSI=True TSC=Not Scrambled Adaption=Payload Only
+PID=0X100 PUSI=True TSC=Not Scrambled Adaption=Adaption and Payload
+ Adaption=Discontunity=False, random=True Elementary Stream Indicator=False PCR=True OPCR=False Splicing Point Flag=False Transport Private Data=False, Adaption Extension=False
+PID=0X100 PUSI=False TSC=Not Scrambled Adaption=Payload Only
+PID=0X100 PUSI=False TSC=Not Scrambled Adaption=Payload Only
+PID=0X100 PUSI=False TSC=Not Scrambled Adaption=Payload Only
+PID=0X100 PUSI=False TSC=Not Scrambled Adaption=Payload Only
+"""
+
+
 class MPEGTSBasicTest(unittest.TestCase):
 
     ######################
@@ -53,6 +64,15 @@ class MPEGTSBasicTest(unittest.TestCase):
                 self.assertEqual(mpegts.blocks[packet_index].sync, 0x47)
         p.close()
 
+    def test_pack_unpack_adaption(self):
+        ad = MPEGTS.MPEGAdaption()
+        adex = MPEGTS.MPEGAdaptionExtension()
+        ad.adaption_extension = adex
+        packed = ad.pack()
+        ad2 = MPEGTS.MPEGAdaption()
+        ad2.unpack(packed)
+        self.assertEqual(ad2, ad)
+
     def test_pack_unpack(self):
         """
         Very simple test that reads a pcap file with mpegts packets.
@@ -65,24 +85,18 @@ class MPEGTSBasicTest(unittest.TestCase):
         mpegts = MPEGTS.MPEGTS()
         payload = mypcaprecord.payload[0x46:]
         mpegts.unpack(payload)
-        # self.assertEqual("", repr(mpegts))
+        self.assertEqual(mpeg_ts_repr, repr(mpegts))
         self.assertEqual(len(mpegts), 7)
         p.close()
+        for block in mpegts:
+            if block.adaption_field is not None:
+                pass
         packed = mpegts.pack()
         self.assertEqual(packed, payload)
 
         mpegts2 = MPEGTS.MPEGTS()
         mpegts2.unpack(packed)
         self.assertEqual(mpegts, mpegts2)
-
-        for block in mpegts:
-            if block.adaption_ctrl == 2 or block.adaption_ctrl == 3:
-                extension = MPEGTS.MPEGAdaption()
-                extension.unpack(block.adaption_field)
-                self.assertEqual(
-                    "discontunity=False, random=True es=False PCR=True OPCR=False splic=False trans=False, ext=False ",
-                    repr(extension),
-                )
 
     def test_readAllMPEGTS(self):
         """
