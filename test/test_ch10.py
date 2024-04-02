@@ -15,6 +15,7 @@ import AcraNetwork.Chapter10.TimeDataFormat as ch10time
 import AcraNetwork.Chapter10.ARINC429 as ch10arinc
 import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
 import AcraNetwork.Chapter10.PCM as ch10pcm
+import AcraNetwork.Chapter10.Video as ch10video
 from AcraNetwork.Chapter10 import (
     DATA_TYPE_TIMEFMT_1,
     DATA_TYPE_TIMEFMT_2,
@@ -33,6 +34,7 @@ import datetime
 import tempfile
 import logging
 import csv
+import AcraNetwork.MPEGTS as ampeg
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = tempfile.gettempdir()
@@ -722,6 +724,26 @@ class PTPRTCTime(unittest.TestCase):
         t0 = PTPTime(1704299074, 472711723)
         rtc_time = int(1.54492142087757e14)
         self.assertEqual(rtc_time, t0.to_pinksheet_rtc())
+
+
+class Video(unittest.TestCase):
+    def test_video(self):
+        vid = ch10video.VideoFormat2()
+        vid.channel_specific_word = 0x0
+        mpgsts = ampeg.MPEGTS()
+        for _i in range(1):
+            mpegp = ampeg.MPEGPacket()
+            mpegp.sync = 0x47
+            mpegp.adaption_ctrl = ampeg.ADAPTION_PAYLOAD_ONLY
+            mpegp.pid = _i
+            mpegp.payload = struct.pack(f"{92}H", *range(92))
+            mpgsts.append(mpegp)
+        vid.mpegts = mpgsts
+        buf = vid.pack()
+        print(repr(buf))
+        vid2 = ch10video.VideoFormat2()
+        vid2.unpack(buf)
+        self.assertEqual(vid, vid2)
 
 
 if __name__ == "__main__":
