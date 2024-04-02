@@ -78,4 +78,5 @@
 # 0.16.20 - Changed RTC conversion to use Decimal as integer resolution was not sufficient to convert the timestamp
 # 0.16.21 - adau conversion script accepts a folder input
 # 0.17.0  - significant change to the MPEGTS block. Added classes for the adaption fields
-__version__ = "0.17.0"
+# 0.17.1  - Added Video to the chapter10
+__version__ = "0.17.1"

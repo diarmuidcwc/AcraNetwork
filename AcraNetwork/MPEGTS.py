@@ -225,6 +225,103 @@ class MPEGAdaption(object):
         )
 
 
+ADAPTION_PAYLOAD_AND_ADAPTION = 0x3
+ADAPTION_PAYLOAD_ONLY = 0x1
+ADAPTION_ADAPTION_ONLY = 0x2
+
+
+class MPEGPacket(object):
+    """
+    The MPEGPacket is the elementary unit in an MPEG Transport Stream
+    It contains an header, in which there's a sync word, continuity counter, and a _payload
+    """
+
+    def __init__(self):
+        self.sync: int = 0
+        self.pid: int = 0
+        self.tei: bool = False
+        self.pusi: bool = False
+        self.transport_priority = 0
+        self.tsc: int = 0
+        self.adaption_ctrl: int = 0
+        self.continuitycounter: int = 0
+        self.payload: bytes = bytes()
+        self.adaption_field: typing.Optional[MPEGAdaption] = None
+
+    def unpack(self, buf: bytes):
+        """
+        Converts a buffer into an MPEGTS packet
+
+        :param buf: The buffer to unpack into an MPEG Packet
+        :type buf: str
+        :rtype: bool
+        """
+        (self.sync, pid_full, counter_full) = struct.unpack_from(">BHB", buf)
+        if self.sync != 0x47:
+            raise Exception(f"Sync word={self.sync:#0X} not 0x47")
+
+        self.pid = pid_full & 0x1FFF
+        self.transport_priority = (pid_full >> 15) & 0x1
+        self.tei = bool((pid_full >> 16) & 0x1)
+        self.pusi = bool((pid_full >> 14) & 0x1)
+
+        self.continuitycounter = counter_full & 0xF
+        self.adaption_ctrl = (counter_full >> 4) & 0x3
+        self.tsc = (counter_full >> 6) & 0x3
+
+        if self.adaption_ctrl == ADAPTION_PAYLOAD_AND_ADAPTION:  # payload + adaption
+            (adaption_len,) = struct.unpack_from(">B", buf[4:])
+            # logger.debug(f"Adaption len ={adaption_len}")
+            self.payload = buf[(4 + 1 + adaption_len) :]
+
+            self.adaption_field = MPEGAdaption()
+            self.adaption_field.unpack(buf[4 : (adaption_len + 1 + 4)])
+        elif self.adaption_ctrl == ADAPTION_ADAPTION_ONLY:
+            self.adaption_field = MPEGAdaption()
+            self.adaption_field.unpack(buf[4 : (1 + 4 + adaption_len)])
+            self.payload = bytes()
+        elif self.adaption_ctrl == ADAPTION_PAYLOAD_ONLY:
+            self.payload = buf[4:]
+        else:
+            raise Exception("Adaption control of 0 is reserved")
+
+    def pack(self) -> bytes:
+        pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
+        continuity = self.continuitycounter + (self.adaption_ctrl << 4) + (self.tsc << 6)
+        _payload = struct.pack(">BHB", self.sync, pid_full, continuity)
+        if self.adaption_field is not None:
+            _adaption_fieldn_paylad = self.adaption_field.pack()
+        else:
+            _adaption_fieldn_paylad = bytes()
+        return _payload + _adaption_fieldn_paylad + self.payload
+
+    def __repr__(self) -> str:
+        r = f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
+        if self.adaption_field is not None:
+            r += "\n Adaption=" + repr(self.adaption_field)
+        return r
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, MPEGPacket):
+            return False
+        match_attr = [
+            "sync",
+            "pid",
+            "transport_priority",
+            "tei",
+            "pusi",
+            "continuitycounter",
+            "tsc",
+            "adaption_ctrl",
+            "payload",
+            "adaption_field",
+        ]
+        for attr in match_attr:
+            if getattr(self, attr) != getattr(__value, attr):
+                return False
+        return True
+
+
 class MPEGTS(object):
     """
     This class handles MPEG Transport Streams.
@@ -239,6 +336,9 @@ class MPEGTS(object):
 
     def __init__(self):
         self.blocks: typing.List[MPEGPacket] = []  #: List of MPEGPacket objects
+
+    def append(self, block: MPEGPacket):
+        return self.blocks.append(block)
 
     def unpack(self, buf: bytes):
         """
@@ -368,98 +468,6 @@ class PES(object):
 
     def __repr__(self) -> str:
         return f"PES: Stream ID={self.streamid:#0X} Len={self.length}"
-
-
-class MPEGPacket(object):
-    """
-    The MPEGPacket is the elementary unit in an MPEG Transport Stream
-    It contains an header, in which there's a sync word, continuity counter, and a _payload
-    """
-
-    def __init__(self):
-        self.sync: int = 0
-        self.pid: int = 0
-        self.tei: bool = False
-        self.pusi: bool = False
-        self.transport_priority = 0
-        self.tsc: int = 0
-        self.adaption_ctrl: int = 0
-        self.continuitycounter: int = 0
-        self.payload: bytes = bytes()
-        self.adaption_field: typing.Optional[MPEGAdaption] = None
-
-    def unpack(self, buf: bytes):
-        """
-        Converts a buffer into an MPEGTS packet
-
-        :param buf: The buffer to unpack into an MPEG Packet
-        :type buf: str
-        :rtype: bool
-        """
-        (self.sync, pid_full, counter_full) = struct.unpack_from(">BHB", buf)
-        if self.sync != 0x47:
-            raise Exception(f"Sync word={self.sync:#0X} not 0x47")
-
-        self.pid = pid_full & 0x1FFF
-        self.transport_priority = (pid_full >> 15) & 0x1
-        self.tei = bool((pid_full >> 16) & 0x1)
-        self.pusi = bool((pid_full >> 14) & 0x1)
-
-        self.continuitycounter = counter_full & 0xF
-        self.adaption_ctrl = (counter_full >> 4) & 0x3
-        self.tsc = (counter_full >> 6) & 0x3
-
-        if self.adaption_ctrl == 0x3:  # payload + adaption
-            (adaption_len,) = struct.unpack_from(">B", buf[4:])
-            # logger.debug(f"Adaption len ={adaption_len}")
-            self.payload = buf[(4 + 1 + adaption_len) :]
-
-            self.adaption_field = MPEGAdaption()
-            self.adaption_field.unpack(buf[4 : (adaption_len + 1 + 4)])
-        elif self.adaption_ctrl == 0x2:
-            self.adaption_field = MPEGAdaption()
-            self.adaption_field.unpack(buf[4 : (1 + 4 + adaption_len)])
-            self.payload = bytes()
-        elif self.adaption_ctrl == 0x1:
-            self.payload = buf[4:]
-        else:
-            raise Exception("Adaption control of 0 is reserved")
-
-    def pack(self) -> bytes:
-        pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
-        continuity = self.continuitycounter + (self.adaption_ctrl << 4) + (self.tsc << 6)
-        _payload = struct.pack(">BHB", self.sync, pid_full, continuity)
-        if self.adaption_field is not None:
-            _adaption_fieldn_paylad = self.adaption_field.pack()
-        else:
-            _adaption_fieldn_paylad = bytes()
-        return _payload + _adaption_fieldn_paylad + self.payload
-
-    def __repr__(self) -> str:
-        r = f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
-        if self.adaption_field is not None:
-            r += "\n Adaption=" + repr(self.adaption_field)
-        return r
-
-    def __eq__(self, __value: object) -> bool:
-        if not isinstance(__value, MPEGPacket):
-            return False
-        match_attr = [
-            "sync",
-            "pid",
-            "transport_priority",
-            "tei",
-            "pusi",
-            "continuitycounter",
-            "tsc",
-            "adaption_ctrl",
-            "payload",
-            "adaption_field",
-        ]
-        for attr in match_attr:
-            if getattr(self, attr) != getattr(__value, attr):
-                return False
-        return True
 
 
 class H264(object):
