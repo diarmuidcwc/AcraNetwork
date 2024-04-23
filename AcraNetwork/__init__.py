@@ -4,6 +4,7 @@ from functools import reduce
 
 class KMP:
     """
+    Search string algorithm
     https://en.wikipedia.org/wiki/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm
     https://gist.github.com/m00nlight/daa6786cc503fde12a77
     """

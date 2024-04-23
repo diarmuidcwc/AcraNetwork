@@ -8,14 +8,12 @@
 """
 
 __author__ = "Diarmuid Collins"
-__copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
 
 
 import struct
-import datetime
 import sys
 import typing
 import logging
@@ -23,30 +21,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-NAL_HEADER = 0x00000001
-NAL_HEADER_LEN = 4
-NAL_TYPES = {
-    "Unspecified": 0,
-    "Coded non-IDR": 1,
-    "Coded partition A": 2,
-    "Coded partition B": 3,
-    "Coded partition C": 4,
-    "Coded IDR": 5,
-    "SEI": 6,
-    "SPS": 7,
-    "PPS": 8,
-    "AUD": 9,
-    "EOSeq": 10,
-    "EOStream": 11,
-    "Filler": 12,
-    "SES": 13,
-    "Prefix NAL": 14,
-    "SSPS": 15,
-    "Reserved": 16,
-}
-# Invert it to go from integer to more useful name
-NAL_TYPES_INV = {v: k for k, v in list(NAL_TYPES.items())}
-SEI_UNREG_DATA = 5
+TSC = {0: "Not Scrambled", 1: "Reserved", 2: "Scrambled even key", 3: "Scrambled odd key"}
+ADAPTION_CTRL = {1: "Payload Only", 2: "Adaption Only", 3: "Adaption and Payload", 0: "Reserved"}
+
 PY3 = sys.version_info > (3,)
 
 
@@ -78,21 +55,21 @@ class MPEGAdaptionExtension(object):
         elif len(self.ltw) == 0:
             self.ltw_flag = False
         else:
-            raise Exception(f"ltw should be 2 bytes")
+            raise Exception("ltw should be 2 bytes")
 
         if len(self.piecewise) == 3:
             self.piecewise_rate_flag = True
         elif len(self.piecewise) == 0:
             self.piecewise_rate_flag = False
         else:
-            raise Exception(f"piecewise should be 3 bytes")
+            raise Exception("piecewise should be 3 bytes")
 
         if len(self.seamless_splice) == 5:
             self.seamless_splice_flag = True
         elif len(self.seamless_splice) == 0:
             self.seamless_splice_flag = False
         else:
-            raise Exception(f"seamless should be 5 bytes")
+            raise Exception("seamless should be 5 bytes")
 
         _len = 4 + len(self.ltw) + len(self.piecewise) + len(self.seamless_splice)
         _flags = (
@@ -414,224 +391,3 @@ class MPEGTS(object):
 
     def LastCount(self):
         raise DeprecationWarning("This is being deprecated")
-
-
-class ADTS(object):
-    def __init__(self) -> None:
-        self.aac: bytes = bytes()
-        self.version: int = 0
-        self.sampling_freq: int = 0
-        self._length: int = 0
-        self.no_crc: bool = True
-
-    def unpack(self, buffer):
-        words = struct.unpack_from(">7B", buffer)
-        sw = ((words[1] >> 4) << 8) + words[0]
-        if sw != 0xFFF:
-            raise Exception(f"Sync word = {sw:#0X}")
-        self.sampling_freq = (words[2] >> 2) & 0xF
-        self.no_crc = bool(words[1] & 0x1)
-        self._length = (words[5] >> 5) + (words[4] << 3) + ((words[3] & 0x3) << 11)
-        if self.no_crc:
-            self.aac = buffer[7:]
-        else:
-            self.aac = buffer[9:]
-
-    def __repr__(self) -> str:
-        return f"ADTS: NoCRC={self.no_crc} SamplFreq={self.sampling_freq} len={self._length} lenaac={len(self.aac)}"
-
-
-TSC = {0: "Not Scrambled", 1: "Reserved", 2: "Scrambled even key", 3: "Scrambled odd key"}
-ADAPTION_CTRL = {1: "Payload Only", 2: "Adaption Only", 3: "Adaption and Payload", 0: "Reserved"}
-
-
-class PES(object):
-    def __init__(self) -> None:
-        self.streamid: int = 0
-        self.length: int = 0
-        self.data: bytes = bytes()
-
-    def unpack(self, buffer: bytes):
-        (_prefix1, _prefix2, self.streamid, self.length) = struct.unpack_from(">BHBH", buffer)
-        prefix = (_prefix1 << 16) + _prefix2
-        if prefix != 1:
-            raise Exception(f"PES Prefix {prefix:#0X} should be 0x1")
-        (optional_hdr, _miscbits, _pes_hdr_len) = struct.unpack_from(">BBB", buffer, 6)
-        marker = optional_hdr >> 4
-        if marker != 0x8:
-            logger.debug("No optional PES header")
-            self.data = buffer[6:]
-        else:
-            self.data = buffer[(6 + 3 + _pes_hdr_len) :]
-        (datafword,) = struct.unpack_from(">H", self.data)
-        logger.debug(f"PES First Dataw={datafword:#0X}")
-
-    def __repr__(self) -> str:
-        return f"PES: Stream ID={self.streamid:#0X} Len={self.length}"
-
-
-class H264(object):
-    """
-    This class will handle H.264 _payload. It can convert a buffer of bytes into an array
-    of NALs(https://en.wikipedia.org/wiki/Network_Abstraction_Layer)
-    The NALs contain different data, based on their types.
-    """
-
-    def __init__(self):
-        self.nals: typing.List[NAL] = []
-
-    def unpack(self, buf: bytes) -> bool:
-        """
-        Split the buffer into multiple NALs and store as a H264 object
-
-        :param buf: The buffer to unpack into a H264 object
-        :type buf: str
-        :rtype: bool
-        """
-        nal_hdr = struct.pack(">L", NAL_HEADER)
-        offsets = string_matching_boyer_moore_horspool(buf.decode(), nal_hdr.decode())
-
-        for idx, offset in enumerate(offsets):
-            if idx == len(offsets) - 1:
-                nal_buf = buf[offset:]
-            else:
-                nal_buf = buf[offset : (offsets[idx + 1])]
-            nal = NAL()
-            nal.unpack(nal_buf)
-            nal.offset = offset
-            self.nals.append(nal)
-
-        return True
-
-
-class NAL(object):
-    """
-    The NAL can be split into the various types of NALs.
-    """
-
-    def __init__(self):
-        self.type: int = 0
-        self.size: int = 0
-        self.sei: typing.Optional[STANAG4609_SEI] = None
-        self.offset = 0
-
-    def unpack(self, buf: bytes):
-        """
-        Split the buffer into a NAL object
-
-        :param buf: The buffer to unpack into an NAL
-        :type buf: str|bytes
-        :rtype: bool
-        """
-
-        # First 4 bytes are the NAL_HEADER, then forbidden + type
-        (self.type,) = struct.unpack_from(">B", buf, NAL_HEADER_LEN)
-        self.type = self.type & 0x1F
-        self.size = len(buf)
-        if self.type == NAL_TYPES["SEI"]:
-            sei = STANAG4609_SEI()
-            sei.unpack(buf[(NAL_HEADER_LEN + 1) :])
-            self.sei = sei
-
-    def __len__(self):
-        return self.size
-
-
-class STANAG4609_SEI(object):
-    """
-    Handle the SEI NAL and more specifically this will handle SEIs defined in 3.14.3.5 of the STANAG standard
-    http://www.gwg.nga.mil/misb/docs/nato_docs/STANAG_4609_Ed3.pdf
-    """
-
-    def __init__(self):
-        self.payloadtype = None
-        self.payloadsize = None
-        self.unregdata = False
-        self.status = None
-        self.seconds = None
-        self.microseconds = None
-        self.nanoseconds = None
-        self.time = None
-        self.stanag = False
-
-    def unpack(self, buf):
-        """
-        Unpack the NAL _payload as an STANAG4609_SEI
-
-        :param buf: The buffer to unpack into an STANAG4609_SEI
-        :type buf: str
-        :rtype: bool
-        """
-
-        (self.payloadtype, self.payloadsize) = struct.unpack(">BB", buf[0:2])
-        if self.payloadtype == SEI_UNREG_DATA:
-            self.unregdata = True
-            (
-                sig1,
-                sig2,
-                self.status,
-                ms1,
-                _fix1,
-                ms2,
-                _fix2,
-                ms3,
-                _fix3,
-                ms4,
-            ) = struct.unpack_from(">QQBHBHBHBH", buf[2:])
-            # combine the time fields (cf  http://www.gwg.nga.mil/misb/docs/nato_docs/STANAG_4609_Ed3.pdf 3.14.3.4 )
-            # Verify the signature and if it's good then convert to a time
-            if (
-                sig1 == 0x4D4953506D696372
-                and sig2 == 0x6F73656374696D65
-                and _fix1 == 0xFF
-                and _fix2 == 0xFF
-                and _fix3 == 0xFF
-            ):
-                useconds = (ms1 << 48) + (ms2 << 32) + (ms3 << 16) + ms4
-                self.seconds = float(useconds) / 1.0e6
-                self.nanoseconds = (ms3 << 16) + ms4
-                self.time = datetime.datetime.fromtimestamp(self.seconds)
-                self.stanag = True
-
-
-def string_matching_boyer_moore_horspool(text="", pattern=""):
-    """
-    Returns positions where pattern is found in text.
-    O(n)
-    Performance: ord() is slow so we shouldn't use it here
-    Example: text = 'ababbababa', pattern = 'aba'
-         string_matching_boyer_moore_horspool(text, pattern) returns [0, 5, 7]
-    @param text text to search inside
-    @param pattern string to search for
-    @return list containing offsets (shifts) where pattern is found inside text
-    """
-    m = len(pattern)
-    n = len(text)
-    offsets = []
-    if m > n:
-        return offsets
-    skip = []
-    for k in range(256):
-        skip.append(m)
-    for k in range(m - 1):
-        my = pattern[k]
-        if PY3:
-            skip[pattern[k]] = m - k - 1
-        else:
-            skip[ord(pattern[k])] = m - k - 1
-    skip = tuple(skip)
-    k = m - 1
-    while k < n:
-        j = m - 1
-        i = k
-        while j >= 0 and text[i] == pattern[j]:
-            j -= 1
-            i -= 1
-        if j == -1:
-            offsets.append(i + 1)
-        if PY3:
-            k += skip[text[k]]
-        else:
-            k += skip[ord(text[k])]
-
-    return offsets
