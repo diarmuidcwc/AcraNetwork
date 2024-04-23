@@ -270,7 +270,10 @@ class MPEGPacket(object):
             _adaption_fieldn_paylad = self.adaption_field.pack()
         else:
             _adaption_fieldn_paylad = bytes()
-        return _payload + _adaption_fieldn_paylad + self.payload
+
+        _unstuffed = _payload + _adaption_fieldn_paylad + self.payload
+        _stuffing = b"\xff" * (188 - len(_unstuffed))
+        return _unstuffed + _stuffing
 
     def __repr__(self) -> str:
         r = f"PID={self.pid:#0X} PUSI={self.pusi} TSC={TSC[self.tsc]} Adaption={ADAPTION_CTRL[self.adaption_ctrl]}"
