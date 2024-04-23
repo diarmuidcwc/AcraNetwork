@@ -10,6 +10,9 @@ import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.iNetX as inetx
 import AcraNetwork.MPEGTS as MPEGTS
+import base64
+import AcraNetwork.MPEG.PMT as MPEGPMT
+import struct
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -136,6 +139,45 @@ class MPEGTSBasicTest(unittest.TestCase):
                 nal_counts[nal.type] += 1
         self.assertEqual(nal_counts[0], 35)
         self.assertEqual(nal_counts[6], 70)
+
+
+# Take from Wireshar - > cop
+pmt_payload = base64.b64decode(
+    "R0EAGQACsDgAAcEAAOEB8AAb4QLwAAPhA/AAFeEE8BwFBEtMVkEmCQEA/0tMVkEADycJwQAAwIAAwQAAX+WEI/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
+)
+
+
+class MPEGPNT(unittest.TestCase):
+    def test_pmt_unpack(self):
+        pmt = MPEGPMT.MPEGPacketPMT()
+        pmt.unpack(pmt_payload)
+
+        pmt2 = MPEGPMT.MPEGPacketPMT()
+        pmt2.unpack(pmt.pack())
+        self.assertEqual(pmt, pmt2)
+        self.assertEqual(pmt_payload, pmt2.pack())
+
+    def test_pmt_random(self):
+        pmt = MPEGPMT.MPEGPacketPMT()
+        pmt.sync = 0x47
+        pmt.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_ONLY
+        pmt.pid = 0x100
+        pmt.continuitycounter = 7
+        pmt.last_section = 0xE
+        pmt.section = 0xD
+        pmt.program_number = 0xDEAD
+        t = MPEGPMT.DescriptorTag()
+        t.data = struct.pack(">5H", *(list(range(5))))
+        t.tag = 0xA
+        s = MPEGPMT.PMTStream()
+        s.descriptor_tags = [t]
+        s.elementary_pid = 0x1FEF
+        pmt.streams = [s]
+        _packed = pmt.pack()
+
+        pmt2 = MPEGPMT.MPEGPacketPMT()
+        self.assertTrue(pmt2.unpack(_packed))
+        self.assertEqual(pmt, pmt2)
 
 
 if "unittest.util" in __import__("sys").modules:
