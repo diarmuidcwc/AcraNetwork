@@ -12,6 +12,7 @@ import AcraNetwork.iNetX as inetx
 import AcraNetwork.MPEGTS as MPEGTS
 import base64
 import AcraNetwork.MPEG.PMT as MPEGPMT
+import AcraNetwork.MPEG.PES as pes
 import struct
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -178,6 +179,29 @@ class MPEGPNT(unittest.TestCase):
         pmt2 = MPEGPMT.MPEGPacketPMT()
         self.assertTrue(pmt2.unpack(_packed))
         self.assertEqual(pmt, pmt2)
+
+
+pes_packet = base64.b64decode(
+    "R0EEP4UA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFIQQD/tEAD98AHwYOKzQCCwEBDgEDAQEAAAAOAggABg/Gi5FmYwECH1M="
+)
+
+
+class MPEG_PES(unittest.TestCase):
+    def test_pes_unpack(self):
+        p = pes.PES()
+        p.unpack(pes_packet)
+        self.assertEqual(50, len(p.payload))
+        print(repr(p))
+        self.assertEqual(36, len(p.pesdata))  #
+        p2 = pes.PES()
+        p2.unpack(p.pack())
+        self.assertEqual(p, p2)
+
+    def test_stanag_unpack(self):
+        p = pes.STANAG4609()
+        p.unpack(pes_packet)
+        print(repr(p))
+        self.assertEqual(36, len(p.pesdata))
 
 
 if "unittest.util" in __import__("sys").modules:

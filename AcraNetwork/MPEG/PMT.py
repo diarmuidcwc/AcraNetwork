@@ -240,6 +240,11 @@ class MPEGPacketPMT(MPEGPacket):
             return True
 
     def pack(self) -> bytes:
+        """Convert MPEGPacketPMT into bytes
+
+        Returns:
+            bytes: _description_
+        """
         _len = struct.calcsize(MPEGPacketPMT.FMT) - MPEGPacketPMT.HDR_LEN_NOT_INCL_IN_LEN + MPEGPacketPMT.CRC_LEN
         for s in self.streams:
             _len += len(s)
