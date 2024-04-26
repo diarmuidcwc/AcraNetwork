@@ -80,4 +80,5 @@
 # 0.17.0  - significant change to the MPEGTS block. Added classes for the adaption fields
 # 0.17.1  - Added Video to the chapter10
 # 0.17.2  - Major update to the MPEGTS section. Split out code into multiple modules. Added support for PAT packets
-__version__ = "0.17.2"
+# 0.17.3  - Added support for PES + STANAG4609 packets
+__version__ = "0.17.3"
