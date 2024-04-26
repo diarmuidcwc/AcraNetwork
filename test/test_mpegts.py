@@ -188,14 +188,18 @@ pes_packet = base64.b64decode(
 
 class MPEG_PES(unittest.TestCase):
     def test_pes_unpack(self):
+        self.assertEqual(188, len(pes_packet))  # Verify the length
         p = pes.PES()
-        p.unpack(pes_packet)
+        p.unpack(pes_packet)  # unpack as PES
         self.assertEqual(50, len(p.payload))
-        print(repr(p))
-        self.assertEqual(36, len(p.pesdata))  #
+        # print(repr(p))
+
+        self.assertEqual(36, len(p.pesdata))  # Verify the pes payload
+        self.assertEqual(pes_packet, p.pack())  # Verify that pack turns it back exactly into the same packet
         p2 = pes.PES()
-        p2.unpack(p.pack())
-        self.assertEqual(p, p2)
+        p2.unpack(p.pack())  # Unpack it again
+        self.assertEqual(p, p2)  # Compre packets
+        self.assertEqual(p2.pack(), pes_packet)  # Verify packing
 
     def test_stanag_unpack(self):
         p = pes.STANAG4609()

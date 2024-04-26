@@ -34,9 +34,9 @@ class PES(MPEGPacket):
         expected_len_if_extension_present = _peslength + 6
         if marker == 0x8 and len(self.payload) == expected_len_if_extension_present:
             # PES extenion
-            (self.extension_w1, self.extension_w2) = struct.unpack_from(">HH", self.payload, 6)
-            self.header_data = self.payload[9 : (9 + _pes_hdr_len)]
-            self.pesdata = self.payload[(9 + _pes_hdr_len) :]
+            (self.extension_w1, self.extension_w2, _hdrlen) = struct.unpack_from(">BBB", self.payload, 6)
+            self.header_data = self.payload[9 : (9 + _hdrlen)]
+            self.pesdata = self.payload[(9 + _hdrlen) :]
         else:
             logger.debug("No optional PES header")
             self.pesdata = self.payload[6:]
@@ -51,9 +51,11 @@ class PES(MPEGPacket):
             _len = len(self.header_data)
         self.payload = struct.pack(">BHBH", 0, 1, self.streamid, _len)
         if _ext_present:
-            self.payload += struct.pack(">HHB", self.extension_w1, self.extension_w2, len(self.header_data))
+            self.payload += struct.pack(">BBB", self.extension_w1, self.extension_w2, len(self.header_data))
             self.payload += self.header_data
         self.payload += self.pesdata
+        _pl = len(self.pesdata)
+        _ppl = len(self.payload)
         return super().pack()
 
     def __repr__(self) -> str:
