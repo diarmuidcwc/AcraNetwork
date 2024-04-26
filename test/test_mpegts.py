@@ -206,6 +206,9 @@ class MPEG_PES(unittest.TestCase):
         p.unpack(pes_packet)
         print(repr(p))
         self.assertEqual(36, len(p.pesdata))
+        self.assertEqual(len(p.pack()), 188)
+        self.assertEqual(p.pack(), pes_packet)
+        print(repr(p.time))
 
 
 if "unittest.util" in __import__("sys").modules:
