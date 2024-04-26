@@ -67,5 +67,5 @@ To Make a Distribution
 
 	pip  install --upgrade pip wheel setuptools twine
 	rm dist/*
-	python ./setup.py bdist_wheel --universal sdist
+	python ./setup.py sdist bdist_wheel --universal sdist
 	twine upload dist/*
