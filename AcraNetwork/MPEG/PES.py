@@ -191,3 +191,8 @@ class STANAG4609(PES):
         time_fmt = datetime.datetime.fromtimestamp(self.time_us / 1e6)
         r += "\n" + f"   Time={repr(time_fmt)}"
         return r
+
+    def __eq__(self, __value: object) -> bool:
+        if self.time_us != __value.time_us or self.stanag_counter != __value.stanag_counter:
+            return False
+        return super().__eq__(__value)
