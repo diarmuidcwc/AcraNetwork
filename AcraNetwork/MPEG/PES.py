@@ -12,6 +12,31 @@ PES_EXTENSION_W1 = 0x81
 PES_EXTENSION_W2 = 0x80
 
 
+def pts_to_ts(v: int) -> float:
+    """Presentation Timestamp to seconds floating"""
+    pts = 0
+    pts |= (v >> 3) & (0x0007 << 30)  # // top 3 bits, shifted left by 3, other bits zeroed out
+    pts |= (v >> 2) & (0x7FFF << 15)  # // middle 15 bits
+    pts |= (v >> 1) & (0x7FFF << 0)  # // bottom 15 bits
+    return pts / 90e3
+
+
+def ts_to_pts(ts: float) -> int:
+    """Floating point seconds to PTS"""
+    pts = int(ts * 90e3)
+    v = 0x2100010001  # I have no idea where the 2 comes from at the msb
+    v |= (pts & 0x7FFF) << 1  # // bottom 15 bits
+    v |= ((pts >> 15) & 0x7FFF) << 17  # // middle 15 bits
+    v |= ((pts >> 30) & 0x7) << 31  # // top 3 bits
+
+    return v
+
+
+def ts_to_buf(ts: float) -> bytes:
+    v = ts_to_pts(ts)
+    return struct.pack(">BI", (v >> 32), v & 0xFFFF_FFFF)
+
+
 class PES(MPEGPacket):
 
     def __init__(self) -> None:
@@ -105,11 +130,11 @@ class STANAG4609(PES):
 
     def __init__(self) -> None:
         super().__init__()
-        self.counter: int = 0
+        self.stanag_counter: int = 0
         self._unknown: int = 0xDF
         self._unknown2: int = 0x1F
 
-        self.time_us: int  # Store the time in us
+        self.time_us: int = 0  # Store the time in us
 
     # Set the time as a date time option
     @property
@@ -126,7 +151,7 @@ class STANAG4609(PES):
         if self.pid != STANAG4609_PID:
             raise Exception(f"PID of STANAG should be 0x104 not {self.pid:#0X}")
         # I can't find documentation for these 3 fields. One looks like a counter
-        (self.counter, self._unknown, self._unknown2) = struct.unpack_from(">HBH", self.pesdata, 0)
+        (self.stanag_counter, self._unknown, self._unknown2) = struct.unpack_from(">HBH", self.pesdata, 0)
         _offset = len(STANAG4609_UNIVERSAL_KEY) + STANAG4609_UNKNOWN_OFFSET
         # Check the universal key
         if self.pesdata[STANAG4609_UNKNOWN_OFFSET:_offset] != STANAG4609_UNIVERSAL_KEY:
@@ -151,7 +176,7 @@ class STANAG4609(PES):
             bytes: _description_
         """
         self.pid = STANAG4609_PID
-        self.pesdata = struct.pack(">HBH", self.counter, self._unknown, self._unknown2)  # The unknown header
+        self.pesdata = struct.pack(">HBH", self.stanag_counter, self._unknown, self._unknown2)  # The unknown header
         self.pesdata += STANAG4609_UNIVERSAL_KEY + struct.pack(
             ">BBB", STANAG4609_LEN, STANAG4609_DATA_TAG, STANAG4609_DTAG_LEN
         )

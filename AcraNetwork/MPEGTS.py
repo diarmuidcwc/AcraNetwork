@@ -237,10 +237,10 @@ class MPEGPacket(object):
     """
 
     def __init__(self):
-        self.sync: int = 0
+        self.sync: int = 0x47
         self.pid: int = 0
         self.tei: bool = False
-        self.pusi: bool = False
+        self.pusi: bool = True
         self.transport_priority = 0
         self.tsc: int = 0
         self.adaption_ctrl: int = 0
