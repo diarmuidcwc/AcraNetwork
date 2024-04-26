@@ -54,8 +54,7 @@ class PES(MPEGPacket):
             self.payload += struct.pack(">BBB", self.extension_w1, self.extension_w2, len(self.header_data))
             self.payload += self.header_data
         self.payload += self.pesdata
-        _pl = len(self.pesdata)
-        _ppl = len(self.payload)
+
         return super().pack()
 
     def __repr__(self) -> str:
@@ -92,37 +91,78 @@ def checksum_stanag(buff: bytes) -> int:
     return bcc % 65536
 
 
+STANAG4609_UNIVERSAL_KEY = struct.pack(">QQ", 0x060E2B34020B0101, 0x0E01030101000000)
+STANAG4609_UNKNOWN_OFFSET = 5  # There's some data at the start that I don't understand
+STANAG4609_DATA_TAG = 0x2
+STANAG4609_TIME_TAG = 0x1
+STANAG4609_PID = 0x104
+STANAG4609_LEN = 0xE
+STANAG4609_DTAG_LEN = 0x8
+STANAG4609_TTAG_LEN = 0x2
+
+
 class STANAG4609(PES):
-    UNKNOWN_OFFSET = 5  # There's some data at the start that I don't understand
-    UNIVERSAL_KEY = struct.pack(">QQ", 0x060E2B34020B0101, 0x0E01030101000000)
-    DATA_TAG = 0x2
-    PID = 0x104
 
     def __init__(self) -> None:
         super().__init__()
-        self.time = None
+        self.counter: int = 0
+        self._unknown: int = 0xDF
+        self._unknown2: int = 0x1F
+
+        self.time_us: int  # Store the time in us
+
+    # Set the time as a date time option
+    @property
+    def time(self):
+        return datetime.datetime.fromtimestamp(self.time_us / 1e6)
+
+    @time.setter
+    def time(self, value: datetime.datetime):
+        self.time_us = int(value.timestamp() * 1e6)
 
     def unpack(self, buffer: bytes):
+        """Convert the buffer into a STANAG4609 object"""
         super().unpack(buffer)
-        if self.pid != STANAG4609.PID:
+        if self.pid != STANAG4609_PID:
             raise Exception(f"PID of STANAG should be 0x104 not {self.pid:#0X}")
-        _offset = len(STANAG4609.UNIVERSAL_KEY) + STANAG4609.UNKNOWN_OFFSET
-        if self.pesdata[STANAG4609.UNKNOWN_OFFSET : _offset] != STANAG4609.UNIVERSAL_KEY:
+        # I can't find documentation for these 3 fields. One looks like a counter
+        (self.counter, self._unknown, self._unknown2) = struct.unpack_from(">HBH", self.pesdata, 0)
+        _offset = len(STANAG4609_UNIVERSAL_KEY) + STANAG4609_UNKNOWN_OFFSET
+        # Check the universal key
+        if self.pesdata[STANAG4609_UNKNOWN_OFFSET:_offset] != STANAG4609_UNIVERSAL_KEY:
             raise Exception("STANAG4609 requires a specific UNIVERSAL KEY")
+        # Most of these are static
         (_len, _datatag, _tag_len) = struct.unpack_from(">BBB", self.pesdata, _offset)
-        if _datatag != STANAG4609.DATA_TAG:
+        if _datatag != STANAG4609_DATA_TAG:
             raise Exception("Data tag of STANAG should be 0x2")
         if _tag_len != 8:
             raise Exception(f"Tag length should be 8 not {_tag_len}")
         _offset += 3
-        (time_us, _timetag, _time_len, actchecksum) = struct.unpack_from(">QBBH", self.pesdata, _offset)
-        time_in_s = time_us / 1e6
-        self.time = datetime.datetime.fromtimestamp(time_in_s)
-        checksum = checksum_stanag(self.pesdata[STANAG4609.UNKNOWN_OFFSET : -2])
+        # Pull out the time and store as a datetime
+        (self.time_us, _timetag, _time_len, actchecksum) = struct.unpack_from(">QBBH", self.pesdata, _offset)
+        checksum = checksum_stanag(self.pesdata[STANAG4609_UNKNOWN_OFFSET:-2])
         if checksum != actchecksum:
             raise Exception(f"Extracted checksum={actchecksum:#0X} Calculated={checksum:#0X}")
 
+    def pack(self) -> bytes:
+        """Pack the STANAG4609 object into bytes
+
+        Returns:
+            bytes: _description_
+        """
+        self.pid = STANAG4609_PID
+        self.pesdata = struct.pack(">HBH", self.counter, self._unknown, self._unknown2)  # The unknown header
+        self.pesdata += STANAG4609_UNIVERSAL_KEY + struct.pack(
+            ">BBB", STANAG4609_LEN, STANAG4609_DATA_TAG, STANAG4609_DTAG_LEN
+        )
+        self.pesdata += struct.pack(">Q", self.time_us) + struct.pack(">BB", STANAG4609_TIME_TAG, STANAG4609_TTAG_LEN)
+        checksum = checksum_stanag(self.pesdata[STANAG4609_UNKNOWN_OFFSET:])
+        self.pesdata += struct.pack(">H", checksum)
+        # _lp = len(self.pesdata)
+        return super().pack()
+
     def __repr__(self) -> str:
         r = super().__repr__()
-        r += "\n" + f"Time={repr(self.time)}"
+        time_fmt = datetime.datetime.fromtimestamp(self.time_us / 1e6)
+        r += "\n" + f"   Time={repr(time_fmt)}"
         return r
