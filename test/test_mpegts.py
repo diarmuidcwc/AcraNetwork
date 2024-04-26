@@ -14,6 +14,7 @@ import base64
 import AcraNetwork.MPEG.PMT as MPEGPMT
 import AcraNetwork.MPEG.PES as pes
 import struct
+import datetime
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -209,6 +210,34 @@ class MPEG_PES(unittest.TestCase):
         self.assertEqual(len(p.pack()), 188)
         self.assertEqual(p.pack(), pes_packet)
         print(repr(p.time))
+
+    def test_stanag_create(self):
+        ref = pes.STANAG4609()
+        ref.unpack(pes_packet)
+        # Build a packet from scratch that matches the refernce packet
+        p = pes.STANAG4609()
+        p.pid = pes.STANAG4609_PID
+        p.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_AND_ADAPTION
+        p.adaption_field = MPEGTS.MPEGAdaption()
+        p.adaption_field.length = 133
+        p.time = datetime.datetime(2024, 1, 25, 15, 7, 59, 767139)
+        p.header_data = pes.ts_to_buf(187.14)
+        p.extension_w1 = pes.PES_EXTENSION_W1
+        p.extension_w2 = pes.PES_EXTENSION_W2
+        p.streamid = 0xFC
+        p.stanag_counter = 15
+        p.continuitycounter = 15
+        p.pack()
+        self.assertEqual(p, ref)
+        self.assertEqual(p.pack(), pes_packet)
+
+    def test_stanag_pts(self):
+        ts = 0x210403FED1
+        exp = 187.14
+        self.assertEqual(pes.pts_to_ts(ts), exp)
+        _conv = pes.ts_to_pts(exp)
+        print(f"{_conv:#0X}")
+        self.assertEqual(_conv, ts)
 
 
 if "unittest.util" in __import__("sys").modules:
