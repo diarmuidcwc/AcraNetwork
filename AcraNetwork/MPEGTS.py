@@ -80,7 +80,15 @@ class MPEGAdaptionExtension(object):
         )
         return struct.pack(">BB", _len, _flags) + self.ltw + self.piecewise + self.seamless_splice
 
-    def unpack(self, buffer: bytes):
+    def unpack(self, buffer: bytes) -> int:
+        """Unpack the buffer into an MpegAdaptionExtension and return offset of data used
+
+        Args:
+            buffer (bytes): _description_
+
+        Returns:
+            bytes: _description_
+        """
         _len, _flags = struct.unpack_from(">BB", buffer)
         self.ltw_flag = bool((_flags >> 7) & 0x1)
         self.piecewise_rate_flag = bool((_flags >> 6) & 0x1)
@@ -94,6 +102,8 @@ class MPEGAdaptionExtension(object):
             offset += 3
         if self.seamless_splice_flag:
             self.seamless_splice = buffer[offset : offset + 5]
+            offset += 5
+        return offset
 
     def __repr__(self) -> str:
         return f"ltw_flag={self.ltw_flag}, piecewise_flag={self.piecewise_rate_flag}, seamless_flag={self.seamless_splice_flag}"
@@ -106,6 +116,7 @@ class MPEGAdaption(object):
     """
 
     def __init__(self) -> None:
+        self.length: int = 0
         self.discontinutiy: bool = False
         self.random_access: bool = False
         self.es_priority: bool = False
@@ -136,7 +147,7 @@ class MPEGAdaption(object):
         return _r
 
     def unpack(self, buffer: bytes):
-        _len, _flags = struct.unpack_from(">BB", buffer)
+        self.length, _flags = struct.unpack_from(">BB", buffer)
         self.discontinutiy = bool((_flags >> 7) & 1)
         self.random_access = bool((_flags >> 6) & 1)
         self.es_priority = bool((_flags >> 5) & 1)
@@ -166,7 +177,9 @@ class MPEGAdaption(object):
             offset += _transport_len
         if self.extension_flag:
             self.adaption_extension = MPEGAdaptionExtension()
-            self.adaption_extension.unpack(buffer[offset:])
+            offset += self.adaption_extension.unpack(buffer[offset:])
+        _stuffing = buffer[offset:]
+        return None
 
     def pack(self):
 
@@ -186,7 +199,10 @@ class MPEGAdaption(object):
             _extension_buffer = self.adaption_extension.pack()
         else:
             _extension_buffer = bytes()
-        _len = len(self.pcr) + len(self.opcr) + len(self.private_data) + len(_extension_buffer) + len(splice_buf) + 1
+        _suffing_len = self.length - (
+            len(self.pcr) + len(self.opcr) + len(self.private_data) + len(_extension_buffer) + len(splice_buf) + 1
+        )
+        _stuffing = b"\xff" * _suffing_len
         _flags = (
             (int(self.discontinutiy) << 7)
             + (int(self.random_access) << 6)
@@ -197,8 +213,15 @@ class MPEGAdaption(object):
             + (int(self.transpart_flag << 1))
             + int(self.extension_flag)
         )
+
         return (
-            struct.pack(">BB", _len, _flags) + self.pcr + self.opcr + splice_buf + self.private_data + _extension_buffer
+            struct.pack(">BB", self.length, _flags)
+            + self.pcr
+            + self.opcr
+            + splice_buf
+            + self.private_data
+            + _extension_buffer
+            + _stuffing
         )
 
 
@@ -272,6 +295,7 @@ class MPEGPacket(object):
             _adaption_fieldn_paylad = bytes()
 
         _unstuffed = _payload + _adaption_fieldn_paylad + self.payload
+        _l = len(self.payload)
         _stuffing = b"\xff" * (188 - len(_unstuffed))
         return _unstuffed + _stuffing
 
