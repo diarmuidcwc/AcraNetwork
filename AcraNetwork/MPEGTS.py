@@ -285,7 +285,7 @@ class MPEGPacket(object):
         else:
             raise Exception("Adaption control of 0 is reserved")
 
-    def pack(self) -> bytes:
+    def pack(self, nostuff: bool = False) -> bytes:
         pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
         continuity = self.continuitycounter + (self.adaption_ctrl << 4) + (self.tsc << 6)
         _payload = struct.pack(">BHB", self.sync, pid_full, continuity)
@@ -296,7 +296,10 @@ class MPEGPacket(object):
 
         _unstuffed = _payload + _adaption_fieldn_paylad + self.payload
         _l = len(self.payload)
-        _stuffing = b"\xff" * (188 - len(_unstuffed))
+        if nostuff:
+            _stuffing = bytes()
+        else:
+            _stuffing = b"\xff" * (188 - len(_unstuffed))
         return _unstuffed + _stuffing
 
     def __repr__(self) -> str:

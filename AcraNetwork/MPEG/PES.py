@@ -37,6 +37,13 @@ def ts_to_buf(ts: float) -> bytes:
     return struct.pack(">BI", (v >> 32), v & 0xFFFF_FFFF)
 
 
+def buf_to_ts(buffer: bytes) -> float:
+    """Convert a buffer (ie PES header) to a timestamp"""
+    (msb, lsb) = struct.unpack(">BI", buffer)
+    pts_ts = lsb + (msb << 32)
+    return pts_to_ts(pts_ts)
+
+
 class PES(MPEGPacket):
 
     def __init__(self) -> None:
