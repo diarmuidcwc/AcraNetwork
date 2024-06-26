@@ -81,4 +81,5 @@
 # 0.17.1  - Added Video to the chapter10
 # 0.17.2  - Major update to the MPEGTS section. Split out code into multiple modules. Added support for PAT packets
 # 0.17.3  - Added support for PES + STANAG4609 packets
-__version__ = "0.17.3"
+# 0.17.4  - Option to mpeg ts pack to not stuff
+__version__ = "0.17.4"
