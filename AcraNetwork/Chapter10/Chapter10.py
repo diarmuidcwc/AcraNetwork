@@ -271,12 +271,6 @@ class Chapter10(object):
             self.payload = buffer[Chapter10.CH10_HDR_FORMAT_LEN :]
             self.ts_source = TS_RTC
 
-        if len(self.payload) != self.datalen:
-            raise Exception("Data length in primary header {} does not match quantity of bytes in packet after headers {}".format(
-                self.datalen, len(self.payload)
-                )
-            )
-
         return True
 
     def __eq__(self, other):
