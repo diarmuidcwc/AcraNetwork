@@ -83,5 +83,6 @@
 # 0.17.3  - Added support for PES + STANAG4609 packets
 # 0.17.4  - Option to mpeg ts pack to not stuff
 # 0.17.5  - Check chapter10 data length field and throw exception if not correct
+# 0.17.6  - Reverted last change
 
-__version__ = "0.17.5"
+__version__ = "0.17.6"
