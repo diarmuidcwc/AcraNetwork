@@ -1,5 +1,16 @@
 import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
+from enum import IntEnum, unique
+
+
+@unique
+class Endianness(IntEnum):
+    BIG: int = 0
+    LITTLE: int = 1
+
+
+def endian_swap(buffer):
+    return bytearray([c for t in zip(buffer[1::2], buffer[::2]) for c in t])
 
 
 class UARTDataWord(object):
@@ -14,7 +25,7 @@ class UARTDataWord(object):
     :type payload: str
     """
 
-    def __init__(self, ipts_source=TS_CH4):
+    def __init__(self, ipts_source=TS_CH4, data_endianness: int = Endianness.BIG):
         if ipts_source == TS_CH4:
             self.ipts = RTCTime()
         elif ipts_source == TS_IEEE1558:
@@ -25,6 +36,7 @@ class UARTDataWord(object):
         self.subchannel = 0  #: Subchannel
         self.datalength = None  #: Data Length
         self._payload = b""  #: UART payload
+        self.data_endianness: int = data_endianness
 
     @property
     def payload(self):
@@ -57,7 +69,10 @@ class UARTDataWord(object):
         else:
             padding = b""
 
-        return ch_spec_word + intra_pkt_header + self.payload + padding
+        payload_and_padding = self.payload + padding
+        if self.data_endianness == Endianness.LITTLE:
+            payload_and_padding = endian_swap(payload_and_padding)
+        return ch_spec_word + intra_pkt_header + payload_and_padding
 
     def unpack(self, mybuffer):
         """
@@ -79,7 +94,19 @@ class UARTDataWord(object):
 
         self.subchannel = _pe_sub & 0x1FFF
         self.parity_error = bool(_pe_sub >> 15)
-        self.payload = mybuffer[offset : offset + self.datalength]
+
+        if self.data_endianness == Endianness.LITTLE:
+            if self.datalength % 2 == 1:
+                payload_and_padding = mybuffer[offset : offset + self.datalength + 1]  # take the buffer and the payload
+                payload_and_padding = endian_swap(payload_and_padding)
+                payload_and_padding = payload_and_padding[:-1]
+            else:
+                payload_and_padding = mybuffer[offset : offset + self.datalength]
+                payload_and_padding = endian_swap(payload_and_padding)
+        else:
+            payload_and_padding = mybuffer[offset : offset + self.datalength]
+
+        self.payload = payload_and_padding
         offset += self.datalength
 
         if self.datalength % 2 == 1:
@@ -100,9 +127,7 @@ class UARTDataWord(object):
         return True
 
     def __repr__(self):
-        return "UARTDataWord: Time={} ParityError={} DataLen={} SubChannel={}".format(
-            self.ipts, self.parity_error, self.datalength, self.subchannel
-        )
+        return f"UARTDataWord: Time={self.ipts} ParityError={self.parity_error} DataLen={self.datalength} SubChannel={self.subchannel} Endianness={repr(self.data_endianness)}"
 
 
 class UARTDataPacket(object):
@@ -121,9 +146,10 @@ class UARTDataPacket(object):
 
     """
 
-    def __init__(self, ipts_source=TS_CH4):
+    def __init__(self, ipts_source=TS_CH4, data_endianness: int = Endianness.BIG):
         self.uartwords = []  #: List of :class:`UARTDataWord`
         self._ipts_source = ipts_source
+        self.data_endianness = data_endianness
 
     def pack(self):
         """
@@ -159,7 +185,7 @@ class UARTDataPacket(object):
         ts_present = bool(ch_spec_word >> 31)
         offset = 4
         while abs(offset - len(mybuffer)) > 4:
-            udw = UARTDataWord(self._ipts_source)
+            udw = UARTDataWord(self._ipts_source, self.data_endianness)
             offset += udw.unpack(mybuffer[offset:])
             self.uartwords.append(udw)
 

@@ -330,7 +330,7 @@ class CH10UDPTest(unittest.TestCase):
 
 
 uart_pkt = """UARTPayload: UARTDataWordCount=1
-  UARTDataWord: Time=PTP: 14:21:43 20-May 1976 nanosec=10 ParityError=False DataLen=508 SubChannel=8191
+  UARTDataWord: Time=PTP: 14:21:43 20-May 1976 nanosec=10 ParityError=False DataLen=508 SubChannel=8191 Endianness=<Endianness.BIG: 0>
 """
 
 
@@ -372,7 +372,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertEqual(
             repr(udp[0]),
             "UARTDataWord: Time=RTC: count=0 ParityError={} DataLen={} "
-            "SubChannel=52".format(udp[0].parity_error, udp[0].datalength),
+            "SubChannel=52 Endianness=<Endianness.BIG: 0>".format(udp[0].parity_error, udp[0].datalength),
         )
 
     def test_uart_unpack(self):
@@ -398,6 +398,21 @@ class Ch10UARTTest(unittest.TestCase):
         uart2 = copy.copy(uart)
         self.assertEqual(uart, uart2)
         self.assertEqual(repr(uart2), uart_pkt)
+
+    def test_uart_le_unpack(self):
+        p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_uart_le.pcap"))
+        mypcaprecord = p[0]
+        ch10pkt = ch10.Chapter10()
+        ch10pkt.unpack(mypcaprecord.payload[0x2E:-4])
+        uart = ch10uart.UARTDataPacket(TS_IEEE1558, ch10uart.Endianness.LITTLE)
+        uart.unpack(ch10pkt.payload)
+        self.assertEqual(len(uart), 3)
+        for idx, dw in enumerate(uart):
+            if idx == 0:
+                self.assertEqual(dw.datalength, 365)
+                self.assertEqual(len(dw.payload), 365)
+                (last_byte,) = struct.unpack_from(">B", dw.payload, 365 - 1)
+                self.assertEqual(last_byte, 0x4B)
 
     @unittest.skip("")
     def test_fmt2_unpack(self):

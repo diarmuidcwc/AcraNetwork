@@ -84,5 +84,6 @@
 # 0.17.4  - Option to mpeg ts pack to not stuff
 # 0.17.5  - Check chapter10 data length field and throw exception if not correct
 # 0.17.6  - Reverted last change
+# 0.17.7  - Allowed ch10 UART packet to be little endian
 
-__version__ = "0.17.6"
+__version__ = "0.17.7"
