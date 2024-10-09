@@ -85,5 +85,6 @@
 # 0.17.5  - Check chapter10 data length field and throw exception if not correct
 # 0.17.6  - Reverted last change
 # 0.17.7  - Allowed ch10 UART packet to be little endian
+# 0.17.8  - Fixed ch10 secondary header checksum calculation
 
-__version__ = "0.17.7"
+__version__ = "0.17.8"
