@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -35,6 +36,20 @@ def get_checksum_buf(buf):
 
     words = struct.unpack("<{}H".format(len(buf) // 2), buf)
     sum = reduce(lambda x, y: x + y, words)
+
+    return sum % 65536
+
+
+def get_checksum_byte_buf(buf):
+    """
+    Return the arithmetic checksum of a header
+
+    :param buf:
+    :return:
+    """
+
+    checksumbytes = struct.unpack(f"<{len(buf)}B", buf)
+    sum = reduce(lambda x, y: x + y, checksumbytes)
 
     return sum % 65536
 
@@ -162,7 +177,7 @@ class Chapter10(object):
 
             sec_hdr = self.ptptime.pack() + struct.pack(">HH", 0, 0)
             # Replace the checksum
-            cs = get_checksum_buf(sec_hdr)
+            cs = get_checksum_byte_buf(sec_hdr)
             sec_hdr = sec_hdr[:-2] + struct.pack("<H", cs)
         else:
             sec_hdr = b""
@@ -240,7 +255,7 @@ class Chapter10(object):
                 Chapter10.CH10_OPT_HDR_FORMAT, buffer, Chapter10.CH10_HDR_FORMAT_LEN
             )
 
-            sec_exp_checksum = get_checksum_buf(
+            sec_exp_checksum = get_checksum_byte_buf(
                 buffer[
                     Chapter10.CH10_HDR_FORMAT_LEN : Chapter10.CH10_HDR_FORMAT_LEN
                     + Chapter10.CH10_OPT_HDR_FORMAT_LEN
