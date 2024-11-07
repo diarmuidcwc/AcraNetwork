@@ -86,5 +86,5 @@
 # 0.17.6  - Reverted last change
 # 0.17.7  - Allowed ch10 UART packet to be little endian
 # 0.17.8  - Fixed ch10 secondary header checksum calculation
-
-__version__ = "0.17.8"
+# 0.17.9  - Downgraded the offset error in ch7 to a warning. Added type hintint to ch7
+__version__ = "0.17.9"
