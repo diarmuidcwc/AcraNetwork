@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 .. module:: SimpleEthernet
     :platform: Unix, Windows
@@ -19,6 +21,7 @@ from functools import reduce
 from zlib import crc32
 import logging
 import typing
+import enum
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +38,10 @@ def unpack48(x: bytes) -> int:
     """
     x2, x3 = struct.unpack(">HI", x)
     return x3 | (x2 << 32)
+
+
+def pack48(x: int) -> bytes:
+    return struct.pack(">HI", x >> 32, x & 0xFFFF_FFFF)
 
 
 def mactoreadable(macaddress: int) -> str:
@@ -97,6 +104,7 @@ class Ethernet(object):
     TYPE_ARP = 0x806  # :(Object Constant) ARP Type Constant
     TYPE_PAUSE = 0x8808  # :(Object Constant) PAUSE Type Constant
     TYPE_VLAN = 0x8100
+    ADDR_LENGTH = 6  # Address length for ARP
 
     def __init__(self, buf: typing.Optional[bytes] = None):
         """
@@ -109,8 +117,12 @@ class Ethernet(object):
         self.type: int = (
             Ethernet.TYPE_IP
         )  #: The Ethertype field. Assign using the TYPE_* constants. https://en.wikipedia.org/wiki/EtherType
-        self.srcmac: int = 0x0  #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
-        self.dstmac: int = 0x0  #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        self.srcmac: int = (
+            0x0  #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        )
+        self.dstmac: int = (
+            0x0  #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        )
         self.payload: bytes = bytes()  #: The Ethernet payload. Typically an IP packet.
         self.vlan: bool = False
         self.vlantag: int = 0xFFFF
@@ -243,6 +255,7 @@ class IP(object):
     }  # (Object Constant) Protocols available
     IP_HEADER_FORMAT = ">BBHHBBBBHII"
     IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
+    ADDR_LENGTH = 4
 
     def __init__(self, buf: typing.Optional[bytes] = None):
         """
@@ -342,6 +355,10 @@ class IP(object):
             if v == self.protocol:
                 protocol = p
         return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
+
+
+class IPv4(IP):
+    pass
 
 
 class IPv6(object):
@@ -669,6 +686,60 @@ class IGMPv3(object):
         all_16b_wds = struct.unpack(">{}H".format(int(len(_nochecksum) / 2)), _nochecksum)
         checksum = ~reduce(ones_comp_add16, all_16b_wds) & 0xFFFF
         return _nochecksum[:2] + struct.pack(">H", checksum) + _nochecksum[4:]
+
+
+class ARP(object):
+
+    OPER_REQUEST = 1
+    OPER_REPLY = 2
+
+    def __init__(self):
+        self.hardware_type: int = 1
+        self.protocol_type: int = Ethernet.TYPE_IPv4
+        self.hardware_length: int = Ethernet.ADDR_LENGTH
+        self.protocol_length: int = IPv4.ADDR_LENGTH
+        self.operation: int = ARP.OPER_REQUEST
+        self.srcmac: int = 0x0
+        self.dstmac: int = 0x0
+        self.srcip: str = "0.0.0.0"
+        self.dstip: str = "0.0.0.0"
+
+    def pack(self) -> bytes:
+        _raw = struct.pack(
+            ">HHBBH", self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation
+        )
+        _raw += pack48(self.srcmac) + socket.inet_aton(self.srcip) + pack48(self.dstmac) + socket.inet_aton(self.dstip)
+        return _raw
+
+    def unpack(self, buffer: bytes) -> None:
+        (self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation) = (
+            struct.unpack_from(">HHBBH", buffer)
+        )
+        self.srcmac = unpack48(buffer[8:14])
+        self.srcip = socket.inet_ntoa(buffer[14:18])
+        self.dstmac = unpack48(buffer[18:24])
+        self.dstip = socket.inet_ntoa(buffer[24:28])
+
+    def __repr__(self):
+        return f"ARP: HW_type={self.hardware_type} ProtoType={self.protocol_type}, SRC={self.srcmac}/{self.srcip} DST={self.dstmac}/{self.dstip}"
+
+    def __eq__(self, other: ARP) -> bool:
+        if not isinstance(other, ARP):
+            return False
+        for attr in [
+            "hardware_type",
+            "protocol_type",
+            "hardware_length",
+            "protocol_length",
+            "operation",
+            "srcmac",
+            "dstmac",
+            "srcip",
+            "dstip",
+        ]:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return True
 
 
 def combine_ip_fragments(packets: typing.List[IP]):
