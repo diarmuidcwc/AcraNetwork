@@ -299,6 +299,31 @@ class SimpleEthernetTest(unittest.TestCase):
         p.write(r)
         p.close()
 
+    ######################
+    # ARP
+    ######################
+
+    def test_ARP(self):
+        a = SimpleEthernet.ARP()
+        a.dstip = "192.168.28.2"
+        a.dstmac = 0x0
+        a.srcip = "192.168.28.5"
+        a.srcmac = 0xAF72B6D5B
+        buf = a.pack()
+        b = SimpleEthernet.ARP()
+        self.assertIsNone(b.unpack(buf))
+        self.assertEqual(a, b)
+        p = pcap.Pcap("_arp.pcap", mode="w")
+        r = pcap.PcapRecord()
+        e = SimpleEthernet.Ethernet()
+        e.srcmac = 0x001122334455
+        e.dstmac = 0xFF_FF_FF_FF_FF_FF
+        e.type = SimpleEthernet.Ethernet.TYPE_ARP
+        e.payload = buf
+        r.packet = e.pack(fcs=False)
+        p.write(r)
+        p.close()
+
 
 if __name__ == "__main__":
     unittest.main()
