@@ -88,4 +88,6 @@
 # 0.17.8  - Fixed ch10 secondary header checksum calculation
 # 0.17.9  - Downgraded the offset error in ch7 to a warning. Added type hintint to ch7
 # 0.17.10 - Added support for ARP in SimpleEthernet
-__version__ = "0.17.10"
+# 0.17.11 - Added the SamDec class to support capturing live data from a SamDec
+
+__version__ = "0.17.11"
