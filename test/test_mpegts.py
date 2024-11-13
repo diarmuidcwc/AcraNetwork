@@ -220,7 +220,7 @@ class MPEG_PES(unittest.TestCase):
         p.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_AND_ADAPTION
         p.adaption_field = MPEGTS.MPEGAdaption()
         p.adaption_field.length = 133
-        p.time = datetime.datetime(2024, 1, 25, 15, 7, 59, 767139)
+        p.time = datetime.datetime(2024, 1, 25, 15, 7, 59, 767139, tzinfo=datetime.timezone.utc)
         p.header_data = pes.ts_to_buf(187.14)
         p.extension_w1 = pes.PES_EXTENSION_W1
         p.extension_w2 = pes.PES_EXTENSION_W2
