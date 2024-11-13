@@ -399,6 +399,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertEqual(uart, uart2)
         self.assertEqual(repr(uart2), uart_pkt)
 
+    @unittest.skip("missing pcap")
     def test_uart_le_unpack(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_uart_le.pcap"))
         mypcaprecord = p[0]
