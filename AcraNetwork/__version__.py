@@ -89,5 +89,5 @@
 # 0.17.9  - Downgraded the offset error in ch7 to a warning. Added type hintint to ch7
 # 0.17.10 - Added support for ARP in SimpleEthernet
 # 0.17.11 - Added the SamDec class to support capturing live data from a SamDec
-# 0.17.12 - No change
-__version__ = "0.17.12"
+# 0.17.13 - Added chapter 10 recorder script.
+__version__ = "0.17.13"
