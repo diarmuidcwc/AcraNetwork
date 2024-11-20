@@ -90,4 +90,5 @@
 # 0.17.10 - Added support for ARP in SimpleEthernet
 # 0.17.11 - Added the SamDec class to support capturing live data from a SamDec
 # 0.17.13 - Added chapter 10 recorder script.
-__version__ = "0.17.13"
+# 0.17.14 - Fixed the PMT packet in MPEGTS
+__version__ = "0.17.14"

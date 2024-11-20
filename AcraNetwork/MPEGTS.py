@@ -177,7 +177,10 @@ class MPEGAdaption(object):
             offset += _transport_len
         if self.extension_flag:
             self.adaption_extension = MPEGAdaptionExtension()
-            offset += self.adaption_extension.unpack(buffer[offset:])
+            try:
+                offset += self.adaption_extension.unpack(buffer[offset:])
+            except Exception as e:
+                logger.error(f"Failed to unpack the MPEGAdationExtension. Err={e}")
         _stuffing = buffer[offset:]
         return None
 
@@ -273,17 +276,22 @@ class MPEGPacket(object):
             (adaption_len,) = struct.unpack_from(">B", buf[4:])
             # logger.debug(f"Adaption len ={adaption_len}")
             self.payload = buf[(4 + 1 + adaption_len) :]
-
             self.adaption_field = MPEGAdaption()
-            self.adaption_field.unpack(buf[4 : (adaption_len + 1 + 4)])
+            try:
+                self.adaption_field.unpack(buf[4 : (adaption_len + 1 + 4)])
+            except Exception as e:
+                logger.error(f"Failed to unpack the MPEGAdationExtension. Err={e}")
         elif self.adaption_ctrl == ADAPTION_ADAPTION_ONLY:
             self.adaption_field = MPEGAdaption()
-            self.adaption_field.unpack(buf[4 : (1 + 4 + adaption_len)])
+            try:
+                self.adaption_field.unpack(buf[4:])
+            except Exception as e:
+                logger.error(f"Failed to unpack the MPEGAdationExtension. Err={e}")
             self.payload = bytes()
         elif self.adaption_ctrl == ADAPTION_PAYLOAD_ONLY:
             self.payload = buf[4:]
         else:
-            raise Exception("Adaption control of 0 is reserved")
+            logger.debug("Adaption control of 0 is reserved")
 
     def pack(self, nostuff: bool = False) -> bytes:
         pid_full = self.pid + (self.transport_priority << 13) + (int(self.pusi) << 14) + (int(self.tei) << 15)
@@ -360,7 +368,10 @@ class MPEGTS(object):
         remainingbytes = 0
         while remainingbytes < len(buf):
             MpegBlock = MPEGPacket()
-            MpegBlock.unpack(buf[remainingbytes : remainingbytes + 188])
+            try:
+                MpegBlock.unpack(buf[remainingbytes : remainingbytes + 188])
+            except Exception as e:
+                raise Exception(f"Could not decom data as MPEG. Error={e} data offset={remainingbytes}")
             self.blocks.append(MpegBlock)
             remainingbytes += 188
 
@@ -381,7 +392,7 @@ class MPEGTS(object):
         self._index = 0
         return self
 
-    def next(self):
+    def next(self) -> MPEGPacket:
         if self._index < len(self.blocks):
             _block = self.blocks[self._index]
             self._index += 1
