@@ -15,6 +15,7 @@ import AcraNetwork.MPEG.PMT as MPEGPMT
 import AcraNetwork.MPEG.PES as pes
 import struct
 import datetime
+import logging
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -142,14 +143,53 @@ class MPEGTSBasicTest(unittest.TestCase):
         self.assertEqual(nal_counts[0], 35)
         self.assertEqual(nal_counts[6], 70)
 
+    @unittest.skip("Missing input ts")
+    def test_capture(self):
+        ts_f = open(os.path.join(THIS_DIR, "capture_0XDC1.ts"), mode="rb")
+        pids = {}
+        PMT_PID = 256
+        while True:
+            ts_block = ts_f.read(188)
+            if not ts_block:
+                break
+            mpeg_pkt = MPEGTS.MPEGPacket()
+            try:
+                mpeg_pkt.unpack(ts_block)
+            except Exception as e:
+                logging.error(e)
+                # self.assertTrue(False)
+            else:
+                if mpeg_pkt.pid not in pids:
+                    pids[mpeg_pkt.pid] = 0
+                pids[mpeg_pkt.pid] += 1
+
+                if mpeg_pkt.pid == PMT_PID:
+                    pmt_pkt = MPEGPMT.MPEGPacketPMT()
+                    try:
+                        pmt_pkt.unpack(ts_block)
+                    except Exception as e:
+                        logging.error(f"Failed to unpack offset {ts_f.tell():#0X} as PMT")
+                        sys.exit(1)
+                    else:
+                        print(f"PMT={repr(pmt_pkt)}")
+
+        ts_f.close()
+        for pid, count in sorted(pids.items()):
+            logging.info(f"PID={pid:#0X} Count={count}")
+
 
 # Take from Wireshar - > cop
 pmt_payload = base64.b64decode(
     "R0EAGQACsDgAAcEAAOEB8AAb4QLwAAPhA/AAFeEE8BwFBEtMVkEmCQEA/0tMVkEADycJwQAAwIAAwQAAX+WEI/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
 )
 
+# Two descriptor tags + twp streams
+pmt2_payload = base64.b64decode(
+    "R0EAEQACsCMAAcEAAPAA8AwFBEhETVaIBA///Pwb8QDwAA/xEPAAn17xO/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
+)
 
-class MPEGPNT(unittest.TestCase):
+
+class MPEGPMTTest(unittest.TestCase):
     def test_pmt_unpack(self):
         pmt = MPEGPMT.MPEGPacketPMT()
         pmt.unpack(pmt_payload)
@@ -158,6 +198,10 @@ class MPEGPNT(unittest.TestCase):
         pmt2.unpack(pmt.pack())
         self.assertEqual(pmt, pmt2)
         self.assertEqual(pmt_payload, pmt2.pack())
+
+    def test_pmt2_unpack(self):
+        pmt = MPEGPMT.MPEGPacketPMT()
+        pmt.unpack(pmt2_payload)
 
     def test_pmt_random(self):
         pmt = MPEGPMT.MPEGPacketPMT()
@@ -172,7 +216,7 @@ class MPEGPNT(unittest.TestCase):
         t.data = struct.pack(">5H", *(list(range(5))))
         t.tag = 0xA
         s = MPEGPMT.PMTStream()
-        s.descriptor_tags = [t]
+        pmt.descriptor_tags = [t]
         s.elementary_pid = 0x1FEF
         pmt.streams = [s]
         _packed = pmt.pack()
