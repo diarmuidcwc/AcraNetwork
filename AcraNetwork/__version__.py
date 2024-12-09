@@ -91,4 +91,5 @@
 # 0.17.11 - Added the SamDec class to support capturing live data from a SamDec
 # 0.17.13 - Added chapter 10 recorder script.
 # 0.17.14 - Fixed the PMT packet in MPEGTS
-__version__ = "0.17.14"
+# 0.17.15 - Added support for reading SamDec pcap files
+__version__ = "0.17.15"

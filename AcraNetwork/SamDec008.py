@@ -1,6 +1,7 @@
 import socket
 import logging
 import AcraNetwork.iNetX as inetx
+import AcraNetwork.Pcap as pcap
 import typing
 import struct
 
@@ -131,3 +132,39 @@ class SamDec008(object):
                             self.frame_length = None
                         else:
                             yield frame_buffer
+
+
+class SamDecPcap(SamDec008):
+    def __init__(self, pcap_fname: str):
+
+        self._pcap = pcap.Pcap(pcap_fname, mode="r")
+
+        self._current_aligned = True
+        self._payload_offset = 0
+        self._sequence = None
+
+        self.streamid = 0x153  #: StreamID on which to capture the SAM/DEC data
+        self.frame_length = None  #: Calculate the frame length by searching the payload for the sync words
+        # For the setup side. Most of the defaults are ok
+        self.sync_word = 0xFE6B2840
+
+        # Logging
+        self._logger = logging.getLogger(__name__)
+
+    def close(self):
+        self._pcap.close()
+
+    def _get_data(self) -> typing.Generator[bytes, None, None]:
+        """
+        Get the data, agnostic to network vs pcap
+
+        :rtype: collections.Iterable[str]
+        """
+        UDP_TYPE = 17
+        for rec in self._pcap:
+            if len(rec.payload) > 0x46:
+                (ip_type,) = struct.unpack_from(">B", rec.payload, 0x17)
+                if ip_type == UDP_TYPE:
+                    data = rec.payload[0x2A:]
+                    self._logger.debug(f"FrameLen={len(data)}")
+                    yield data

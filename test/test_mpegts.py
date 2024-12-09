@@ -229,6 +229,9 @@ class MPEGPMTTest(unittest.TestCase):
 pes_packet = base64.b64decode(
     "R0EEP4UA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFIQQD/tEAD98AHwYOKzQCCwEBDgEDAQEAAAAOAggABg/Gi5FmYwECH1M="
 )
+stanag_packet = base64.b64decode(
+    "R0EEP4UA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFAQQF2WsAAN8AHwYOKzQCCwEBDgEDAQEAAAAOAggABhTIE/mTuQECKsg="
+)
 
 
 class MPEG_PES(unittest.TestCase):
@@ -249,6 +252,15 @@ class MPEG_PES(unittest.TestCase):
     def test_stanag_unpack(self):
         p = pes.STANAG4609()
         p.unpack(pes_packet)
+        print(repr(p))
+        self.assertEqual(36, len(p.pesdata))
+        self.assertEqual(len(p.pack()), 188)
+        self.assertEqual(p.pack(), pes_packet)
+        print(repr(p.time))
+
+    def test_stanag2_unpack(self):
+        p = pes.STANAG4609()
+        p.unpack(stanag_packet)
         print(repr(p))
         self.assertEqual(36, len(p.pesdata))
         self.assertEqual(len(p.pack()), 188)
