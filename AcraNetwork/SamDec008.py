@@ -9,16 +9,16 @@ import struct
 PCM_HDR_LEN = 10
 
 
-def string_matching_boyer_moore_horspool(text="", pattern=""):
+def string_matching_boyer_moore_horspool(text: str = "", pattern: str = "") -> typing.List[int]:
     """
     Returns positions where pattern is found in text.
     O(n)
     Performance: ord() is slow so we shouldn't use it here
     Example: text = 'ababbababa', pattern = 'aba'
          string_matching_boyer_moore_horspool(text, pattern) returns [0, 5, 7]
-    @param text text to search inside
-    @param pattern string to search for
-    @return list containing offsets (shifts) where pattern is found inside text
+    :param text: text to search inside
+    :param pattern: string to search for
+    :return: list containing offsets (shifts) where pattern is found inside text
     """
     m = len(pattern)
     n = len(text)
@@ -48,6 +48,31 @@ def string_matching_boyer_moore_horspool(text="", pattern=""):
 
 
 class SamDec008(object):
+    """
+    The SAM/DEC/008 is a USB power PCM decommutator (https://www.curtisswrightds.com/products/flight-test/ground-stations/samdec008)
+
+    Once configured it will convert PCM frames into iNetX packets over UDP
+
+    This class will capture UDP packets from the network, extract the iNetX payload and align the data to PCM frame
+    boundaries. It will return PCM frames as bytes
+
+    Supply the UDP port and the IP Address of the correct network interface card on your PC
+    You can use ''  to let you OS decide
+
+    :param udp_port: The receive UDP port number
+    :type udp_port: int
+    :param timeout: Timeout in seconds
+    :type timeout: float
+    :param localaddress: The local network interface ip address
+    :type localaddress: str
+
+    >>> samdec = sd.SamDec008(8010, localaddress="192.168.28.100, timeout=2)
+    >>> for frame in samdec.frames():
+    >>>     frame_count += 1
+
+
+    """
+
     def __init__(self, udp_port: int, timeout: float = 5.0, localaddress=""):
 
         self.recv_sockets = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -135,6 +160,25 @@ class SamDec008(object):
 
 
 class SamDecPcap(SamDec008):
+    """
+    The SAM/DEC/008 is a USB power PCM decommutator (https://www.curtisswrightds.com/products/flight-test/ground-stations/samdec008)
+
+    Once configured it will convert PCM frames into iNetX packets over UDP
+
+    This class will take iNetx packet fromn a pcap file, extract the iNetX payload and align the data to PCM frame
+    boundaries. It will return PCM frames as bytes
+
+    :param pcap_fname: The PCAP filename
+    :type pcap_fname: str
+
+
+    >>> samdec = sd.SamDecPcap("input.pcap")
+    >>> for frame in samdec.frames():
+    >>>     frame_count += 1
+
+
+    """
+
     def __init__(self, pcap_fname: str):
 
         self._pcap = pcap.Pcap(pcap_fname, mode="r")

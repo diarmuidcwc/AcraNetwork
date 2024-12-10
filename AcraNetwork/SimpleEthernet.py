@@ -590,7 +590,15 @@ class AFDX(object):
 
 class ICMP(object):
     """
-    ICMP packets.
+    Class to handle ICMP packets
+
+    >>> i = ICMP()
+    >>> i.type = ICMP.TYPE_REPLY
+    >>> i.code = 0
+    >>> i.payload = b"\x00"
+    >>> mypacket = i.pack()
+
+
     """
 
     TYPE_REPLY = 0x0
@@ -605,10 +613,9 @@ class ICMP(object):
         self.request_sequence = None
         self.payload = bytes()
 
-    def pack(self):
+    def pack(self) -> BytesWarning:
         """
-        Pack an ICMP object into a buff
-        :return:
+        Pack an ICMP object into a buffer of bytes
         """
         for attr in ("type", "code", "request_id", "request_sequence"):
             if type(getattr(self, attr)) != int:
@@ -619,7 +626,7 @@ class ICMP(object):
         _hdr = _hdr_no_checksum[:2] + struct.pack("H", _icmp_checksum) + _hdr_no_checksum[4:]
         return _hdr + self.payload
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         raise NotImplementedError("Not implemented")
 
 
@@ -742,12 +749,10 @@ class ARP(object):
         return True
 
 
-def combine_ip_fragments(packets: typing.List[IP]):
+def combine_ip_fragments(packets: typing.List[IP]) -> IP:
     """
     Combine the lists of fragmented IP packets into one IP packet
 
-    :type packets: list[IP]
-    :rtype: IP
     """
     ident = None
     # Check first the we have the correct imput
