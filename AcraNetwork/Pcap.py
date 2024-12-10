@@ -120,7 +120,6 @@ class PcapRecord(object):
 
 
 class Pcap(object):
-
     """
     Create a new Pcap object with the specified filename.
     Set the mode to define read, write or append

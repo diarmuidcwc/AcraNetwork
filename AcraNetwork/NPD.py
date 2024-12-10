@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -295,9 +296,9 @@ class NPD(object):
         self.datasrcid: int = 0  #: A unique data source identifier for each data source.
         self.mcastaddr: str = ""  #: The 32-bit IP multicast address used as the destination address of the packet.
         self.timestamp = None  #: The content of this field is based upon the R bit in the flags field of the NPD Packet Protocol header.
-        self.segments: typing.List[
-            NPDSegment | ACQSegment | PCMPacketizer | RS232Segment | MIL1553Segment
-        ] = []  #: List of all the data segments
+        self.segments: typing.List[NPDSegment | ACQSegment | PCMPacketizer | RS232Segment | MIL1553Segment] = (
+            []
+        )  #: List of all the data segments
 
     def unpack(self, buffer: bytes) -> bool:
         """
