@@ -10,6 +10,7 @@ Welcome to AcraNetwork's documentation!
    :maxdepth: 2
 
    pcap
+   samdec008
    simpleethernet
    IENA
    inet

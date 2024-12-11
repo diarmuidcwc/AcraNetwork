@@ -15,7 +15,7 @@ Chapter10 object :class:`Chapter10.Chapter10`
 
 Examples and details are available below
 
-.. py:currentmodule:: Chapter10.Chapter10UDP
+.. py:currentmodule:: AcraNetwork.Chapter10.Chapter10UDP
 
 :class:`Chapter10UDP` Objects
 ==============================
@@ -23,7 +23,7 @@ Examples and details are available below
    :members:
 
 
-.. py:currentmodule:: Chapter10.Chapter10
+.. py:currentmodule:: AcraNetwork.Chapter10.Chapter10
 
 :class:`Chapter10` Objects
 ===========================
@@ -43,14 +43,14 @@ These are useful functions than are associated with Chapter10 packets
 .. autofunction:: get_checksum_byte_buf
 
 
-.. py:currentmodule:: Chapter10.Analog
+.. py:currentmodule:: AcraNetwork.Chapter10.Analog
 
 :class:`Analog` Objects
 ===========================
 .. autoclass:: Analog
    :members:
 
-.. py:currentmodule:: Chapter10.ARINC429
+.. py:currentmodule:: AcraNetwork.Chapter10.ARINC429
 
 :class:`ARINC429DataPacket` Objects
 ====================================
@@ -63,14 +63,14 @@ These are useful functions than are associated with Chapter10 packets
 .. autoclass:: ARINC429DataWord
    :members:
 
-.. py:currentmodule:: Chapter10.CAN
+.. py:currentmodule:: AcraNetwork.Chapter10.CAN
 
-:class:`CAN` Objects
-=====================
+:class:`CANDataPacket` Objects
+=================================
 .. autoclass:: CANDataPacket
    :members:
 
-.. py:currentmodule:: Chapter10.ComputerData
+.. py:currentmodule:: AcraNetwork.Chapter10.ComputerData
 
 :class:`ComputerGeneratedFormat0` Objects
 ==========================================
@@ -82,7 +82,7 @@ These are useful functions than are associated with Chapter10 packets
 .. autoclass:: ComputerGeneratedFormat1
    :members:
 
-.. py:currentmodule:: Chapter10.MILSTD1553
+.. py:currentmodule:: AcraNetwork.Chapter10.MILSTD1553
 
 :class:`MILSTD1553DataPacket` Objects
 ======================================
@@ -95,14 +95,14 @@ These are useful functions than are associated with Chapter10 packets
    :members:
 
 
-.. py:currentmodule:: Chapter10.PCM
+.. py:currentmodule:: AcraNetwork.Chapter10.PCM
    
 :class:`PCMDataPacket` Objects
 ==================================
 .. autoclass:: PCMDataPacket
    :members:
 
-.. py:currentmodule:: Chapter10.TimeDataFormat
+.. py:currentmodule:: AcraNetwork.Chapter10.TimeDataFormat
    
 :class:`TimeDataFormat1` Objects
 ==================================
@@ -121,7 +121,7 @@ These are useful functions than are associated with Time packets
 .. autofunction:: double_digits_to_bcd
 .. autofunction:: bcd_to_int
 
-.. py:currentmodule:: Chapter10.UART
+.. py:currentmodule:: AcraNetwork.Chapter10.UART
    
 :class:`UARTDataPacket` Objects
 ==================================
@@ -133,7 +133,7 @@ These are useful functions than are associated with Time packets
 .. autoclass:: UARTDataWord
    :members:
 
-.. py:currentmodule:: Chapter10.Video
+.. py:currentmodule:: AcraNetwork.Chapter10.Video
    
 :class:`VideoFormat2` Objects
 ==================================
