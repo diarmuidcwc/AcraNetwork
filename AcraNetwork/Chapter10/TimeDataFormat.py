@@ -28,7 +28,7 @@ SRC_INT_FMM = 0x2
 SRC_NONE = 0xF
 
 
-def double_digits_to_bcd(val):
+def double_digits_to_bcd(val: int) -> int:
     """
     Very simplified conversion of time to format used in Ch10 Time packet
 
@@ -42,7 +42,7 @@ def double_digits_to_bcd(val):
     return retval
 
 
-def bcd_to_int(val):
+def bcd_to_int(val: int) -> int:
     """
 
     :param val:

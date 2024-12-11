@@ -1,6 +1,7 @@
 import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 from enum import IntEnum, unique
+import typing
 
 
 @unique
@@ -9,7 +10,7 @@ class Endianness(IntEnum):
     LITTLE: int = 1
 
 
-def endian_swap(buffer):
+def endian_swap(buffer: bytes) -> bytes:
     return bytearray([c for t in zip(buffer[1::2], buffer[::2]) for c in t])
 
 
@@ -32,22 +33,22 @@ class UARTDataWord(object):
             self.ipts = PTPTime()
         elif ipts_source is None:
             self.ipts = None
-        self.parity_error = False  #: Parity error has occurred
-        self.subchannel = 0  #: Subchannel
-        self.datalength = None  #: Data Length
-        self._payload = b""  #: UART payload
+        self.parity_error: bool = False  #: Parity error has occurred
+        self.subchannel: int = 0  #: Subchannel
+        self.datalength: int = None  #: Data Length
+        self._payload: bytes = bytes()  #: UART payload
         self.data_endianness: int = data_endianness
 
     @property
-    def payload(self):
+    def payload(self) -> bytes:
         return self._payload
 
     @payload.setter
-    def payload(self, mybuffer):
+    def payload(self, mybuffer: bytes):
         self._payload = mybuffer
         self.datalength = len(mybuffer)
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the UART data packet object into a binary buffer
 
@@ -74,7 +75,7 @@ class UARTDataWord(object):
             payload_and_padding = endian_swap(payload_and_padding)
         return ch_spec_word + intra_pkt_header + payload_and_padding
 
-    def unpack(self, mybuffer):
+    def unpack(self, mybuffer: bytes):
         """
         Unpack a string buffer into an UART data packet object. Returns the buffer that was consumed
 
@@ -147,11 +148,11 @@ class UARTDataPacket(object):
     """
 
     def __init__(self, ipts_source=TS_CH4, data_endianness: int = Endianness.BIG):
-        self.uartwords = []  #: List of :class:`UARTDataWord`
+        self.uartwords: typing.List[UARTDataWord] = []  #: List of :class:`UARTDataWord`
         self._ipts_source = ipts_source
-        self.data_endianness = data_endianness
+        self.data_endianness: int = data_endianness
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the UART data packet object into a binary buffer
 
@@ -172,7 +173,7 @@ class UARTDataPacket(object):
 
         return ret_buf
 
-    def unpack(self, mybuffer):
+    def unpack(self, mybuffer: bytes):
         """
         Unpack a string buffer into an UART data packet object
 
@@ -191,7 +192,7 @@ class UARTDataPacket(object):
 
         return True
 
-    def append(self, udw):
+    def append(self, udw: UARTDataWord):
         """
         Add a UART DW to the DP
 
@@ -202,7 +203,7 @@ class UARTDataPacket(object):
             raise Exception("Can only append UARTDataWords")
         return self.uartwords.append(udw)
 
-    def __eq__(self, other):
+    def __eq__(self, other: UARTDataWord):
         if not isinstance(other, UARTDataPacket):
             return False
 

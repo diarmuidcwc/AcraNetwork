@@ -17,7 +17,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 import sys
 
-sys.path.append("../AcraNetwork")
+sys.path.insert(0, "../")
 
 # -- Project information -----------------------------------------------------
 

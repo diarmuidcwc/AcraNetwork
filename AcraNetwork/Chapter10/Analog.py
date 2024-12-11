@@ -1,18 +1,23 @@
+from __future__ import annotations
 import struct
 
 
 class Analog(object):
     """
-    Analog
+    Class to handle Chapter11 analog packets
+    https://www.irig106.org/docs/106-22/chapter11.pdf
+    11.2.5.2
+
+    Unpack the chapter10 payload into this format
     """
 
     def __init__(self):
-        self.channel_specific_word = None
-        self.data = bytes()
+        self.channel_specific_word: int = 0
+        self.data: bytes = bytes()
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
-        Convert a string buffer into a PCMDataPacket
+        Convert a string buffer into a Analog
         :type buffer: bytes
         :rtype: bool
         """
@@ -26,13 +31,13 @@ class Analog(object):
         return struct.pack("<I", self.channel_specific_word) + self.data
 
     def __repr__(self):
-        _rstr = "PCM Analog Channel Specific Word ={:#0X}\n".format(self.channel_specific_word)
+        _rstr = "Chapter10 Analog Channel Specific Word ={:#0X}\n".format(self.channel_specific_word)
         return _rstr
 
-    def __eq__(self, other):
+    def __eq__(self, other: Analog):
         """
 
-        :type other: PCMDataPacket
+        :type other: Analog
         :return:
         """
         if not isinstance(other, Analog):

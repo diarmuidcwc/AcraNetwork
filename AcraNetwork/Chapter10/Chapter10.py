@@ -24,9 +24,9 @@ import typing
 logger = logging.getLogger(__name__)
 
 
-def get_checksum_buf(buf):
+def get_checksum_buf(buf: bytes) -> int:
     """
-    Return the arithmetic checksum of a header
+    Return the arithmetic checksum of a header. This is the checksum that is used for the chapter 10 header
 
     :param buf:
     :return:
@@ -40,9 +40,9 @@ def get_checksum_buf(buf):
     return sum % 65536
 
 
-def get_checksum_byte_buf(buf):
+def get_checksum_byte_buf(buf: bytes) -> int:
     """
-    Return the arithmetic checksum of a header
+    Return the arithmetic checksum of a header. This is the checksum used for the secondary header checksu,
 
     :param buf:
     :return:
@@ -56,42 +56,25 @@ def get_checksum_byte_buf(buf):
 
 class Chapter10(object):
     """
-    Class to pack and unpack Chapter10 payloads.
+    Class to pack and unpack Chapter10 packets. These can not be directly transmitted over a network
+    but they can be written to .ch10 files
 
     Create a packet and transmit it via UDP
 
-    >>> import socket
-    >>> # Open a socket
-    >>> tx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> # Create the Ch10 UDP wrapper
-    >>> ch10_udp = Chapter10UDP()
-    >>> ch10_udp.type = Chapter10UDP.TYPE_FULL
-    >>> ch10_udp.sequence = 1
-    >>> # Populate the Chapter 10 packet inthe wrapper
-    >>> ch10_udp.chapter10.channelID = 1
-    >>> ch10_udp.chapter10.datatypeversion = 2
-    >>> ch10_udp.chapter10.sequence = 3
-    >>> ch10_udp.chapter10.packetflag = 0 # No secondary
-    >>> ch10_udp.chapter10.datatype = 4
-    >>> ch10_udp.chapter10.relativetimecounter = 100
-    >>> ch10_udp.chapter10.payload = struct.pack(">II", 33, 44)
-    >>> # Send the packet
-    >>> tx_socket.sendto(ch10_udp.pack(), ("127.0.0.1", 8010))
-    36
+    >>> fp = Chapter10.FileParser("myfile.ch10", mode="wb")
+    >>> c = Chapter10.Chapter10()
+    >>> c.channelID = 0
+    >>> c.sequence = 0
+    >>> c.packetflag = 0
+    >>> c.datatype = DataType.COMPUTER_FORMAT_1
+    >>> c.relativetimecounter = rtctime
+    >>> ctmats = chcomputer.ComputerGeneratedFormat1()
+    >>> ctmats.payload = tmats
+    >>> c.payload = ctmats.pack()
+    >>> with fp as ch10file:
+    >>>     ch10file.write(c)
 
-    :type syncpattern: int
-    :type channelID: int
-    :type packetlen: int
-    :type datalen: int
-    :type datatypeversion: int
-    :type sequence: int
-    :type datatype: int
-    :type relativetimecounter: int
-    :type timestamp: int
-    :type ts_source: int
-    :type payload: bytes
-    :type data_checksum_size: int
-    :type filler: bytes
+
     """
 
     SYNC_WORD = 0xEB25  # :(Object Constant) Sync word
@@ -322,6 +305,11 @@ class Chapter10(object):
 class FileParser(object):
     """
     Parse a Chapter10 file. Open the file and iterate through it
+
+    >>> fp = ch10.FileParser(args.ch10, mode="wb")
+    >>> with fp as ch10file:
+    >>> 	ch10file.write(b"\x00")
+
     """
 
     def __init__(self, filename, mode="rb"):
@@ -331,18 +319,22 @@ class FileParser(object):
         self._offset = 0
         self._fd = None
 
-    def write(self, ch10packet):
-        # type: (Chapter10) -> None
+    def write(self, ch10packet: typing.Union[Chapter10, bytes]) -> None:
         """
         Write a chapter10 packet to the file
+
+        :param ch10packet: The chapter 10 packet to write. Either bytes or Chapter10 object
         """
-        if not isinstance(ch10packet, Chapter10):
-            raise Exception("Only write Chapter10 instances to the file")
         if self._fd is None or self._mode != "wb":
             raise Exception("File name not defined")
         if not self._fd.writable():
             raise Exception("File {} not open for writing".format(self.filename))
-        self._fd.write(ch10packet.pack())
+        if isinstance(ch10packet, Chapter10):
+            self._fd.write(ch10packet.pack())
+        elif type(ch10packet) is bytes:
+            self._fd.write(ch10packet)
+        else:
+            raise Exception("Write takes a ch10 packet or bytes")
 
     def __enter__(self):
         self._fd = open(self.filename, self._mode)
@@ -359,7 +351,7 @@ class FileParser(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def next(self) -> Chapter10:
         in_sync = False
         pkt_len = 0
         while not in_sync:

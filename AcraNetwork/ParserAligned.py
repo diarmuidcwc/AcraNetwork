@@ -115,7 +115,7 @@ class ParserAlignedBlock(object):
 
 class ParserAlignedPacket(object):
     """
-    A class that handles parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks
+    A class that handles iNetx parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks
 
     Capture a UDP packet,unpack as iNetX whose payload is parser aligned
 

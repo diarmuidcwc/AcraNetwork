@@ -1,9 +1,9 @@
-:class:`NDP` Documentation
+:class:`NPD` Documentation
 ***************************
 
 .. py:currentmodule:: NPD
 
-NPD is a TTC payload format usual encapsulated in UDP payloads
+NPD is a TTC payload format usual encapsulated in UDP payloads. It is commonly known as DARv3
 
 This module supports the creating and analysis of NPD packets
 

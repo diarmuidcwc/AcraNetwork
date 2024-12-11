@@ -4,6 +4,8 @@ from enum import IntEnum
 
 
 class _ComputerGeneratedData(object):
+    """Base class for the computer generated classes"""
+
     def __init__(self):
         self._csdw = 0  # type: int
         self.payload = b""
@@ -17,6 +19,8 @@ class _ComputerGeneratedData(object):
 
 
 class ComputerGeneratedFormat0(_ComputerGeneratedData):
+    """Class to handled ComputerGeneratedFormat0 payloads"""
+
     def __init__(self):
         super().__init__()
 
@@ -53,20 +57,22 @@ class RCCVER(IntEnum):
 
 
 class ComputerGeneratedFormat1(_ComputerGeneratedData):
+    """Class to handled ComputerGeneratedFormat1 payloads"""
+
     def __init__(self):
         super().__init__()
-        self.frmt = FRMT_ASCII
-        self.srcc = SRCC_NO_CHANGE
-        self.rccver = RCCVER.IRIG_106_07
+        self.frmt: int = FRMT_ASCII  # setup record format.
+        self.srcc: int = SRCC_NO_CHANGE  # Setup Record Configuration Change (SRCC)
+        self.rccver: int = RCCVER.IRIG_106_07  # RCC 106 Version (RCCVER
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes) -> None:
         super().unpack(buffer)
         self.frmt = (self._csdw >> 9) & 0x1
         self.srcc = (self._csdw >> 8) & 0x1
         self.rccver = RCCVER(self._csdw & 0xFF)
         return True
 
-    def pack(self):
+    def pack(self) -> bytes:
         self._csdw = (self.frmt << 9) + (self.srcc << 8) + self.rccver
         return struct.pack("<I", self._csdw) + self.payload
 

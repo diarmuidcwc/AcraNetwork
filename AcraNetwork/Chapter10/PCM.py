@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class PCMMinorFrame(object):
-
     """
     Object that represents the PCM minor frame in a PCMPayload.
     """
@@ -116,8 +115,13 @@ MODE_ALIGNMENT = 0x1 << 21
 class PCMDataPacket(object):
     """
     This object represents the Payload to a Chapter 10 PCM packet
+
     The user needs to tell the object how many minor frames in Payload before unpacking a buffer.
     :type minor_frames: [PCMMinorFrame]
+
+    >>> p = PCMDataPacket(syncword=DFLT_SYNC_WORD, minor_frame_size_bytes=256)
+    >>> p.unpack(buffer)
+    >>> print(p)
     """
 
     def __init__(
