@@ -8,7 +8,7 @@ class Chapter10UDP(object):
     """
     Class to encapsulate Chapter10 payload in UDP packets
 
-    Capture a UDP packet and unpack the payload as an Chapter 10 packet
+    Capture a UDP packet and unpack the payload as an Chapter 10 UDP packet. The payload can then be passed to Chapter10 class
 
     There are two types of packets, segmented and full.
 
@@ -26,7 +26,6 @@ class Chapter10UDP(object):
     :type channelID: int
     :type channelsequence: int
     :type segmentoffset: int
-    :type chapter10: Chapter10
     """
 
     CH10_UDP_HEADER_FORMAT1 = "<BBH"

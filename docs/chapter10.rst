@@ -15,6 +15,14 @@ Chapter10 object :class:`Chapter10.Chapter10`
 
 Examples and details are available below
 
+.. py:currentmodule:: Chapter10.Chapter10UDP
+
+:class:`Chapter10UDP` Objects
+==============================
+.. autoclass:: Chapter10UDP
+   :members:
+
+
 .. py:currentmodule:: Chapter10.Chapter10
 
 :class:`Chapter10` Objects
@@ -22,13 +30,24 @@ Examples and details are available below
 .. autoclass:: Chapter10
    :members:
 
-   
-.. py:currentmodule:: Chapter10.Chapter10UDP
+:class:`FileParser` Objects
+===========================
+.. autoclass:: FileParser
+   :members:
+
+Chapter10 functions
+=========================
+These are useful functions than are associated with Chapter10 packets
+
+.. autofunction:: get_checksum_buf
+.. autofunction:: get_checksum_byte_buf
 
 
-:class:`Chapter10UDP` Objects
-==============================
-.. autoclass:: Chapter10UDP
+.. py:currentmodule:: Chapter10.Analog
+
+:class:`Analog` Objects
+===========================
+.. autoclass:: Analog
    :members:
 
 .. py:currentmodule:: Chapter10.ARINC429
@@ -42,4 +61,81 @@ Examples and details are available below
 :class:`ARINC429DataWord` Objects
 ==================================
 .. autoclass:: ARINC429DataWord
+   :members:
+
+.. py:currentmodule:: Chapter10.CAN
+
+:class:`CAN` Objects
+=====================
+.. autoclass:: CANDataPacket
+   :members:
+
+.. py:currentmodule:: Chapter10.ComputerData
+
+:class:`ComputerGeneratedFormat0` Objects
+==========================================
+.. autoclass:: ComputerGeneratedFormat0
+   :members:
+
+:class:`ComputerGeneratedFormat1` Objects
+==========================================
+.. autoclass:: ComputerGeneratedFormat1
+   :members:
+
+.. py:currentmodule:: Chapter10.MILSTD1553
+
+:class:`MILSTD1553DataPacket` Objects
+======================================
+.. autoclass:: MILSTD1553DataPacket
+   :members:
+
+:class:`MILSTD1553Message` Objects
+==================================
+.. autoclass:: MILSTD1553Message
+   :members:
+
+
+.. py:currentmodule:: Chapter10.PCM
+   
+:class:`PCMDataPacket` Objects
+==================================
+.. autoclass:: PCMDataPacket
+   :members:
+
+.. py:currentmodule:: Chapter10.TimeDataFormat
+   
+:class:`TimeDataFormat1` Objects
+==================================
+.. autoclass:: TimeDataFormat1
+   :members:
+
+:class:`TimeDataFormat2` Objects
+==================================
+.. autoclass:: TimeDataFormat2
+   :members:
+
+Chapter10.TimeDataFormat functions
+===================================
+These are useful functions than are associated with Time packets
+
+.. autofunction:: double_digits_to_bcd
+.. autofunction:: bcd_to_int
+
+.. py:currentmodule:: Chapter10.UART
+   
+:class:`UARTDataPacket` Objects
+==================================
+.. autoclass:: UARTDataPacket
+   :members:
+   
+:class:`UARTDataWord` Objects
+==================================
+.. autoclass:: UARTDataWord
+   :members:
+
+.. py:currentmodule:: Chapter10.Video
+   
+:class:`VideoFormat2` Objects
+==================================
+.. autoclass:: VideoFormat2
    :members:

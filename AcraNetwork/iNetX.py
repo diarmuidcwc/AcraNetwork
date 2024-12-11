@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -47,12 +48,16 @@ class iNetX(object):
     INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
     REQ_ATTR = ("inetxcontrol", "streamid", "sequence", "ptptimeseconds", "ptptimenanoseconds", "pif", "payload")
 
-    def __init__(self, buf=None):
-        """Creator method for an iNetX class"""
+    def __init__(self, buf: bytes = None):
+        """Creator method for an iNetX class
+
+        Args:
+            buf (bytes, optional): Optionally unpack the byte buffer into an iNetX object. Defaults to None.
+        """
         self.inetxcontrol: int = iNetX.DEF_CONTROL_WORD  #: Control Word
         self.streamid: int = 0  #: Stream ID. Typically to identify a unique packet in an FTI network. 4 bytes in size
         self.sequence: int = 0  #: Unique rollover counter per stream ID.Rolls over at 2^64
-        self.packetlen: int = 0  #: Packet Length
+        self.packetlen: int = 0  #: Packet Length in bytes
         self.ptptimeseconds: int = 0  #: Timestamp of first parameter in the packet. EPOCH time
         self.ptptimenanoseconds: int = 0  #: Nanaosecond timestamp
         self.pif: int = 0  #: Payload Information Field

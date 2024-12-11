@@ -4,6 +4,12 @@ from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
 
 class CANMessage(object):
+    """Work in Progress. Do not use
+
+    Args:
+        object (_type_): _description_
+    """
+
     def __init__(self, ipts_source=TS_CH4):
         if ipts_source == TS_CH4:
             self.ipts = RTCTime()

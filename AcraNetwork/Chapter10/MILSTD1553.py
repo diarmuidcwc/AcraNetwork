@@ -1,3 +1,4 @@
+from __future__ import annotations
 import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
 
@@ -30,7 +31,7 @@ class MILSTD1553Message(object):
         """
         Pack the MIL-STD-1553 message object into a binary buffer
 
-        :rtype: str|bytes
+        :rtype: bytes
         """
         ch_spec_word = self.ipts.pack()
         self.length = len(self.message)
@@ -38,7 +39,7 @@ class MILSTD1553Message(object):
 
         return ch_spec_word + intra_packet_data_header + self.message
 
-    def unpack(self, mybuffer):
+    def unpack(self, mybuffer: bytes):
         """
         Unpack a string buffer into an MIL-STD-1553 data packet object. Returns the buffer that was consumed
 
@@ -57,7 +58,7 @@ class MILSTD1553Message(object):
 
         return offset
 
-    def __eq__(self, other):
+    def __eq__(self, other: MILSTD1553Message):
         if not isinstance(other, MILSTD1553Message):
             return False
 
@@ -136,9 +137,9 @@ class MILSTD1553DataPacket(object):
 
         return True
 
-    def append(self, message):
+    def append(self, message: MILSTD1553Message):
         """
-        Add a message to the DP
+        Add a message to the data packet
 
         :type message: MILSTD1553Message
         :rtype: bool

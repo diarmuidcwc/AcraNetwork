@@ -104,7 +104,7 @@ class NPDSegment(object):
 
 class ACQSegment(NPDSegment):
     """
-    PCM Segments
+    ACQ MPCM segments. Defined as 0xA1 in the NPD specification
     """
 
     def __init__(self):
@@ -131,7 +131,7 @@ class ACQSegment(NPDSegment):
 
 class PCMPacketizer(NPDSegment):
     """
-    PCM Packetizer Segments
+    PCM Packetizer Segments for the ADAU PCM module
     """
 
     def __repr__(self):
@@ -145,6 +145,8 @@ class A429Segment(NPDSegment):
 
 
 class RS232Segment(NPDSegment):
+    """The RS-232 segment header encapsulates data captured by the MBIM-232N-1 acquisition module."""
+
     BSL_CH0 = 0x0
     BSL_CH1 = 0x8000
     BSL_PAR_ERR = 0x4000
@@ -173,7 +175,7 @@ class RS232Segment(NPDSegment):
         self.sync_bytes: typing.List[int] = []
         self.data: bytes = bytes()
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
         Unpack a string buffer into an RS232 segment. Return the remaining buffer so that the next segment can iteratively
         be unpacked
@@ -193,11 +195,10 @@ class RS232Segment(NPDSegment):
             self.data = self.payload[2:]
         return remaining
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the RS232 Segment object into a binary buffer
 
-        :rtype: str
         """
         if self.block_status is None:
             raise Exception("block_status attribute should be defined")
@@ -231,6 +232,8 @@ class RS232Segment(NPDSegment):
 
 
 class MIL1553Segment(NPDSegment):
+    """The MIL-STD-1553 segment encapsulates MIL-STD-1553 messages"""
+
     def __init__(self):
         NPDSegment.__init__(self)
         self.blockstatus: int = 0
@@ -257,7 +260,7 @@ class MIL1553Segment(NPDSegment):
 
 class NPD(object):
     """
-    Class to pack and unpack NPD payloads.
+    Class to pack and unpack NPD payloads. The segments will be unpacket for specific defined segements
 
     Capture a UDP packet and unpack the _payload as an NPD packet
 

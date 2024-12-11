@@ -13,15 +13,16 @@ class DataStream(IntEnum):
 
 class VideoFormat2(object):
     """
-    Video
+    Chapter 10 Video Format 2
+    Object will contain some MPEG Transport streams
     """
 
     def __init__(self):
-        self.channel_specific_word = None
-        self.datastream = DataStream.TRANSPORT
-        self.mpegts = MPEGTS()
+        self.channel_specific_word: int = 0
+        self.datastream: int = DataStream.TRANSPORT
+        self.mpegts: MPEGTS = MPEGTS()
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
         Convert a string buffer into a PCMDataPacket
         :type buffer: bytes
@@ -38,7 +39,7 @@ class VideoFormat2(object):
 
         return True
 
-    def pack(self):
+    def pack(self) -> bytes:
         return struct.pack("<I", self.channel_specific_word) + self.mpegts.pack()
 
     def __repr__(self):

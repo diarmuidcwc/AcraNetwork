@@ -1,9 +1,14 @@
+from __future__ import annotations
 import struct
+import typing
 
 
 class ARINC429DataWord(object):
     """
-    The Chapter 10 standard defines specific payload formats for different data. This class handles AROINC-429 packets
+    The Chapter 10 standard defines specific payload formats for different data. This class handles ARINC-429 packets
+    https://www.irig106.org/docs/106-22/chapter11.pdf
+
+    11.2.8.1
 
     :type msgcount: int
     :type gaptime: int
@@ -28,11 +33,10 @@ class ARINC429DataWord(object):
         self.bus = None  #: Bus number index from 0
         self.payload = b""  #: ARINC word as a string payload
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the ARINC-429 data packet object into a binary buffer
 
-        :rtype: str|bytes
         """
         _flag = (self.format_error << 7) + (self.parity_error << 6) + (self.bus_speed << 5) + (self.gaptime >> 16)
         _gap = self.gaptime & 0xFFFF
@@ -40,12 +44,12 @@ class ARINC429DataWord(object):
 
         return hdr + self.payload
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
         Unpack a string buffer into an ARINC-429 data packet object
 
         :param buffer: A string buffer representing an ARINC-429 data  packet
-        :type buffer: str
+        :type buffer: bytes
         :rtype: None
         """
         (_gap, _flag, self.bus) = struct.unpack_from(ARINC429DataWord.HDR_FORMAT, buffer)
@@ -83,9 +87,9 @@ class ARINC429DataPacket(object):
     :type arincwords: list[ARINC429DataWord]
 
 
-    >>> c = Chapter10UDP()
+    >>> c = Chapter10()
     >>> arinc_p = ARINC429DataPacket()
-    >>> arinc_p.unpack(c.chapter10.payload))
+    >>> arinc_p.unpack(c.payload))
     >>> print arinc_p
     ARINCPayload: MessageCount=0
       ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=0
@@ -93,14 +97,14 @@ class ARINC429DataPacket(object):
     """
 
     def __init__(self):
-        self.msgcount = None  #: The number ofARINC-429 words included in the packet.
-        self.arincwords = []  #: List of :class:`ARINC429DataWord`
+        self.msgcount: int = 0  #: The number ofARINC-429 words included in the packet.
+        self.arincwords: typing.List[ARINC429DataWord] = []  #: List of :class:`ARINC429DataWord`
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the ARINC-429 data packet object into a binary buffer
 
-        :rtype: str
+        :rtype: bytes
         """
         ret_str = struct.pack("<HH", self.msgcount, 0)
         for a in self.arincwords:
@@ -108,12 +112,12 @@ class ARINC429DataPacket(object):
 
         return ret_str
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
         Unpack a string buffer into an ARINC-429 data packet object
 
         :param buffer: A string buffer representing an ARINC-429 data  packet
-        :type buffer: str
+        :type buffer: bytes
         :rtype: None
         """
         CH_SPECIFIC_HDR_LEN = 4
@@ -135,7 +139,7 @@ class ARINC429DataPacket(object):
             )
         return True
 
-    def __eq__(self, other):
+    def __eq__(self, other: ARINC429DataPacket):
         if not isinstance(other, ARINC429DataPacket):
             return False
 
