@@ -6,6 +6,16 @@
 Welcome to AcraNetwork's documentation!
 =======================================
 
+This module contains a number of classes to help you work with various packet formats or datasources that would be encountered
+while using the Curtiss-Wright ACRA Flight Test Instrumentation Hardware. 
+https://www.curtisswrightds.com/products/flight-test/data-acquisition
+
+Most decribe network based packet formats but some are recording formats, like Chapter10
+
+Leave an issues or bugs here https://github.com/diarmuidcwc/AcraNetwor
+
+Diarmuid Collins 2024
+
 .. toctree::
    :maxdepth: 2
 
