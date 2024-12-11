@@ -41,7 +41,7 @@ TMP_DIR = tempfile.gettempdir()
 
 
 logging.basicConfig(level=logging.INFO)
-logging.info(f"Temp folder={TMP_DIR}")
+# logging.info(f"Temp folder={TMP_DIR}")
 
 
 def getEthernetPacket(data: bytes = b""):
@@ -264,7 +264,7 @@ class CH10UDPTest(unittest.TestCase):
             c.sequence = 0x15
             c.payload = get_ch10(16).pack()
             self.assertTrue(c.pack())
-            print(repr(c))
+            # print(repr(c))
             c2 = ch10udp.Chapter10UDP()
             c2.unpack(c.pack())
             rec.payload = getEthernetPacket(c.pack())
@@ -599,7 +599,7 @@ class PCMData(unittest.TestCase):
         self.assertEqual(pcmdf, pcmdf2)
         pcmdf3 = ch10pcm.PCMDataPacket(syncword=None)
         self.assertTrue(pcmdf3.unpack(packed_data))
-        print(pcmdf3)
+        # print(pcmdf3)
 
     def test_pcm_throughput(self):
         pcmdf = ch10pcm.PCMDataPacket()
@@ -639,7 +639,7 @@ class MnACQData(unittest.TestCase):
             if wrapper.type == ch10udp.Chapter10UDP.TYPE_SEG and wrapper.segmentoffset == 0 and ch10_payload != b"":
                 # segmented packet with existing payload
                 self.assertTrue(pkt.unpack(ch10_payload))
-                print(repr(pkt))
+                # print(repr(pkt))
                 ch10_payload = b""
                 self.assertEqual(pkt.datatype, DATA_TYPE_PCM_DATA_FMT1)
                 pcm = ch10pcm.PCMDataPacket()
@@ -663,7 +663,7 @@ class MnACQData(unittest.TestCase):
                 ch10_payload += wrapper.payload
             else:
                 pkt.unpack(wrapper.payload)
-                print(repr(pkt))
+                # print(repr(pkt))
 
         cf.close()
         p.close()
@@ -676,10 +676,10 @@ class CH10SampleFile(unittest.TestCase):
         total_len = 0
         with fileparser as chf:
             for pkt in chf:
-                print(repr(pkt))
+                # print(repr(pkt))
                 total_len += pkt.packetlen
                 # self.assertTrue(False)
-        print(f"{total_len:,d}")
+        # print(f"{total_len:,d}")
 
     @unittest.skip("Not a test")
     def test_read_ch10(self):
@@ -690,7 +690,7 @@ class CH10SampleFile(unittest.TestCase):
                 pkt_repr = repr(pkt)
                 total_len += pkt.packetlen
                 # self.assertTrue(False)
-        print(f"{total_len:,d}")
+        # print(f"{total_len:,d}")
 
     @unittest.skip("Not a test")
     def test_extract_tmats(self):
@@ -756,7 +756,7 @@ class Video(unittest.TestCase):
             mpgsts.append(mpegp)
         vid.mpegts = mpgsts
         buf = vid.pack()
-        print(repr(buf))
+        # print(repr(buf))
         vid2 = ch10video.VideoFormat2()
         vid2.unpack(buf)
         self.assertEqual(vid, vid2)

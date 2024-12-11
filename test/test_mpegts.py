@@ -171,7 +171,8 @@ class MPEGTSBasicTest(unittest.TestCase):
                         logging.error(f"Failed to unpack offset {ts_f.tell():#0X} as PMT")
                         sys.exit(1)
                     else:
-                        print(f"PMT={repr(pmt_pkt)}")
+                        # print(f"PMT={repr(pmt_pkt)}")
+                        pass
 
         ts_f.close()
         for pid, count in sorted(pids.items()):
@@ -230,7 +231,7 @@ pes_packet = base64.b64decode(
     "R0EEP4UA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFIQQD/tEAD98AHwYOKzQCCwEBDgEDAQEAAAAOAggABg/Gi5FmYwECH1M="
 )
 stanag_packet = base64.b64decode(
-    "R0EEP4UA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFAQQF2WsAAN8AHwYOKzQCCwEBDgEDAQEAAAAOAggABhTIE/mTuQECKsg="
+    "R0EEMYUA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAAB/AAsgYAFAQQF2TcAAd8AHwYOKzQCCwEBDgEDAQEAAAAOAggABhTIE/mO6QECDwg="
 )
 
 
@@ -252,20 +253,20 @@ class MPEG_PES(unittest.TestCase):
     def test_stanag_unpack(self):
         p = pes.STANAG4609()
         p.unpack(pes_packet)
-        print(repr(p))
+        # print(repr(p))
         self.assertEqual(36, len(p.pesdata))
         self.assertEqual(len(p.pack()), 188)
         self.assertEqual(p.pack(), pes_packet)
-        print(repr(p.time))
+        # print(repr(p.time))
 
     def test_stanag2_unpack(self):
         p = pes.STANAG4609()
         p.unpack(stanag_packet)
-        print(repr(p))
+        # print(repr(p))
         self.assertEqual(36, len(p.pesdata))
         self.assertEqual(len(p.pack()), 188)
-        self.assertEqual(p.pack(), pes_packet)
-        print(repr(p.time))
+        self.assertEqual(p.pack(), stanag_packet)
+        # print(repr(p.time))
 
     def test_stanag_create(self):
         ref = pes.STANAG4609()
@@ -292,7 +293,7 @@ class MPEG_PES(unittest.TestCase):
         exp = 187.14
         self.assertEqual(pes.pts_to_ts(ts), exp)
         _conv = pes.ts_to_pts(exp)
-        print(f"{_conv:#0X}")
+        # print(f"{_conv:#0X}")
         self.assertEqual(_conv, ts)
 
 
