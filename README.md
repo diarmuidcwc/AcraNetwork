@@ -1,6 +1,9 @@
 # AcraNetwork 
 
 
+[![Documentation Status](https://readthedocs.org/projects/acranetwork/badge/?version=latest)](https://acranetwork.readthedocs.io/en/latest/?badge=latest)
+
+
 A collection of classes that can be used to decom network or PCM based FTI traffic. This module contains classes to handle various packet formats like, iNetX, IENA, Chapter10, DARv3 (NPD).
 
 It also contains a class to decom data from a SAM/DEC/008
