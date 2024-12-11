@@ -2,8 +2,10 @@
 
 
 [![Documentation Status](https://readthedocs.org/projects/acranetwork/badge/?version=latest)](https://acranetwork.readthedocs.io/en/latest/?badge=latest)
-
 ![Python App](https://github.com/diarmuidcwc/AcraNetwork/actions/workflows/python-app.yml/badge.svg)
+![Python Published](https://github.com/diarmuidcwc/AcraNetwork/actions/workflows/python-publish.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/AcraNetwork?label=pypi%20package)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/AcraNetwork)
 
 A collection of classes that can be used to decom network or PCM based FTI traffic. This module contains classes to handle various packet formats like, iNetX, IENA, Chapter10, DARv3 (NPD).
 
