@@ -18,6 +18,7 @@
 import sys
 
 sys.path.insert(0, "../")
+from AcraNetwork.__version__ import __version__
 
 # -- Project information -----------------------------------------------------
 
@@ -28,7 +29,8 @@ author = "Diarmuid Collins"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.17.15"
+# release = "0.17.15"
+release = __version__
 
 autodoc_default_flags = ["members"]
 autodoc_member_order = "groupwise"
