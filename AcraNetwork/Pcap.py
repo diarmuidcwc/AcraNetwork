@@ -145,27 +145,24 @@ class Pcap(object):
 
     The pcap can also be treated a list to select the relevant object.
 
-    >>> p = Pcap(os.path.join("existing.pcap"))
-    >>> print p.network
-    0
-    >>> for mypcaprecord in p:
-    ...    print mypcaprecord.sec
-    1111
-    >>> import AcraNetwork.SimpleEthernet as SimpleEthernet
-    >>> eth = SimpleEthernet.Ethernet()
-    >>> eth.unpack(mypcaprecord.payload)
-    >>> print eth
-    >>> print p[0].sec
-    1111
 
-    Write a Pcap File
-
-    >>> p = Pcap("new.pcap", mode='w')
+    >>> # Create a pcap file
+    >>> p = Pcap("_dummy.pcap", mode='w')
     >>> r = PcapRecord()
-    >>> r.set_current_time()
-    >>> r.payload = eth.pack()
+    >>> r.payload = bytes(1)
     >>> p.write(r)
     >>> p.close()
+    >>> # Now open and read it
+    >>> p2 = Pcap(os.path.join("_dummy.pcap"))
+    >>> print(p2.network)
+    1
+    >>> import struct
+    >>> for mypcaprecord in p2:
+    ...    (firstbyte,) = struct.unpack(">B", mypcaprecord.payload)
+    ...    print(firstbyte)
+    0
+
+
 
     """
 

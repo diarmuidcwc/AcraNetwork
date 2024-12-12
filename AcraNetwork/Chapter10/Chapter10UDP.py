@@ -13,7 +13,7 @@ class Chapter10UDP(object):
     There are two types of packets, segmented and full.
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> n = Chapter10UDP()
     >>> n.unpack(data)

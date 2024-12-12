@@ -6,17 +6,10 @@ import typing
 class ARINC429DataWord(object):
     """
     The Chapter 10 standard defines specific payload formats for different data. This class handles ARINC-429 packets
-    https://www.irig106.org/docs/106-22/chapter11.pdf
+    https://www.irig106.org/docs/106-22/chapter11.pdf    11.2.8.1
 
-    11.2.8.1
+    This object is generally encapsulated in :class:`ARINC429DataPacket` objects
 
-    :type msgcount: int
-    :type gaptime: int
-    :type format_error: bool
-    :type parity_error: bool
-    :type bus_speed: int
-    :type bus: int
-    :type payload: str
     """
 
     LO_SPEED = 0  #: Bus speed constant
@@ -25,13 +18,13 @@ class ARINC429DataWord(object):
     HDR_FORMAT = ">HBB"
 
     def __init__(self):
-        self.gaptime = 0  #: The gap time from the beginning of the preceding bus word (regardless of bus) to the
+        self.gaptime: int = 0  #: The gap time from the beginning of the preceding bus word (regardless of bus) to the
         # beginning of the current bus word in 0.1-us increments
-        self.format_error = False  #: Format error has occurred
-        self.parity_error = False  #: Parity error has occurred
-        self.bus_speed = ARINC429DataWord.LO_SPEED  #: Arinc bus speed
-        self.bus = None  #: Bus number index from 0
-        self.payload = b""  #: ARINC word as a string payload
+        self.format_error: bool = False  #: Format error has occurred
+        self.parity_error: bool = False  #: Parity error has occurred
+        self.bus_speed: int = ARINC429DataWord.LO_SPEED  #: Arinc bus speed
+        self.bus: int = 0  #: Bus number index from 0
+        self.payload: bytes = bytes()  #: ARINC word as a string payload
 
     def pack(self) -> bytes:
         """
@@ -87,12 +80,19 @@ class ARINC429DataPacket(object):
     :type arincwords: list[ARINC429DataWord]
 
 
+    >>> from AcraNetwork.Chapter10.Chapter10 import Chapter10
     >>> c = Chapter10()
     >>> arinc_p = ARINC429DataPacket()
     >>> arinc_p.unpack(c.payload))
-    >>> print arinc_p
+    >>> print(arinc_p)
     ARINCPayload: MessageCount=0
       ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=0
+    >>> c = Chapter10()
+    >>> arinc_p = ARINC429DataPacket()
+    >>> arinc_dw = ARINC429DataWord()
+    >>> arinc_dw.payload = b"\x00"
+    >>> arinc_p.append(arinc_dw)
+    >>> c.payload = arinc_p.pack()
 
     """
 
@@ -112,7 +112,15 @@ class ARINC429DataPacket(object):
 
         return ret_str
 
-    def unpack(self, buffer: bytes):
+    def append(self, dataword: ARINC429DataWord):
+        """Add the arinc dataword to thie packet
+
+        Args:
+            dataword (ARINC429DataWord): The word to add
+        """
+        self.arincwords.append(dataword)
+
+    def unpack(self, buffer: bytes) -> bool:
         """
         Unpack a string buffer into an ARINC-429 data packet object
 

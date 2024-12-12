@@ -265,7 +265,7 @@ class NPD(object):
     Capture a UDP packet and unpack the _payload as an NPD packet
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> n = NPD()
     >>> n.unpack(data)

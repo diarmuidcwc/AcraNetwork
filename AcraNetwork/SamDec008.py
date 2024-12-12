@@ -7,6 +7,7 @@ import struct
 
 
 PCM_HDR_LEN = 10
+logger = logging.getLogger(__name__)
 
 
 def string_matching_boyer_moore_horspool(text: str = "", pattern: str = "") -> typing.List[int]:
@@ -68,7 +69,7 @@ class SamDec008(object):
 
     >>> samdec = sd.SamDec008(8010, localaddress="192.168.28.100, timeout=2)
     >>> for frame in samdec.frames():
-    >>>     frame_count += 1
+    >>>     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
 
 
     """
@@ -83,13 +84,9 @@ class SamDec008(object):
         self._payload_offset = 0
         self._sequence = None
 
-        self.streamid = 0x153  #: StreamID on which to capture the SAM/DEC data
-        self.frame_length = None  #: Calculate the frame length by searching the payload for the sync words
-        # For the setup side. Most of the defaults are ok
-        self.sync_word = 0xFE6B2840
-
-        # Logging
-        self._logger = logging.getLogger(__name__)
+        self.streamid = 0x153  #: StreamID on which to capture the SAM/DEC data. Default of 0x153 should be ok
+        self.frame_length = None  #: This will be populated when seraching for frame sync words
+        self.sync_word = 0xFE6B2840  #: The Frame sync word.
 
     def close(self):
         self.recv_sockets.close()
@@ -130,7 +127,7 @@ class SamDec008(object):
                 if inetx_pkt.streamid == self.streamid:
                     if self._sequence is not None:
                         if self._sequence + 1 % pow(2, 64) == inetx_pkt.sequence:
-                            logging.warning(
+                            logger.warning(
                                 "Missing Sequence number at {}. Is SAM/DEC dropping?".format(inetx_pkt.sequence)
                             )
                     # Start with the previous segment and the current payload
@@ -174,7 +171,7 @@ class SamDecPcap(SamDec008):
 
     >>> samdec = sd.SamDecPcap("input.pcap")
     >>> for frame in samdec.frames():
-    >>>     frame_count += 1
+    >>>     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
 
 
     """
@@ -187,13 +184,9 @@ class SamDecPcap(SamDec008):
         self._payload_offset = 0
         self._sequence = None
 
-        self.streamid = 0x153  #: StreamID on which to capture the SAM/DEC data
-        self.frame_length = None  #: Calculate the frame length by searching the payload for the sync words
-        # For the setup side. Most of the defaults are ok
-        self.sync_word = 0xFE6B2840
-
-        # Logging
-        self._logger = logging.getLogger(__name__)
+        self.streamid = 0x153  #: StreamID on which to capture the SAM/DEC data. Default of 0x153 should be ok
+        self.frame_length = None  #: This will be populated when seraching for frame sync words
+        self.sync_word = 0xFE6B2840  #: The Frame sync word.
 
     def close(self):
         self._pcap.close()
@@ -210,5 +203,5 @@ class SamDecPcap(SamDec008):
                 (ip_type,) = struct.unpack_from(">B", rec.payload, 0x17)
                 if ip_type == UDP_TYPE:
                     data = rec.payload[0x2A:]
-                    self._logger.debug(f"FrameLen={len(data)}")
+                    logger.debug(f"FrameLen={len(data)}")
                     yield data

@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -88,7 +89,7 @@ class iNET(object):
     Capture a UDP packet and unpack the _payload as an iNET packet
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = iNET()
     >>> i.unpack(data)
@@ -136,9 +137,7 @@ class iNET(object):
         self.ptptimenanoseconds = 0  #: PTP timestamps in nanoseconds
         self.app_fields = []  #: Optional Application Defined fields.
         self._payload = bytes()  # Payload
-        self.packages: typing.List[
-            iNETPackage
-        ] = (
+        self.packages: typing.List[iNETPackage] = (
             []
         )  #: The payload is made up of packages. The packagaes are stored in this attribute list[:class:`iNETPackage`]
 

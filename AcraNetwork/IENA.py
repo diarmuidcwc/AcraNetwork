@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
@@ -214,7 +215,7 @@ class MParameter(namedtuple("MParameter", "paramid, delay, dataset")):
     :param delay: The delay for this parameter
     :type delay: int
     :param dataset: The dataset payload as a string
-    :type dwords: bytes
+    :type dataset: bytes
     """
 
     def __repr__(self):
@@ -252,9 +253,9 @@ class IENAM(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            MParameter
-        ] = []  #: The list of all MParameters in thie IENA-M packet Each entry is of class :class:`MParameter`
+        self.parameters: typing.List[MParameter] = (
+            []
+        )  #: The list of all MParameters in thie IENA-M packet Each entry is of class :class:`MParameter`
         self._req_attr = IENAM.REQ_ATTR
 
     def unpack(self, buf: bytes) -> None:
@@ -512,9 +513,9 @@ class IENAD(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            DParameter
-        ] = []  #: The list of all DParameters in thie IENA-D packet Each entry is of class :class:`DParameter`
+        self.parameters: typing.List[DParameter] = (
+            []
+        )  #: The list of all DParameters in thie IENA-D packet Each entry is of class :class:`DParameter`
         self._req_attr = IENAD.REQ_ATTR
 
     def unpack(self, buf: bytes):
@@ -624,9 +625,9 @@ class IENAN(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            NParameter
-        ] = []  #: List of all N-type parameters. Each entry is of class :class:`NParameter`
+        self.parameters: typing.List[NParameter] = (
+            []
+        )  #: List of all N-type parameters. Each entry is of class :class:`NParameter`
         self._req_attr = IENAN.REQ_ATTR
 
     def unpack(self, buf: bytes) -> None:

@@ -1,7 +1,7 @@
 Pcap Documentation
 *****************************
 
-.. py:currentmodule:: Pcap
+.. py:currentmodule:: AcraNetwork.Pcap
 
 The libpcap file format is the main capture file format used in TcpDump/WinDump, snort, and many other networking tools.
 It is fully supported by Wireshark/TShark
@@ -15,13 +15,11 @@ The file format is fully documented here https://wiki.wireshark.org/Development/
 
 Read a Pcap File
 =======================
-The file is opened using the :meth:`Pcap.__init__` method with mode='r'. The global header is automatically read.
-The rest of the file is then read by iterating through the pcap object using a for loop.
+Pass in the pcap filename to the Pcap class, then iterate through the pcap object to get the records
 
 Writing a Pcap File
 =======================
-The file is opened using the :meth:`Pcap.__init__` method with mode='w' or mode='a'. The global header is written using
-:meth:`Pcap.write_global_header`. Each record is written using :meth:`Pcap.write` and the file is :meth:`Pcap.close`
+Open the file in mode='w'. Then each record is written using :meth:`Pcap.write` and finally close the file using :meth:`Pcap.close`
 
 
 :class:`Pcap` Objects
