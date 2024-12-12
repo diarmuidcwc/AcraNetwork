@@ -36,6 +36,13 @@ pip install AcraNetwork
 Browse the example folder for some example usage
 
 
+## Testing
+```bash
+pip install pytest
+pytest
+pytest --doctest-modules AcraNetwork
+```
+
 ## To Make a Distribution
 
 ```bash

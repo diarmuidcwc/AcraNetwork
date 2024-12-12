@@ -57,7 +57,13 @@ class RCCVER(IntEnum):
 
 
 class ComputerGeneratedFormat1(_ComputerGeneratedData):
-    """Class to handled ComputerGeneratedFormat1 payloads"""
+    """Class to handled ComputerGeneratedFormat1 payloads
+
+    >>> c = ComputerGeneratedFormat1()
+    >>> c.payload = bytes(10)
+    >>> buffer = c.pack()
+
+    """
 
     def __init__(self):
         super().__init__()

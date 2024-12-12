@@ -61,18 +61,20 @@ class Chapter10(object):
 
     Create a packet and transmit it via UDP
 
-    >>> fp = Chapter10.FileParser("myfile.ch10", mode="wb")
-    >>> c = Chapter10.Chapter10()
+    >>> from AcraNetwork.Chapter10 import DataType
+    >>> import AcraNetwork.Chapter10.ComputerData as chcomputer
+    >>> fp = FileParser("myfile.ch10", mode="wb")
+    >>> c = Chapter10()
     >>> c.channelID = 0
     >>> c.sequence = 0
     >>> c.packetflag = 0
     >>> c.datatype = DataType.COMPUTER_FORMAT_1
-    >>> c.relativetimecounter = rtctime
+    >>> c.relativetimecounter = 0
     >>> ctmats = chcomputer.ComputerGeneratedFormat1()
-    >>> ctmats.payload = tmats
+    >>> ctmats.payload = bytes(3)
     >>> c.payload = ctmats.pack()
     >>> with fp as ch10file:
-    >>>     ch10file.write(c)
+    ...     ch10file.write(c)
 
 
     """
@@ -306,9 +308,9 @@ class FileParser(object):
     """
     Parse a Chapter10 file. Open the file and iterate through it
 
-    >>> fp = ch10.FileParser(args.ch10, mode="wb")
+    >>> fp = FileParser("_dummy.ch10", mode="wb")
     >>> with fp as ch10file:
-    >>> 	ch10file.write(b"\x00")
+    ... 	ch10file.write(bytes(10))
 
     """
 

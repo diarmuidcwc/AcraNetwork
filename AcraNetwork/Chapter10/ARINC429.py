@@ -80,17 +80,34 @@ class ARINC429DataPacket(object):
     :type arincwords: list[ARINC429DataWord]
 
 
+    >>> from base64 import b64decode
     >>> from AcraNetwork.Chapter10.Chapter10 import Chapter10
+    >>> data = b64decode('JesACogAAABkAAAABgDEOFcwAAAAADJfCOISAAAAAAAAAPwADAAAAAAAAAC+AgBgEA4AAMEFAGAQDgAAbQsAQBAOAAB5DwAAEA4AAEITAMAQDgAAJBQAQBAOAAD3GQCAEA4AAAQdAMAQDgAAZSMAABAOAADFJABAEA4AAJ8pAGAQDgAAgSwAwA==')
     >>> c = Chapter10()
+    >>> c.unpack(data)
+    True
     >>> arinc_p = ARINC429DataPacket()
-    >>> arinc_p.unpack(c.payload))
+    >>> arinc_p.unpack(c.payload)
+    True
     >>> print(arinc_p)
-    ARINCPayload: MessageCount=0
+    ARINCPayload: MessageCount=12
       ARINCData: GapTime=0 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+      ARINCData: GapTime=4110 FormatError=False ParityError=False BusSpeed=0 Bus=0
+    <BLANKLINE>
     >>> c = Chapter10()
     >>> arinc_p = ARINC429DataPacket()
     >>> arinc_dw = ARINC429DataWord()
-    >>> arinc_dw.payload = b"\x00"
+    >>> arinc_dw.payload = bytes(1)
     >>> arinc_p.append(arinc_dw)
     >>> c.payload = arinc_p.pack()
 
