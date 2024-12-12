@@ -260,21 +260,22 @@ class MIL1553Segment(NPDSegment):
 
 class NPD(object):
     """
-    Class to pack and unpack NPD payloads. The segments will be unpacket for specific defined segements
+    Class to pack and unpack NPD payloads. The segments will be unpacked for specific defined segements
 
-    Capture a UDP packet and unpack the _payload as an NPD packet
+    For unknown data types, the class :class:`NPDSegment` will be used
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> import AcraNetwork.iNetX as inetx
+    >>> data = b64decode('NVAADAMEAAoAAAAB6wAAAQAAAAUAAAADAA0AAQhAAAAA////AAAAAwAMAAEIQQEA')
     >>> n = NPD()
     >>> n.unpack(data)
-    >>> print n.datatype
-    6
+    True
+    >>> print(f"{n.datatype:#0X}")
+    0X50
     >>> for segment in n.segments:
-    ...  print segment.errorcode
-    2
-
+    ...    print(f"{segment}")
+    RS232 NPD Segment. TimeDelta=3 Segment Len=13 ErrorCode=0X0 Flags=0X1 Block_Status=0X840 DataLen=3
+    RS232 NPD Segment. TimeDelta=3 Segment Len=12 ErrorCode=0X0 Flags=0X1 Block_Status=0X841 DataLen=1
     """
 
     NPD_HEADER_FORMAT = ">BBHBBHIII"

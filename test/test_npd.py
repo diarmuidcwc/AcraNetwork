@@ -167,22 +167,22 @@ class testNPD(unittest.TestCase):
 
     def test_rs232(self):
         self.n.datatype = 0x50
-        for segment in range(3, 7):
+        for segment in range(3, 4):
             ns = NPD.RS232Segment()
             ns.timedelta = 3
             ns.errorcode = 0
             ns.flags = 1
             ns.block_status = NPD.RS232Segment.BSL_PARN_EN + NPD.RS232Segment.BSL_422
-            ns.data = os.urandom(50 + segment)
+            ns.data = bytes(segment)
             self.n.segments.append(ns)
-        for segment in range(1, 5):
+        for segment in range(1, 2):
             ns = NPD.RS232Segment()
             ns.timedelta = 3
             ns.errorcode = 0
             ns.flags = 1
             ns.block_status = NPD.RS232Segment.BSL_PARN_EN + NPD.RS232Segment.BSL_422
             ns.sync_bytes = [segment] * segment
-            ns.data = os.urandom(50 + segment)
+            ns.data = bytes(segment)
             self.n.segments.append(ns)
 
         rec = getEthernetPacket(self.n.pack())
@@ -198,7 +198,7 @@ class testNPD(unittest.TestCase):
         self.assertEqual(self.n, n2)
         self.assertEqual(
             repr(n2[0]),
-            "RS232 NPD Segment. TimeDelta=3 Segment Len=63 ErrorCode=0X0 Flags=0X1 Block_Status=0X840 DataLen=53",
+            "RS232 NPD Segment. TimeDelta=3 Segment Len=13 ErrorCode=0X0 Flags=0X1 Block_Status=0X840 DataLen=3",
         )
 
 

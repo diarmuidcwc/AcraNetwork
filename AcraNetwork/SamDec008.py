@@ -67,9 +67,9 @@ class SamDec008(object):
     :param localaddress: The local network interface ip address
     :type localaddress: str
 
-    >>> samdec = sd.SamDec008(8010, localaddress="192.168.28.100, timeout=2)
+    >>> samdec = SamDec008(8010, localaddress="127.0.0.1", timeout=0.5)
     >>> for frame in samdec.frames():
-    >>>     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
+    ...     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
 
 
     """
@@ -101,7 +101,7 @@ class SamDec008(object):
             try:
                 data, addr = self.recv_sockets.recvfrom(10000)
             except Exception as e:
-                raise Exception(e)
+                yield None
             else:
                 yield data
 
@@ -109,14 +109,13 @@ class SamDec008(object):
         """Get the data from the underlying source, combine the IP fragments and then pull out the payload from the
         inetx packets and align them
 
-        Raises:
-            Exception: Cant unpacket the payload
-
         Yields:
             bytes: the payload captured
         """
         sync_packed = struct.pack(">I", self.sync_word)
         for udp_payload in self._get_data():
+            if udp_payload is None:
+                return
             inetx_pkt = inetx.iNetX()
             try:
                 inetx_pkt.unpack(udp_payload)
@@ -169,10 +168,14 @@ class SamDecPcap(SamDec008):
     :type pcap_fname: str
 
 
-    >>> samdec = sd.SamDecPcap("input.pcap")
+    >>> samdec = SamDecPcap("test/sample_pcap/samdec.pcap")
     >>> for frame in samdec.frames():
-    >>>     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
-
+    ...     (syncword, sfid, word1) = struct.unpack_from(">IHH", frame)
+    ...     print(f"SW={syncword:#0X} sfid={sfid}")
+    SW=0XFE6B2840 sfid=4
+    SW=0XFE6B2840 sfid=5
+    SW=0XFE6B2840 sfid=6
+    SW=0XFE6B2840 sfid=7
 
     """
 

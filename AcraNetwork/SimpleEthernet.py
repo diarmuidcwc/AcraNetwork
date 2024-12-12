@@ -89,9 +89,6 @@ class EthType(enum.IntEnum):
     TYPE_PAUSE = 0x8808
 
 
-from base64 import b64decode
-
-
 class Ethernet(object):
     """
     This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI

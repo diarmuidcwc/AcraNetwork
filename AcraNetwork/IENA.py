@@ -49,7 +49,7 @@ class IENA(object):
     Read in some data stored in a UDP packet in a pcap file
 
     >>> import AcraNetwork.Pcap as pcap
-    >>> p = pcap.Pcap("../test/iena_test.pcap")
+    >>> p = pcap.Pcap("test/iena_test.pcap")
     >>> rec_payload = p[0].payload
     >>> i = IENA()
     >>> i.unpack(rec_payload[0x2a:])  # Offset into the pcap record
@@ -236,14 +236,13 @@ class IENAM(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ANwADAAAAAAAAAAAAAIAAQACAAEAAN6t')
     >>> i = IENAM()
     >>> i.unpack(data)
     >>> for param in i:
-    ...   print param.paramid
-    6
+    ...   print(param.paramid)
+    1
 
     """
 
@@ -367,14 +366,13 @@ class IENAQ(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ANwACwAAAAAAAAAAAAIAAgABAADerQ==')
     >>> i = IENAQ()
     >>> i.unpack(data)
     >>> for param in i:
-    ...   print param.paramid
-    6
+    ...   print(param.paramid)
+    2
 
     """
 
@@ -497,13 +495,12 @@ class IENAD(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ABoAGAAB0QYFQAAAAMX/////AAAAAAAAAAAAAAAAAAABFAAAARQBEAGALpMAAN6t')
     >>> i = IENAD()
     >>> i.unpack(data)
-    >>> print len(i.parameters)
-    6
+    >>> print(len(i.parameters))
+    8
 
     :type parameters: list[DParameter]
     """
@@ -605,16 +602,14 @@ class IENAN(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ABoAGAAB0QYFQAAAAMX/////AAAAAAAAAAAAAAAAAAABFAAAARQBEAGALpMAAN6t')
     >>> i = IENAN()
     >>> i.unpack(data)
-    >>> print len(i.parameters)
-    6
-    >>> print i.parameters[0].paramid
-    >>>
-    4
+    >>> print(len(i.parameters))
+    16
+    >>> print(i.parameters[0].paramid)
+    65535
 
     :type parameters: list[NParameter]
 

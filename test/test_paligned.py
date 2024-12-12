@@ -1,5 +1,6 @@
-__author__ = 'diarmuid'
+__author__ = "diarmuid"
 import sys
+
 sys.path.append("..")
 
 import unittest
@@ -9,6 +10,7 @@ import AcraNetwork.Pcap as pcap
 import struct
 import os
 import copy
+from base64 import b64encode
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -98,6 +100,7 @@ Block 81: QuadBytes=3 Error=False ErrorCode=0 BusID=9 MessageCount=81 ElapsedTim
 Block 82: QuadBytes=3 Error=False ErrorCode=0 BusID=12 MessageCount=82 ElapsedTime=1150000
 """
 
+
 class TestParserAligned(unittest.TestCase):
     def test_read_pcap(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "valid_paligned.pcap"))
@@ -105,8 +108,8 @@ class TestParserAligned(unittest.TestCase):
         p.close()
         # Now I have a _payload that will be an inetx packet
         inetxp = inetx.iNetX()
-        inetxp.unpack(mypcaprecord.payload[0x2a:-4])
-        self.assertEqual(inetxp.streamid, 0xa00)
+        inetxp.unpack(mypcaprecord.payload[0x2A:-4])
+        self.assertEqual(inetxp.streamid, 0xA00)
         p = paligned.ParserAlignedPacket()
         p.unpack(inetxp.payload)
         self.assertEqual(len(p), 83)
@@ -114,7 +117,9 @@ class TestParserAligned(unittest.TestCase):
         for i, b in enumerate(p):
             if i == 3:
                 self.assertEqual(len(b), 12)
-                self.assertEqual(repr(b), "QuadBytes=3 Error=False ErrorCode=0 BusID=16 MessageCount=3 ElapsedTime=10000")
+                self.assertEqual(
+                    repr(b), "QuadBytes=3 Error=False ErrorCode=0 BusID=16 MessageCount=3 ElapsedTime=10000"
+                )
 
         p2 = paligned.ParserAlignedPacket()
         for b in p:
@@ -122,8 +127,18 @@ class TestParserAligned(unittest.TestCase):
             p2.parserblocks.append(blk)
 
         self.assertEqual(p2.pack(), inetxp.payload)
-        self.assertTrue(p2==p)
+        self.assertTrue(p2 == p)
+        p3 = paligned.ParserAlignedPacket()
+        for idx, b in enumerate(p):
+            blk = copy.copy(b)
+            p3.parserblocks.append(blk)
+            if idx == 2:
+                break
+        i = inetx.iNetX()
+        i.streamid = 1
+        i.payload = p3.pack()
+        print(b64encode(i.pack()))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
