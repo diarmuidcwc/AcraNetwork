@@ -68,6 +68,11 @@ class TimeDataFormat1(object):
 
     Create a packet and transmit it via UDP
 
+    >>> from base64 import b64encode
+    >>> t = TimeDataFormat1()
+    >>> t.ptptime.seconds = 100
+    >>> print(len(t.pack()))
+    12
 
     :type channel_specific_data: int
     :type milliseconds: int

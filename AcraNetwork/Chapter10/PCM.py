@@ -119,9 +119,16 @@ class PCMDataPacket(object):
     The user needs to tell the object how many minor frames in Payload before unpacking a buffer.
     :type minor_frames: [PCMMinorFrame]
 
-    >>> p = PCMDataPacket(syncword=DFLT_SYNC_WORD, minor_frame_size_bytes=256)
+
+    >>> from base64 import b64decode
+    >>> buffer = b64decode('AAAQAGv+QCg=')
+    >>> p = PCMDataPacket(syncword=DFLT_SYNC_WORD)
     >>> p.unpack(buffer)
+    True
     >>> print(p)
+    PCM Data Packet Format 1. Channel Specific Word =0X100000
+    Minor Frame Throughput mode Time=None Payload_len=4
+    <BLANKLINE>
     """
 
     def __init__(

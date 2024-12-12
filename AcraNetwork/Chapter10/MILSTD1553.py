@@ -1,6 +1,7 @@
 from __future__ import annotations
 import struct
 from AcraNetwork.Chapter10 import TS_CH4, TS_IEEE1558, RTCTime, PTPTime
+import typing
 
 
 class MILSTD1553Message(object):
@@ -15,17 +16,17 @@ class MILSTD1553Message(object):
     :type payload: str
     """
 
-    def __init__(self, ipts_source=TS_CH4):
+    def __init__(self, ipts_source: int = TS_CH4):
         if ipts_source == TS_CH4:
             self.ipts = RTCTime()
         elif ipts_source == TS_IEEE1558:
             self.ipts = PTPTime()
         elif ipts_source is None:
             raise Exception("Time stamp is not option for MIL-STD-1553")
-        self.blockstatus = 0
-        self.gaptimes = 0
-        self.length = 0
-        self.message = b""
+        self.blockstatus: int = 0
+        self.gaptimes: int = 0
+        self.length: int = 0
+        self.message: bytes = bytes()
 
     def pack(self):
         """
@@ -84,18 +85,34 @@ class MILSTD1553DataPacket(object):
     :type uartwords: list[MILSTD1553Message]
 
 
-    >>> c = Chapter10UDP()
+    >>> from AcraNetwork.Chapter10.Chapter10 import Chapter10
+    >>> c = Chapter10()
     >>> m = MILSTD1553DataPacket()
-    >>> m.unpack(c.chapter10.payload))
-    >>> print m
-
+    >>> milmessage = MILSTD1553Message()
+    >>> milmessage.message = bytes(2)
+    >>> m.append(milmessage)
+    >>> c.payload = m.pack()
+    >>> ch10_buffer = c.pack()
+    >>> # Now reverse the process
+    >>> c2 = Chapter10()
+    >>> c2.unpack(ch10_buffer)
+    True
+    >>> m2 =  MILSTD1553DataPacket()
+    >>> m2.unpack(c2.payload)
+    True
+    >>> print(m2)
+    MILSTD1553DataPacket: MessageCount=1 [MILSTD1553Message: Time=RTC: count=0  BlockStatus=0 GapTimes=0 Length=2]
+      MILSTD1553Message: Time=RTC: count=0  BlockStatus=0 GapTimes=0 Length=2
+    <BLANKLINE>
+    >>> print(m2.msgcount)
+    1
 
     """
 
     def __init__(self, ipts_source=TS_CH4):
-        self.messages = []  #: List of :class:`MILSTD1553Message`
-        self.msgcount = 0
-        self.ttb = 0
+        self.messages: typing.List[MILSTD1553Message] = []  #: List of :class:`MILSTD1553Message`
+        self.msgcount: int = 0
+        self.ttb: int = 0
         self._ipts_source = ipts_source
 
     def pack(self):

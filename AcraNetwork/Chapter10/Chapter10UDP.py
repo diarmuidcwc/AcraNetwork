@@ -12,20 +12,16 @@ class Chapter10UDP(object):
 
     There are two types of packets, segmented and full.
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> import AcraNetwork.Pcap as pcap
+    >>> p = pcap.Pcap("test/ch10_uart2.pcap")
+    >>> data = p[3].payload[0x2A:]
     >>> n = Chapter10UDP()
     >>> n.unpack(data)
-    >>> print n.type
-    0
+    True
+    >>> print(f"{n.format}. Seq={n.sequence}")
+    1. Seq=3
 
-    :type version: int
-    :type type: int
-    :type hdrlen: int
-    :type channelID: int
-    :type channelsequence: int
-    :type segmentoffset: int
+
     """
 
     CH10_UDP_HEADER_FORMAT1 = "<BBH"

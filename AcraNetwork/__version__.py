@@ -93,4 +93,5 @@
 # 0.17.14 - Fixed the PMT packet in MPEGTS
 # 0.17.15 - Added support for reading SamDec pcap files
 # 0.17.16 - Added documentation details
-__version__ = "0.17.16"
+# 0.17.17 - Docstring updates
+__version__ = "0.17.17"

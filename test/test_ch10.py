@@ -35,6 +35,7 @@ import tempfile
 import logging
 import csv
 import AcraNetwork.MPEGTS as ampeg
+import base64
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = tempfile.gettempdir()
@@ -605,7 +606,7 @@ class PCMData(unittest.TestCase):
         pcmdf = ch10pcm.PCMDataPacket()
         pcmdf.channel_specific_word = 0x100000  #
         mf = ch10pcm.PCMMinorFrame(throughput=True)
-        mf.minor_frame_data = struct.pack("<HH", 0xFE6B, 0x2840)
+        mf.minor_frame_data = struct.pack("<HHI", 0xFE6B, 0x2840, 0)
         pcmdf.minor_frames.append(mf)
         packed = pcmdf.pack()
         pcmdf2 = ch10pcm.PCMDataPacket()
@@ -613,8 +614,9 @@ class PCMData(unittest.TestCase):
         self.assertEqual(pcmdf, pcmdf2)
         self.assertEqual(
             repr(pcmdf2),
-            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=4\n",
+            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=8\n",
         )
+        print(base64.b64encode(packed))
 
     def test_pcm_endianness(self):
         mf = ch10pcm.PCMMinorFrame(throughput=True)

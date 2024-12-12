@@ -34,10 +34,9 @@ class McastSocket(socket.socket):
 
     >>> recv_socket = McastSocket(local_port=5555, reuse=1)
     >>> recv_socket.mcast_add("235.0.0.1")
-    >>> recv_socket.settimeout(3)
-    >>> data, addr = recv_socket.recvfrom(2048)
-
-    >>> recv_socket.sendto("hello", ("235.0.0.2", 8010))
+    >>> recv_socket.settimeout(0.5)
+    >>> recv_socket.sendto(bytes(3), ("235.0.0.2", 8010))
+    3
 
     """
 

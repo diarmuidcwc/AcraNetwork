@@ -139,11 +139,20 @@ class UARTDataPacket(object):
     :type uartwords: list[UARTDataWord]
 
 
-    >>> c = Chapter10UDP()
+    >>> import AcraNetwork.Pcap as pcap
+    >>> from AcraNetwork.Chapter10.Chapter10 import Chapter10
+    >>> p = pcap.Pcap("test/sample_pcap/sample_ch10uart.pcap")
+    >>> data = p[0].payload
+    >>> c = Chapter10()
+    >>> c.unpack(data[0x2E:])
+    True
     >>> uart_p = UARTDataPacket()
-    >>> uart_p.unpack(c.chapter10.payload))
-    >>> print uart_p
-
+    >>> uart_p.unpack(c.payload)
+    True
+    >>> print(len(uart_p))
+    22
+    >>> print(uart_p[0])
+    UARTDataWord: Time=RTC: count=43151323112 ParityError=True DataLen=34 SubChannel=0 Endianness=<Endianness.BIG: 0>
 
     """
 
