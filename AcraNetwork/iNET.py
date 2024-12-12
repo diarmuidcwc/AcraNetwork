@@ -88,15 +88,13 @@ class iNET(object):
 
     Capture a UDP packet and unpack the _payload as an iNET packet
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('EAAAAAAAAAYAAAAAAAAAGAAAAAAAAAAA')
     >>> i = iNET()
     >>> i.unpack(data)
-    >>> print i.definition_ID
+    True
+    >>> print(i.definition_ID)
     6
-    >>> print i.packages[0].definitionID
-    2
 
     :type flags: int
     :type type: int
@@ -126,7 +124,7 @@ class iNET(object):
 
     def __init__(self):
         """Creator method for an iNET class"""
-        self.flags = None  #: Message Flags. Bits 15:8 Reserved.
+        self.flags = 0  #: Message Flags. Bits 15:8 Reserved.
         self.type = 0  #: Message type
         self._option_wc = 0
         self.version = 1  #: Message version
