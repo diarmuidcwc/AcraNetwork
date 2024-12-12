@@ -26,7 +26,7 @@ class iNetX(object):
     Capture a UDP packet and unpack the payload as an iNetX packet
 
     >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     >>> data, addr = recv_socket.recvfrom(2048)
     >>> i = iNetX()
     >>> i.unpack(data)

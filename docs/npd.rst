@@ -1,7 +1,7 @@
-:class:`NPD` Documentation
+NPD Documentation
 ***************************
 
-.. py:currentmodule:: NPD
+.. py:currentmodule:: AcraNetwork.NPD
 
 NPD is a TTC payload format usual encapsulated in UDP payloads. It is commonly known as DARv3
 

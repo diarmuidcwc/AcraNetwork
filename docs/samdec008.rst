@@ -1,4 +1,4 @@
-:class:`SamDec008` Documentation
+SamDec008 Documentation
 **********************************
 
 .. py:currentmodule:: AcraNetwork.SamDec008

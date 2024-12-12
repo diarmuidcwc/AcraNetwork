@@ -151,7 +151,7 @@ class SimpleEthernetTest(unittest.TestCase):
 
     def test_defICMP(self):
         i = SimpleEthernet.ICMP()
-        self.assertRaises(ValueError, lambda: i.pack())
+        self.assertEqual(i.pack(), b"\x00\x00\xff\xff\x00\x00\x00\x00")
 
     ######################
     # Read a complete pcap file

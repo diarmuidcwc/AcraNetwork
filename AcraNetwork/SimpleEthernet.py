@@ -80,30 +80,42 @@ def ip_calc_checksum(pkt: bytes) -> int:
     return s & 0xFFFF
 
 
+class EthType(enum.IntEnum):
+    TYPE_IP = 0x800
+    TYPE_IPv4 = 0x800
+    TYPE_IPv6 = 0x86DD
+    TYPE_ARP = 0x806
+    TYPE_VLAN = 0x8100
+    TYPE_PAUSE = 0x8808
+
+
+from base64 import b64decode
+
+
 class Ethernet(object):
     """
     This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI
 
     Read an Ethernet Packet from a pcap file
 
-    >>> import AcraNetwork.Pcap as Pcap
-    >>> p = Pcap.Pcap("test_input.pcap")
-    >>> mypcaprecord = p[0]
+    >>> from base64 import b64decode
+    >>> raw_packet = b64decode('AQBeAAABAAxNAApsCABFAAA61p1AAP8R3VrAqBwQ6wAAAQP/H0oAJgAAAB8ADwAPA1ffwH8A1pwAAQvUQGAAAP3NEAEoHP//')
     >>> e = Ethernet()
-    >>> e.unpack(mypcaprecord.packet)
-    >>> print e
-    SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800
+    >>> e.unpack(raw_packet)
+    True
+    >>> print(e)
+    SRCMAC=00:0C:4D:00:0A:6C DSTMAC=01:00:5E:00:00:01 TYPE=0X800
 
     """
 
     HEADERLEN = 14
     HEADERLEN_VLAN = 18
-    TYPE_IP = 0x800
-    TYPE_IPv4 = 0x800  # :(Object Constant) IPv4 Type Constant
-    TYPE_IPv6 = 0x86DD  # :(Object Constant) IPv6 Type Constant
-    TYPE_ARP = 0x806  # :(Object Constant) ARP Type Constant
-    TYPE_PAUSE = 0x8808  # :(Object Constant) PAUSE Type Constant
-    TYPE_VLAN = 0x8100
+    TYPE_IP = EthType.TYPE_IPv4
+    TYPE_IPv4 = EthType.TYPE_IPv4  # :(Object Constant) IPv4 Type Constant
+    TYPE_IPv6 = EthType.TYPE_IPv6  # :(Object Constant) IPv6 Type Constant
+    TYPE_ARP = EthType.TYPE_ARP  # :(Object Constant) ARP Type Constant
+    TYPE_PAUSE = EthType.TYPE_PAUSE  # :(Object Constant) PAUSE Type Constant
+    TYPE_VLAN = EthType.TYPE_VLAN  # :(Object Constant) VLAN Type Constant
     ADDR_LENGTH = 6  # Address length for ARP
 
     def __init__(self, buf: typing.Optional[bytes] = None):
@@ -136,6 +148,8 @@ class Ethernet(object):
 
         :param buf: The string buffer to unpack
         :type buf: bytes
+        :param fcs: Assume FCS is included in the buffer
+        :type fcs: bool
         :rtype: bool
         """
 
@@ -164,6 +178,7 @@ class Ethernet(object):
         """
         Pack the Ethernet object into a buffer
 
+        :param fcs: Include FCS in the buffer returned
         :rtype: bytes
         """
         if self.dstmac is None or self.srcmac is None or self.type is None or self.payload is None:
@@ -223,20 +238,11 @@ class IP(object):
 
     If you wanted to unpack an Ethernet object payload which contains an IP packet
 
+    >>> from base64 import b64decode
+    >>> raw_packet = b64decode('AQBeAAABAAxNAApsCABFAAA61p1AAP8R3VrAqBwQ6wAAAQP/H0oAJgAAAB8ADwAPA1ffwH8A1pwAAQvUQGAAAP3NEAEoHP//')
     >>> i = IP()
-    >>> i.unpack(eth_pkt.payload)
-
-    :type srcip: str
-    :type dstip: str
-    :type len: int
-    :type flags: int
-    :type protocol: int
-    :type payload: bytes
-    :type version: int
-    :type ihl: int
-    :type dscp: int
-    :type id: int
-    :type ttl: int
+    >>> i.unpack(raw_packet[0x10:])
+    True
 
     """
 
@@ -324,7 +330,7 @@ class IP(object):
 
         for word in [self.dscp, self.id, self.flags, self.ttl, self.protocol, self.srcip, self.dstip]:
             if word is None:
-                raise ValueError(f"All required IP payloads not defined.")
+                raise ValueError(f"All required IP payloads not defined. Attribute {word} is None")
 
         (srcip_as_int,) = struct.unpack("!I", socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack("!I", socket.inet_aton(self.dstip))
@@ -459,10 +465,7 @@ class UDP(object):
     >>> u.payload = struct.pack('B',0x5)
     >>> mypacket = u.pack()
 
-    :type srcport: int
-    :type dstport: int
-    :type len: int
-    :type payload: bytes
+
     """
 
     UDP_HEADER_FORMAT = ">HHHH"
@@ -589,13 +592,12 @@ class AFDX(object):
 
 
 class ICMP(object):
-    """
-    Class to handle ICMP packets
+    """Class to handle ICMP packets
 
     >>> i = ICMP()
     >>> i.type = ICMP.TYPE_REPLY
     >>> i.code = 0
-    >>> i.payload = b"\x00"
+    >>> i.payload = bytes(1)
     >>> mypacket = i.pack()
 
 
@@ -607,13 +609,13 @@ class ICMP(object):
     TYPE_REQUEST = 0x8
 
     def __init__(self):
-        self.type = None
-        self.code = None
-        self.request_id = None
-        self.request_sequence = None
+        self.type: int = 0
+        self.code: int = 0
+        self.request_id: int = 0
+        self.request_sequence: int = 0
         self.payload = bytes()
 
-    def pack(self) -> BytesWarning:
+    def pack(self) -> bytes:
         """
         Pack an ICMP object into a buffer of bytes
         """
@@ -640,7 +642,7 @@ def ones_comp_add16(num1, num2):
 
 class IGMPv3(object):
     """
-    Simplified IGMP
+    Simplified IGMPv3 support to generate queries and join requests
     """
 
     TYPE_QUERY = 0x11
@@ -656,7 +658,7 @@ class IGMPv3(object):
         pass
 
     @staticmethod
-    def membership_query():
+    def membership_query() -> bytes:
         """
         Return a membership query
         :return:
@@ -675,10 +677,10 @@ class IGMPv3(object):
         )
 
     @staticmethod
-    def join_groups(groups):
+    def join_groups(groups: typing.List[str]) -> bytes:
         """
         Join the specified groups
-        :param groups:
+        :param groups: List of IP addresses
         :return: bytes
         """
         if len(groups) == 1:
@@ -696,6 +698,21 @@ class IGMPv3(object):
 
 
 class ARP(object):
+    """Minimal ARP class,. Very limited
+
+    Args:
+        object (_type_): _description_
+
+    Returns:
+        _type_: _description_
+
+    >>> a = ARP()
+    >>> a.dstip = "192.168.28.2"
+    >>> b = ARP()
+    >>> b.unpack(a.pack())
+    >>> a == b
+    True
+    """
 
     OPER_REQUEST = 1
     OPER_REPLY = 2
@@ -712,6 +729,11 @@ class ARP(object):
         self.dstip: str = "0.0.0.0"
 
     def pack(self) -> bytes:
+        """Convert ARP object into bytes
+
+        Returns:
+            bytes: bytes representation of the ARP packet
+        """
         _raw = struct.pack(
             ">HHBBH", self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation
         )
@@ -719,6 +741,11 @@ class ARP(object):
         return _raw
 
     def unpack(self, buffer: bytes) -> None:
+        """Conmvert the buffer into an ARP object
+
+        Args:
+            buffer (bytes): Buffer of bytes
+        """
         (self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation) = (
             struct.unpack_from(">HHBBH", buffer)
         )
