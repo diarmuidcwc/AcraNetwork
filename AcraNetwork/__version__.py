@@ -96,4 +96,5 @@
 # 0.17.17 - Docstring updates
 # 1.0.0   - First 1.0 release. No functional change from 0.17.17
 # 1.1.0   - Moved all Chapter10 stuff into IRIG106 and then into the module according to the spec. Existing code will work but with a Deprecation warning
-__version__ = "1.0.0"
+# 1.1.1   - Version tag not updates
+__version__ = "1.1.1"
