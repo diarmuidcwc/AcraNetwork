@@ -7,16 +7,16 @@ sys.path.append("..")
 import unittest
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
-import AcraNetwork.Chapter10.Chapter10 as ch10
-import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
-import AcraNetwork.Chapter10.ARINC429 as ch10arinc
-import AcraNetwork.Chapter10.UART as ch10uart
-import AcraNetwork.Chapter10.TimeDataFormat as ch10time
-import AcraNetwork.Chapter10.ARINC429 as ch10arinc
-import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
-import AcraNetwork.Chapter10.PCM as ch10pcm
-import AcraNetwork.Chapter10.Video as ch10video
-from AcraNetwork.Chapter10 import (
+import AcraNetwork.IRIG106.Chapter11 as ch10
+import AcraNetwork.IRIG106.Chapter10.Chapter10UDP as ch10udp
+import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
+import AcraNetwork.IRIG106.Chapter11.UART as ch10uart
+import AcraNetwork.IRIG106.Chapter11.TimeDataFormat as ch10time
+import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
+import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
+import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
+import AcraNetwork.IRIG106.Chapter11.Video as ch10video
+from AcraNetwork.IRIG106.Chapter11 import (
     DATA_TYPE_TIMEFMT_1,
     DATA_TYPE_TIMEFMT_2,
     DATA_TYPE_PCM_DATA_FMT1,
@@ -89,7 +89,7 @@ arinc_packet = """ARINCPayload: MessageCount=11
 
 
 def get_ch10(len=4):
-    c = ch10.Chapter10()
+    c = ch10.Chapter11()
     c.channelID = 1
     c.datatypeversion = 2
     c.sequence = 3
@@ -105,7 +105,7 @@ class CH10UDPTest(unittest.TestCase):
         self.full = ch10udp.Chapter10UDP()
         self.full.type = ch10udp.Chapter10UDP.TYPE_FULL
         self.full.sequence = 1
-        self.ch10 = ch10.Chapter10()
+        self.ch10 = ch10.Chapter11()
         self.ch10.channelID = 1
         self.ch10.datatypeversion = 2
         self.ch10.sequence = 3
@@ -120,7 +120,7 @@ class CH10UDPTest(unittest.TestCase):
         self.seg.channelID = 0x232
         self.seg.channelsequence = 100
         self.seg.segmentoffset = 3
-        self.ch10seg = ch10.Chapter10()
+        self.ch10seg = ch10.Chapter11()
         self.ch10seg.channelID = 1
         self.ch10seg.datatypeversion = 2
         self.ch10seg.sequence = 3
@@ -129,7 +129,7 @@ class CH10UDPTest(unittest.TestCase):
         self.ch10seg.relativetimecounter = 100
         self.seg.payload = self.ch10seg.pack()
 
-        self.c = ch10.Chapter10()
+        self.c = ch10.Chapter11()
         self.c.channelID = 1
         self.c.datatypeversion = 2
         self.c.sequence = 3
@@ -200,7 +200,7 @@ class CH10UDPTest(unittest.TestCase):
         self.pcapw.close()
 
     def test_ch10_comp(self):
-        ref = ch10.Chapter10()
+        ref = ch10.Chapter11()
         # self.c._payload = struct.pack(">II", 33, 44)
         pay = self.c.pack()
         ref.unpack(pay)
@@ -210,11 +210,11 @@ class CH10UDPTest(unittest.TestCase):
         c = ch10udp.Chapter10UDP()
         c.type = ch10udp.Chapter10UDP.TYPE_FULL
         c.sequence = 1
-        d = ch10.Chapter10()
+        d = ch10.Chapter11()
         d.channelID = 1
         d.datatypeversion = 2
         d.sequence = 3
-        d.packetflag = ch10.Chapter10.PKT_FLAG_SECONDARY
+        d.packetflag = ch10.Chapter11.PKT_FLAG_SECONDARY
         d.datatype = 4
         d.ts_source = ch10.TS_IEEE1558
         d.ptptime = PTPTime(101, int(200e6))
@@ -292,7 +292,7 @@ class CH10UDPTest(unittest.TestCase):
         # Now I have a _payload that will be an inetx packet
         c = ch10udp.Chapter10UDP()
         self.assertTrue(c.unpack(u.payload))
-        d = ch10.Chapter10()
+        d = ch10.Chapter11()
         d.unpack(c.payload)
 
         # Check the Ch10 packets
@@ -340,7 +340,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.full = ch10udp.Chapter10UDP()
         self.full.type = ch10udp.Chapter10UDP.TYPE_FULL
         self.full.sequence = 10
-        self.chfull = ch10.Chapter10()
+        self.chfull = ch10.Chapter11()
         self.chfull.channelID = 23
         self.chfull.datatypeversion = 2
         self.chfull.sequence = 3
@@ -381,7 +381,7 @@ class Ch10UARTTest(unittest.TestCase):
         mypcaprecord = p[0]
         ch10udppkt = ch10udp.Chapter10UDP()
         ch10udppkt.unpack(mypcaprecord.payload[0x2A:-4])  # FCS
-        ch10pkt = ch10.Chapter10()
+        ch10pkt = ch10.Chapter11()
         ch10pkt.unpack(ch10udppkt.payload)
         self.assertEqual(ch10pkt.packetflag, 0xC4)
         uart = ch10uart.UARTDataPacket(TS_IEEE1558)
@@ -404,7 +404,7 @@ class Ch10UARTTest(unittest.TestCase):
     def test_uart_le_unpack(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_uart_le.pcap"))
         mypcaprecord = p[0]
-        ch10pkt = ch10.Chapter10()
+        ch10pkt = ch10.Chapter11()
         ch10pkt.unpack(mypcaprecord.payload[0x2E:-4])
         uart = ch10uart.UARTDataPacket(TS_IEEE1558, ch10uart.Endianness.LITTLE)
         uart.unpack(ch10pkt.payload)
@@ -527,9 +527,9 @@ class GenPCAP(unittest.TestCase):
             c = get_ch10(16)
             c.ptptime = PTPTime(333344, 42322)
             c.packetflag = (
-                ch10.Chapter10.PKT_FLAG_SECONDARY
-                + ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME
-                + ch10.Chapter10.PKT_FLAG_1588_TIME
+                ch10.Chapter11.PKT_FLAG_SECONDARY
+                + ch10.Chapter11.PKT_FLAG_SEC_HDR_TIME
+                + ch10.Chapter11.PKT_FLAG_1588_TIME
             )
             cu = ch10udp.Chapter10UDP()
             cu.type = ch10udp.Chapter10UDP.TYPE_FULL
@@ -573,7 +573,7 @@ class PCMData(unittest.TestCase):
         pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_pcm.pcap", mode="w")
         rec = pcap.PcapRecord()
         u = ch10udp.Chapter10UDP()
-        c = ch10.Chapter10()
+        c = ch10.Chapter11()
         u.type = ch10udp.Chapter10UDP.TYPE_FULL
         u.sequence = 0
         c = get_ch10()
@@ -635,7 +635,7 @@ class MnACQData(unittest.TestCase):
 
         for pkt_count, rec in enumerate(p):
             wrapper = ch10udp.Chapter10UDP()
-            pkt = ch10.Chapter10()
+            pkt = ch10.Chapter11()
             wrapper.unpack(rec.payload[0x2A:])
 
             if wrapper.type == ch10udp.Chapter10UDP.TYPE_SEG and wrapper.segmentoffset == 0 and ch10_payload != b"":
