@@ -94,4 +94,5 @@
 # 0.17.15 - Added support for reading SamDec pcap files
 # 0.17.16 - Added documentation details
 # 0.17.17 - Docstring updates
-__version__ = "0.17.17"
+# 1.0.0   - First 1.0 release. No functional change from 0.17.17
+__version__ = "1.0.0"
