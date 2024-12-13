@@ -38,9 +38,11 @@ Browse the example folder for some example usage
 
 ## Testing
 ```bash
-pip install pytest
+pip install pytest coverage
 pytest
 pytest --doctest-modules AcraNetwork
+coverage run -m pytest
+coverage html
 ```
 
 ## To Make a Distribution
