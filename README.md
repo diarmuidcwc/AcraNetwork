@@ -43,11 +43,13 @@ pytest
 pytest --doctest-modules AcraNetwork
 coverage run -m pytest
 coverage html
+
 ```
 
 ## To Make a Distribution
 
 ```bash
+python -m sphinx -T -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html 
 pip  install --upgrade pip wheel setuptools twine
 rm dist/*
 python ./setup.py sdist bdist_wheel --universal sdist
