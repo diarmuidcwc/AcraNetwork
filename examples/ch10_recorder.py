@@ -21,9 +21,9 @@ import AcraNetwork.SimpleEthernet as SimpleEthernet
 import argparse
 import sys
 import socket
-from AcraNetwork.Chapter10 import DataType
-import AcraNetwork.Chapter10.ComputerData as chcomputer
-import AcraNetwork.Chapter10.Chapter10 as ch10
+from AcraNetwork.IRIG106.Chapter11 import DataType
+import AcraNetwork.IRIG106.Chapter11.ComputerData as chcomputer
+import AcraNetwork.IRIG106.Chapter11 as ch10
 import logging
 from enum import IntEnum
 
@@ -112,7 +112,7 @@ def encapsulate_tmats(tmats_filename: str, rtctime: int) -> bytes:
     """Wrap the tmats data in a ch10 file for writing to a ch10 file"""
     with open(tmats_filename, mode="rb") as f:
         tmats = f.read()
-        c = ch10.Chapter10()
+        c = ch10.Chapter11()
         c.channelID = 0
         c.sequence = 0
         c.packetflag = 0
