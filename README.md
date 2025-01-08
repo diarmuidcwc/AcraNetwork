@@ -27,7 +27,7 @@ Full documentation is available here https://acranetwork.readthedocs.io/en/lates
 
 Install using pip
 
-```bash
+```shell
 pip install AcraNetwork
 ```
 
@@ -37,18 +37,18 @@ Browse the example folder for some example usage
 
 
 ## Testing
-```bash
+
+```shell
 pip install pytest coverage
 pytest
 pytest --doctest-modules AcraNetwork
 coverage run -m pytest
 coverage html
-
 ```
 
 ## To Make a Distribution
 
-```bash
+```shell
 python -m sphinx -T -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html 
 pip  install --upgrade pip wheel setuptools twine
 rm dist/*

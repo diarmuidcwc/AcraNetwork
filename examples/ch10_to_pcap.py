@@ -3,8 +3,9 @@
 # -*- coding: utf-8 -*-
 
 
-import AcraNetwork.Chapter10.Chapter10 as ch10
-import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
+import AcraNetwork.IRIG106.Chapter11 as ch11
+from AcraNetwork.IRIG106.Chapter10 import FileParser
+import AcraNetwork.IRIG106.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
 import argparse
@@ -48,7 +49,7 @@ def encapsulate_udppayload_in_eth(udp_payload: bytes):
 
 def main(args):
     pf = pcap.Pcap(args.pcap, mode="w")
-    fp = ch10.FileParser(args.ch10)
+    fp = FileParser.FileParser(args.ch10)
     if args.tmats is not None:
         tf = open(args.tmats, mode="wb")
 
