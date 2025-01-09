@@ -679,7 +679,7 @@ class CH10SampleFile(unittest.TestCase):
         with fileparser as chf:
             for pkt in chf:
                 # print(repr(pkt))
-                total_len += pkt.packetlen
+                total_len += len(pkt)
                 # self.assertTrue(False)
         # print(f"{total_len:,d}")
 
@@ -689,8 +689,7 @@ class CH10SampleFile(unittest.TestCase):
         total_len = 0
         with fileparser as chf:
             for pkt in chf:
-                pkt_repr = repr(pkt)
-                total_len += pkt.packetlen
+                total_len += len(pkt)
                 # self.assertTrue(False)
         # print(f"{total_len:,d}")
 

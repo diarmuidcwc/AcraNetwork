@@ -55,7 +55,7 @@ class FileParser(object):
     def __iter__(self):
         return self
 
-    def next(self) -> Chapter11:
+    def next(self) -> bytes:
         in_sync = False
         pkt_len = 0
         while not in_sync:
@@ -77,15 +77,10 @@ class FileParser(object):
 
         self._fd.seek(self._offset)
         pkt_payload = self._fd.read(pkt_len)
-
-        ch10 = Chapter11()
-        try:
-            ch10.unpack(pkt_payload)
-        except Exception as e:
-            logger.error("Failed to unpack data from {}. err={}".format(self._offset, e))
+        self._offset += pkt_len
+        if len(pkt_payload) != pkt_len:
             raise StopIteration
-        else:
-            self._offset += pkt_len
-            return ch10
+
+        return pkt_payload
 
     __next__ = next
