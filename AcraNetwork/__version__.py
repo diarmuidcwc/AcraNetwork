@@ -99,4 +99,5 @@
 # 1.1.1   - Version tag not updates
 # 1.1.2   - Fixed the ch10 examples
 # 1.1.4   - Updates to the MPEGTS packets to build and decom a PTS / DTS packet
-__version__ = "1.1.4"
+# 1.1.5   - Missing ut file added
+__version__ = "1.1.5"
