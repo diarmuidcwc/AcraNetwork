@@ -100,4 +100,5 @@
 # 1.1.2   - Fixed the ch10 examples
 # 1.1.4   - Updates to the MPEGTS packets to build and decom a PTS / DTS packet
 # 1.1.5   - Missing ut file added
-__version__ = "1.1.5"
+# 1.1.6   - No chnage but tagging as 1.1.6
+__version__ = "1.1.6"
