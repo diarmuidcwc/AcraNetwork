@@ -16,6 +16,7 @@ import AcraNetwork.MPEG.PES as pes
 import struct
 import datetime
 import logging
+import random
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -302,8 +303,167 @@ corrupt_vid_ = base64.b64decode(
 )
 
 
+def gen_random_adaption() -> MPEGTS.MPEGAdaption:
+    """Generate a random Adaption block
+
+    Returns:
+        mpegts.MPEGAdaption: _description_
+    """
+    adaption = MPEGTS.MPEGAdaption()
+    adaption_ext = MPEGTS.MPEGAdaptionExtension()
+    adaption_ext.ltw = struct.pack(">H", 0x1)
+    adaption.adaption_extension = adaption_ext
+    adaption.pcr = struct.pack(">HI", 0xDC, 0xA)
+    private_data_len = 8  # random.randint(4, 10)
+    adaption.private_data = struct.pack(f">{private_data_len}B", *range(private_data_len))
+    return adaption
+
+
+AUD_WIRESHARK = base64.b64decode(
+    "R1EQNAAAAAHAALGBwAohAYttlxEBi22X//lMgBSf/CEWzYAAAJGxQZJoFN2gK0IqYD978ffG6HO42VQXy00TEmkAPFSnXfBXIe2Iq9aWg0UiXK5OXAUO1U3QmVYV5t3JdDMqertkQROtoUFHQrF3eSojHSC6qoVwBSICg5qfL+OhrglxPOQMYCYb2uchqrcVY9Jztkq9mJA5SZbxyBwLAVqbVR64t7xX3eRlyO2UTpnssSgU0sUFHQqfF34="
+)
+AUD_PAYLOAD = base64.b64decode(
+    "//lMgBSf/CEWzYAAAJGxQZJoFN2gK0IqYD978ffG6HO42VQXy00TEmkAPFSnXfBXIe2Iq9aWg0UiXK5OXAUO1U3QmVYV5t3JdDMqertkQROtoUFHQrF3eSojHSC6qoVwBSICg5qfL+OhrglxPOQMYCYb2uchqrcVY9Jztkq9mJA5SZbxyBwLAVqbVR64t7xX3eRlyO2UTpnssSgU0sUFHQqfF34="
+)
+
+
+PAT_PKT = base64.b64decode(
+    "R0AAHAAAsA0ACMEAAAAB4QBn1F+J//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
+)
+PMT_PKT = base64.b64decode(
+    "R0EAHAACsEQAAcEAAPAA8AwFBEhETVaIBA///Pwb8QDwAATxEPAAFeEE8BwFBEtMVkEmCQEA/0tMVkEADycJwQAAwIAAwQAA7IayY/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
+)
+
+
+class MPEGAdaptionFullTest(unittest.TestCase):
+
+    def test_fromsim(self):
+        f = open(THIS_DIR + "/mpegs_ch0.ts", mode="br")
+        f.seek(752)
+        while True:
+            print(f"Reading from offset {f.tell()}")
+            buf = f.read(188)
+            if len(buf) == 0:
+                break
+            mp = MPEGTS.MPEGPacket()
+            try:
+                mp.unpack(buf)
+            except Exception as e:
+                print(e)
+                self.assertTrue(False)
+
+    def test_pack_and_unpack(self):
+        for _iter in range(1 - 0):
+            mpeg_pkt = MPEGTS.MPEGPacket()
+            mpeg_pkt.sync = 0x47
+            mpeg_pkt.transport_priority = random.choice([0, 1])  # 1 in 10
+            mpeg_pkt.tei = not random.randint(0, 100)  # 1 in 100
+            mpeg_pkt.pid = random.randint(1, 5000)  # Select a PID
+            mpeg_pkt.pusi = random.choice([True, False])
+            mpeg_pkt.continuitycounter = random.randint(1, 6)
+            mpeg_pkt.adaption_ctrl = random.choice([1, 2])
+            adaption_field_len = 0
+            if mpeg_pkt.adaption_ctrl == 0x2 or mpeg_pkt.adaption_ctrl == 0x3:
+                mpeg_pkt.adaption_field = gen_random_adaption()
+                adaption_field_len = len(mpeg_pkt.adaption_field.pack())
+            payload_len = 188 - 4 - adaption_field_len
+            if mpeg_pkt.adaption_ctrl != MPEGTS.ADAPTION_ADAPTION_ONLY:
+                mpeg_pkt.payload = struct.pack(f"{payload_len}B", *range(payload_len))
+
+            buf = mpeg_pkt.pack()
+
+            mp = MPEGTS.MPEGPacket()
+            self.assertIsNone(mp.unpack(buf))
+            self.assertEqual(mp, mpeg_pkt)
+
+    def test_unpack_audio_adaption(self):
+        pkt = pes.PES()
+        pkt.unpack(AUD_WIRESHARK)
+        self.assertEqual(len(pkt.header_data), 10)
+        pts = pes.buf_to_ts(pkt.header_data[:5])
+        dts = pes.buf_to_ts(pkt.header_data[5:])
+        self.assertAlmostEqual(pts, 71.881366666)
+        self.assertAlmostEqual(dts, 71.881366666)
+
+        pkt2 = pes.PES()
+        pkt2.tei = False
+        pkt2.pusi = True
+        pkt2.transport_priority = 0
+        pkt2.pid = 0x1110
+        pkt2.continuitycounter = 4
+        pkt2.tsc = 0
+        pkt2.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_AND_ADAPTION
+        pkt2.streamid = 0xC0
+        pkt2.extension_w1 = 0x81
+        pkt2.extension_w2 = 0xC0
+        pkt2.header_data = pes.ts_to_buf(71.881366666) + pes.ts_to_buf(71.881366666)
+        pkt2.pesdata = AUD_PAYLOAD
+
+        buf = pkt2.pack()
+        # self.assertEqual(buf, AUD_WIRESHARK)
+        f = open(THIS_DIR + "/audio_gen.ts", mode="bw")
+        f.write(PAT_PKT)
+        f.write(PMT_PKT)
+        # f.write(AUD_WIRESHARK)
+        f.write(buf)
+        f.close()
+
+
+class MPEGAdaptionExtensionTestcase(unittest.TestCase):
+    def test_basic(self):
+        for _i in range(100):
+            _e = MPEGTS.MPEGAdaptionExtension()
+            _e.ltw = random.choice([bytes(), b"\x00\x00"])
+            _e.piecewise = random.choice([bytes(), b"\x00\x00\x00"])
+            _e.seamless_splice = random.choice([bytes(), b"\x00\x00\x00\x00\x00"])
+
+            _d = MPEGTS.MPEGAdaptionExtension()
+            _d.unpack(_e.pack())
+            self.assertEqual(_d, _e)
+
+
+class MPEGAdaptionTestcase(unittest.TestCase):
+    def test_basic(self):
+        for _i in range(100):
+            _e = MPEGTS.MPEGAdaption()
+            adaption_ext = MPEGTS.MPEGAdaptionExtension()
+            adaption_ext.ltw = struct.pack(">H", 0x1)
+            _e.adaption_extension = adaption_ext
+            _e.pcr = random.choice([struct.pack(">HI", 0xDC, 0xA), bytes()])
+            private_data_len = random.randint(4, 10)
+            _e.private_data = random.choice([struct.pack(f">{private_data_len}B", *range(private_data_len)), bytes()])
+
+            _d = MPEGTS.MPEGAdaption()
+            _b = _e.pack()
+            _d.unpack(_b)
+            self.assertEqual(_e, _d)
+
+
 class CorruptVid(unittest.TestCase):
-    pass
+    def test_basic(self):
+        f = open(THIS_DIR + "/audio_pkt.ts", mode="bw")
+        f.write(PAT_PKT)
+        f.write(PMT_PKT)
+        for _iter in range(1):
+            mpeg_pkt = MPEGTS.MPEGPacket()
+            mpeg_pkt.sync = 0x47
+            mpeg_pkt.transport_priority = random.choice([0, 1])  # 1 in 10
+            mpeg_pkt.tei = not random.randint(0, 100)  # 1 in 100
+            mpeg_pkt.pid = 0x1110  # Select a PID
+            mpeg_pkt.pusi = False
+            mpeg_pkt.continuitycounter = random.randint(1, 6)
+            mpeg_pkt.adaption_ctrl = random.choice([1, 2])
+            adaption_field_len = 0
+            if mpeg_pkt.adaption_ctrl == 0x2 or mpeg_pkt.adaption_ctrl == 0x3:
+                mpeg_pkt.adaption_field = gen_random_adaption()
+                adaption_field_len = len(mpeg_pkt.adaption_field.pack())
+            payload_len = 188 - 4 - adaption_field_len
+            if mpeg_pkt.adaption_ctrl != MPEGTS.ADAPTION_ADAPTION_ONLY:
+                mpeg_pkt.payload = struct.pack(f"{payload_len}B", *range(payload_len))
+
+            buf = mpeg_pkt.pack()
+            f.write(buf)
+        f.close()
 
 
 if "unittest.util" in __import__("sys").modules:

@@ -98,4 +98,5 @@
 # 1.1.0   - Moved all Chapter10 stuff into IRIG106 and then into the module according to the spec. Existing code will work but with a Deprecation warning
 # 1.1.1   - Version tag not updates
 # 1.1.2   - Fixed the ch10 examples
-__version__ = "1.1.3"
+# 1.1.4   - Updates to the MPEGTS packets to build and decom a PTS / DTS packet
+__version__ = "1.1.4"
