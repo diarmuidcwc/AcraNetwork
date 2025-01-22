@@ -326,12 +326,19 @@ AUD_PAYLOAD = base64.b64decode(
     "//lMgBSf/CEWzYAAAJGxQZJoFN2gK0IqYD978ffG6HO42VQXy00TEmkAPFSnXfBXIe2Iq9aWg0UiXK5OXAUO1U3QmVYV5t3JdDMqertkQROtoUFHQrF3eSojHSC6qoVwBSICg5qfL+OhrglxPOQMYCYb2uchqrcVY9Jztkq9mJA5SZbxyBwLAVqbVR64t7xX3eRlyO2UTpnssSgU0sUFHQqfF34="
 )
 
+AUD_WIRESHARK2 = base64.b64decode(
+    "R1EQOC4A////////////////////////////////////////////////////////////AAABwACDgcAKIQGNjXkRAY2Nef/5TIAO3/whFs/V/++SoqIYaLUKxbLXVWoq5AYet7svXAIhmHcsb64qz2LtaB5KVl4xYGSCUtowuItllZjKsAQJWCYTNB99yj5UGUVa3Ar4V1XHaw4aUzFjjQx3k2UDECBEsJVUMLPvWs7VhHRgCLxSkKD77lw="
+)
 
 PAT_PKT = base64.b64decode(
     "R0AAHAAAsA0ACMEAAAAB4QBn1F+J//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
 )
 PMT_PKT = base64.b64decode(
     "R0EAHAACsEQAAcEAAPAA8AwFBEhETVaIBA///Pwb8QDwAATxEPAAFeEE8BwFBEtMVkEmCQEA/0tMVkEADycJwQAAwIAAwQAA7IayY/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
+)
+
+AUD_PAYLOAD2 = base64.b64decode(
+    "//lMgA7f/CEWz9X/75KiohhotQrFstdVairkBh63uy9cAiGYdyxvrirPYu1oHkpWXjFgZIJS2jC4i2WVmMqwBAlYJhM0H33KPlQZRVrcCvhXVcdrDhpTMWONDHeTZQMQIESwlVQws+9aztWEdGAIvFKQoPvuXA=="
 )
 
 
@@ -407,6 +414,64 @@ class MPEGAdaptionFullTest(unittest.TestCase):
         # f.write(AUD_WIRESHARK)
         f.write(buf)
         f.close()
+
+    def test_unpack_audio_adaption2(self):
+        pkt = pes.PES()
+        pkt.unpack(AUD_WIRESHARK2)
+        self.assertEqual(len(pkt.header_data), 10)
+        pts = pes.buf_to_ts(pkt.header_data[:5])
+        dts = pes.buf_to_ts(pkt.header_data[5:])
+        self.assertAlmostEqual(pts, 72.290800000)
+        self.assertAlmostEqual(dts, 72.290800000)
+
+        pkt2 = pes.PES()
+        pkt2.tei = False
+        pkt2.pusi = True
+        pkt2.transport_priority = 0
+        pkt2.pid = 0x1110
+        pkt2.continuitycounter = 8
+        pkt2.tsc = 0
+        pkt2.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_AND_ADAPTION
+        pkt2.adaption_field = MPEGTS.MPEGAdaption()
+        pkt2.adaption_field.length = 46
+
+        pkt2.streamid = 0xC0
+        pkt2.extension_w1 = 0x81
+        pkt2.extension_w2 = 0xC0
+        pkt2.header_data = pes.ts_to_buf(72.290800000) + pes.ts_to_buf(72.290800000)
+        pkt2.pesdata = AUD_PAYLOAD2
+
+        buf = pkt2.pack()
+        f = open(THIS_DIR + "/audio_gen2.ts", mode="bw")
+        f.write(PAT_PKT)
+        f.write(PMT_PKT)
+        # f.write(AUD_WIRESHARK)
+        f.write(buf)
+        f.close()
+
+    def test_random_pes(self):
+
+        for _i in range(100):
+            pkt2 = pes.PES()
+            pkt2.tei = False
+            pkt2.pusi = True
+            pkt2.transport_priority = 0
+            pkt2.pid = 1
+            pkt2.continuitycounter = 2
+            pkt2.tsc = 0
+            pkt2.adaption_ctrl = MPEGTS.ADAPTION_PAYLOAD_AND_ADAPTION
+            adaption = random.choice([0, 12, 25, 44])
+            if adaption != 0:
+                pkt2.adaption_field = MPEGTS.MPEGAdaption()
+                pkt2.adaption_field.length = adaption
+            pkt2.streamid = 0xC0
+            pkt2.extension_w1 = 0x81
+            pkt2.extension_w2 = 0xC0
+            pkt2.header_data = pes.ts_to_buf(44) + pes.ts_to_buf(44)
+            pkt2.pesdata = struct.pack(f">{164 - adaption}B", *range(164 - adaption))
+            if len(pkt2.pack()) != 188:
+                pass
+            self.assertEqual(len(pkt2.pack()), 188)
 
 
 class MPEGAdaptionExtensionTestcase(unittest.TestCase):
