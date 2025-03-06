@@ -6,10 +6,21 @@
 Welcome to AcraNetwork's documentation!
 =======================================
 
+This module contains a number of classes to help you work with various packet formats or datasources that would be encountered
+while using the Curtiss-Wright ACRA Flight Test Instrumentation Hardware. 
+https://www.curtisswrightds.com/products/flight-test/data-acquisition
+
+Most classes handle network based packet formats but also include recording formats, like Chapter10
+
+Leave an issues or bugs here https://github.com/diarmuidcwc/AcraNetwork
+
+Diarmuid Collins 2024
+
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    pcap
+   samdec008
    simpleethernet
    IENA
    inet
@@ -17,6 +28,7 @@ Welcome to AcraNetwork's documentation!
    parseraligned
    npd
    chapter10
+   chapter11
    mpegts
 
 

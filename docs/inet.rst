@@ -1,7 +1,7 @@
 iNET Documentation
 ********************
 
-.. py:currentmodule:: iNET
+.. py:currentmodule:: AcraNetwork.iNET
 
 iNET is a FTI packet format that is decribed in IRIG106 standard, http://www.irig106.org/docs/106-17/Chapter24.pdf
 

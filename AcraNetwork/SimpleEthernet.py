@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 .. module:: SimpleEthernet
     :platform: Unix, Windows
@@ -19,6 +21,7 @@ from functools import reduce
 from zlib import crc32
 import logging
 import typing
+import enum
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +38,10 @@ def unpack48(x: bytes) -> int:
     """
     x2, x3 = struct.unpack(">HI", x)
     return x3 | (x2 << 32)
+
+
+def pack48(x: int) -> bytes:
+    return struct.pack(">HI", x >> 32, x & 0xFFFF_FFFF)
 
 
 def mactoreadable(macaddress: int) -> str:
@@ -73,30 +80,40 @@ def ip_calc_checksum(pkt: bytes) -> int:
     return s & 0xFFFF
 
 
+class EthType(enum.IntEnum):
+    TYPE_IP = 0x800
+    TYPE_IPv4 = 0x800
+    TYPE_IPv6 = 0x86DD
+    TYPE_ARP = 0x806
+    TYPE_VLAN = 0x8100
+    TYPE_PAUSE = 0x8808
+
+
 class Ethernet(object):
     """
     This is simple class to pack or unpack an Ethernet packet. Handles very basic packets that are used in FTI
 
     Read an Ethernet Packet from a pcap file
 
-    >>> import AcraNetwork.Pcap as Pcap
-    >>> p = Pcap.Pcap("test_input.pcap")
-    >>> mypcaprecord = p[0]
+    >>> from base64 import b64decode
+    >>> raw_packet = b64decode('AQBeAAABAAxNAApsCABFAAA61p1AAP8R3VrAqBwQ6wAAAQP/H0oAJgAAAB8ADwAPA1ffwH8A1pwAAQvUQGAAAP3NEAEoHP//')
     >>> e = Ethernet()
-    >>> e.unpack(mypcaprecord.packet)
-    >>> print e
-    SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800
+    >>> e.unpack(raw_packet)
+    True
+    >>> print(e)
+    SRCMAC=00:0C:4D:00:0A:6C DSTMAC=01:00:5E:00:00:01 TYPE=0X800
 
     """
 
     HEADERLEN = 14
     HEADERLEN_VLAN = 18
-    TYPE_IP = 0x800
-    TYPE_IPv4 = 0x800  # :(Object Constant) IPv4 Type Constant
-    TYPE_IPv6 = 0x86DD  # :(Object Constant) IPv6 Type Constant
-    TYPE_ARP = 0x806  # :(Object Constant) ARP Type Constant
-    TYPE_PAUSE = 0x8808  # :(Object Constant) PAUSE Type Constant
-    TYPE_VLAN = 0x8100
+    TYPE_IP = EthType.TYPE_IPv4
+    TYPE_IPv4 = EthType.TYPE_IPv4  # :(Object Constant) IPv4 Type Constant
+    TYPE_IPv6 = EthType.TYPE_IPv6  # :(Object Constant) IPv6 Type Constant
+    TYPE_ARP = EthType.TYPE_ARP  # :(Object Constant) ARP Type Constant
+    TYPE_PAUSE = EthType.TYPE_PAUSE  # :(Object Constant) PAUSE Type Constant
+    TYPE_VLAN = EthType.TYPE_VLAN  # :(Object Constant) VLAN Type Constant
+    ADDR_LENGTH = 6  # Address length for ARP
 
     def __init__(self, buf: typing.Optional[bytes] = None):
         """
@@ -109,8 +126,12 @@ class Ethernet(object):
         self.type: int = (
             Ethernet.TYPE_IP
         )  #: The Ethertype field. Assign using the TYPE_* constants. https://en.wikipedia.org/wiki/EtherType
-        self.srcmac: int = 0x0  #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
-        self.dstmac: int = 0x0  #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        self.srcmac: int = (
+            0x0  #: The Ethernet source MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        )
+        self.dstmac: int = (
+            0x0  #: The Ethernet destination MAC Address. This is encoded into a 48bit field. https://en.wikipedia.org/wiki/MAC_address
+        )
         self.payload: bytes = bytes()  #: The Ethernet payload. Typically an IP packet.
         self.vlan: bool = False
         self.vlantag: int = 0xFFFF
@@ -124,6 +145,8 @@ class Ethernet(object):
 
         :param buf: The string buffer to unpack
         :type buf: bytes
+        :param fcs: Assume FCS is included in the buffer
+        :type fcs: bool
         :rtype: bool
         """
 
@@ -152,6 +175,7 @@ class Ethernet(object):
         """
         Pack the Ethernet object into a buffer
 
+        :param fcs: Include FCS in the buffer returned
         :rtype: bytes
         """
         if self.dstmac is None or self.srcmac is None or self.type is None or self.payload is None:
@@ -211,20 +235,11 @@ class IP(object):
 
     If you wanted to unpack an Ethernet object payload which contains an IP packet
 
+    >>> from base64 import b64decode
+    >>> raw_packet = b64decode('AQBeAAABAAxNAApsCABFAAA61p1AAP8R3VrAqBwQ6wAAAQP/H0oAJgAAAB8ADwAPA1ffwH8A1pwAAQvUQGAAAP3NEAEoHP//')
     >>> i = IP()
-    >>> i.unpack(eth_pkt.payload)
-
-    :type srcip: str
-    :type dstip: str
-    :type len: int
-    :type flags: int
-    :type protocol: int
-    :type payload: bytes
-    :type version: int
-    :type ihl: int
-    :type dscp: int
-    :type id: int
-    :type ttl: int
+    >>> i.unpack(raw_packet[0x10:])
+    True
 
     """
 
@@ -243,6 +258,7 @@ class IP(object):
     }  # (Object Constant) Protocols available
     IP_HEADER_FORMAT = ">BBHHBBBBHII"
     IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
+    ADDR_LENGTH = 4
 
     def __init__(self, buf: typing.Optional[bytes] = None):
         """
@@ -311,7 +327,7 @@ class IP(object):
 
         for word in [self.dscp, self.id, self.flags, self.ttl, self.protocol, self.srcip, self.dstip]:
             if word is None:
-                raise ValueError(f"All required IP payloads not defined.")
+                raise ValueError(f"All required IP payloads not defined. Attribute {word} is None")
 
         (srcip_as_int,) = struct.unpack("!I", socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack("!I", socket.inet_aton(self.dstip))
@@ -342,6 +358,10 @@ class IP(object):
             if v == self.protocol:
                 protocol = p
         return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
+
+
+class IPv4(IP):
+    pass
 
 
 class IPv6(object):
@@ -442,10 +462,7 @@ class UDP(object):
     >>> u.payload = struct.pack('B',0x5)
     >>> mypacket = u.pack()
 
-    :type srcport: int
-    :type dstport: int
-    :type len: int
-    :type payload: bytes
+
     """
 
     UDP_HEADER_FORMAT = ">HHHH"
@@ -572,8 +589,15 @@ class AFDX(object):
 
 
 class ICMP(object):
-    """
-    ICMP packets.
+    """Class to handle ICMP packets
+
+    >>> i = ICMP()
+    >>> i.type = ICMP.TYPE_REPLY
+    >>> i.code = 0
+    >>> i.payload = bytes(1)
+    >>> mypacket = i.pack()
+
+
     """
 
     TYPE_REPLY = 0x0
@@ -582,16 +606,15 @@ class ICMP(object):
     TYPE_REQUEST = 0x8
 
     def __init__(self):
-        self.type = None
-        self.code = None
-        self.request_id = None
-        self.request_sequence = None
+        self.type: int = 0
+        self.code: int = 0
+        self.request_id: int = 0
+        self.request_sequence: int = 0
         self.payload = bytes()
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
-        Pack an ICMP object into a buff
-        :return:
+        Pack an ICMP object into a buffer of bytes
         """
         for attr in ("type", "code", "request_id", "request_sequence"):
             if type(getattr(self, attr)) != int:
@@ -602,7 +625,7 @@ class ICMP(object):
         _hdr = _hdr_no_checksum[:2] + struct.pack("H", _icmp_checksum) + _hdr_no_checksum[4:]
         return _hdr + self.payload
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         raise NotImplementedError("Not implemented")
 
 
@@ -616,7 +639,7 @@ def ones_comp_add16(num1, num2):
 
 class IGMPv3(object):
     """
-    Simplified IGMP
+    Simplified IGMPv3 support to generate queries and join requests
     """
 
     TYPE_QUERY = 0x11
@@ -632,7 +655,7 @@ class IGMPv3(object):
         pass
 
     @staticmethod
-    def membership_query():
+    def membership_query() -> bytes:
         """
         Return a membership query
         :return:
@@ -651,10 +674,10 @@ class IGMPv3(object):
         )
 
     @staticmethod
-    def join_groups(groups):
+    def join_groups(groups: typing.List[str]) -> bytes:
         """
         Join the specified groups
-        :param groups:
+        :param groups: List of IP addresses
         :return: bytes
         """
         if len(groups) == 1:
@@ -671,12 +694,89 @@ class IGMPv3(object):
         return _nochecksum[:2] + struct.pack(">H", checksum) + _nochecksum[4:]
 
 
-def combine_ip_fragments(packets: typing.List[IP]):
+class ARP(object):
+    """Minimal ARP class,. Very limited
+
+    Args:
+        object (_type_): _description_
+
+    Returns:
+        _type_: _description_
+
+    >>> a = ARP()
+    >>> a.dstip = "192.168.28.2"
+    >>> b = ARP()
+    >>> b.unpack(a.pack())
+    >>> a == b
+    True
+    """
+
+    OPER_REQUEST = 1
+    OPER_REPLY = 2
+
+    def __init__(self):
+        self.hardware_type: int = 1
+        self.protocol_type: int = Ethernet.TYPE_IPv4
+        self.hardware_length: int = Ethernet.ADDR_LENGTH
+        self.protocol_length: int = IPv4.ADDR_LENGTH
+        self.operation: int = ARP.OPER_REQUEST
+        self.srcmac: int = 0x0
+        self.dstmac: int = 0x0
+        self.srcip: str = "0.0.0.0"
+        self.dstip: str = "0.0.0.0"
+
+    def pack(self) -> bytes:
+        """Convert ARP object into bytes
+
+        Returns:
+            bytes: bytes representation of the ARP packet
+        """
+        _raw = struct.pack(
+            ">HHBBH", self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation
+        )
+        _raw += pack48(self.srcmac) + socket.inet_aton(self.srcip) + pack48(self.dstmac) + socket.inet_aton(self.dstip)
+        return _raw
+
+    def unpack(self, buffer: bytes) -> None:
+        """Conmvert the buffer into an ARP object
+
+        Args:
+            buffer (bytes): Buffer of bytes
+        """
+        (self.hardware_type, self.protocol_type, self.hardware_length, self.protocol_length, self.operation) = (
+            struct.unpack_from(">HHBBH", buffer)
+        )
+        self.srcmac = unpack48(buffer[8:14])
+        self.srcip = socket.inet_ntoa(buffer[14:18])
+        self.dstmac = unpack48(buffer[18:24])
+        self.dstip = socket.inet_ntoa(buffer[24:28])
+
+    def __repr__(self):
+        return f"ARP: HW_type={self.hardware_type} ProtoType={self.protocol_type}, SRC={self.srcmac}/{self.srcip} DST={self.dstmac}/{self.dstip}"
+
+    def __eq__(self, other: ARP) -> bool:
+        if not isinstance(other, ARP):
+            return False
+        for attr in [
+            "hardware_type",
+            "protocol_type",
+            "hardware_length",
+            "protocol_length",
+            "operation",
+            "srcmac",
+            "dstmac",
+            "srcip",
+            "dstip",
+        ]:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return True
+
+
+def combine_ip_fragments(packets: typing.List[IP]) -> IP:
     """
     Combine the lists of fragmented IP packets into one IP packet
 
-    :type packets: list[IP]
-    :rtype: IP
     """
     ident = None
     # Check first the we have the correct imput

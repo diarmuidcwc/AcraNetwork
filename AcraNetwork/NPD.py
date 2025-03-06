@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -103,7 +104,7 @@ class NPDSegment(object):
 
 class ACQSegment(NPDSegment):
     """
-    PCM Segments
+    ACQ MPCM segments. Defined as 0xA1 in the NPD specification
     """
 
     def __init__(self):
@@ -130,7 +131,7 @@ class ACQSegment(NPDSegment):
 
 class PCMPacketizer(NPDSegment):
     """
-    PCM Packetizer Segments
+    PCM Packetizer Segments for the ADAU PCM module
     """
 
     def __repr__(self):
@@ -144,6 +145,8 @@ class A429Segment(NPDSegment):
 
 
 class RS232Segment(NPDSegment):
+    """The RS-232 segment header encapsulates data captured by the MBIM-232N-1 acquisition module."""
+
     BSL_CH0 = 0x0
     BSL_CH1 = 0x8000
     BSL_PAR_ERR = 0x4000
@@ -172,7 +175,7 @@ class RS232Segment(NPDSegment):
         self.sync_bytes: typing.List[int] = []
         self.data: bytes = bytes()
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         """
         Unpack a string buffer into an RS232 segment. Return the remaining buffer so that the next segment can iteratively
         be unpacked
@@ -192,11 +195,10 @@ class RS232Segment(NPDSegment):
             self.data = self.payload[2:]
         return remaining
 
-    def pack(self):
+    def pack(self) -> bytes:
         """
         Pack the RS232 Segment object into a binary buffer
 
-        :rtype: str
         """
         if self.block_status is None:
             raise Exception("block_status attribute should be defined")
@@ -230,6 +232,8 @@ class RS232Segment(NPDSegment):
 
 
 class MIL1553Segment(NPDSegment):
+    """The MIL-STD-1553 segment encapsulates MIL-STD-1553 messages"""
+
     def __init__(self):
         NPDSegment.__init__(self)
         self.blockstatus: int = 0
@@ -256,21 +260,22 @@ class MIL1553Segment(NPDSegment):
 
 class NPD(object):
     """
-    Class to pack and unpack NPD payloads.
+    Class to pack and unpack NPD payloads. The segments will be unpacked for specific defined segements
 
-    Capture a UDP packet and unpack the _payload as an NPD packet
+    For unknown data types, the class :class:`NPDSegment` will be used
 
-    >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> import AcraNetwork.iNetX as inetx
+    >>> data = b64decode('NVAADAMEAAoAAAAB6wAAAQAAAAUAAAADAA0AAQhAAAAA////AAAAAwAMAAEIQQEA')
     >>> n = NPD()
     >>> n.unpack(data)
-    >>> print n.datatype
-    6
+    True
+    >>> print(f"{n.datatype:#0X}")
+    0X50
     >>> for segment in n.segments:
-    ...  print segment.errorcode
-    2
-
+    ...    print(f"{segment}")
+    RS232 NPD Segment. TimeDelta=3 Segment Len=13 ErrorCode=0X0 Flags=0X1 Block_Status=0X840 DataLen=3
+    RS232 NPD Segment. TimeDelta=3 Segment Len=12 ErrorCode=0X0 Flags=0X1 Block_Status=0X841 DataLen=1
     """
 
     NPD_HEADER_FORMAT = ">BBHBBHIII"
@@ -295,9 +300,9 @@ class NPD(object):
         self.datasrcid: int = 0  #: A unique data source identifier for each data source.
         self.mcastaddr: str = ""  #: The 32-bit IP multicast address used as the destination address of the packet.
         self.timestamp = None  #: The content of this field is based upon the R bit in the flags field of the NPD Packet Protocol header.
-        self.segments: typing.List[
-            NPDSegment | ACQSegment | PCMPacketizer | RS232Segment | MIL1553Segment
-        ] = []  #: List of all the data segments
+        self.segments: typing.List[NPDSegment | ACQSegment | PCMPacketizer | RS232Segment | MIL1553Segment] = (
+            []
+        )  #: List of all the data segments
 
     def unpack(self, buffer: bytes) -> bool:
         """

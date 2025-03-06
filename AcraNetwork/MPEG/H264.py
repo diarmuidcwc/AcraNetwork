@@ -1,6 +1,6 @@
 import typing
 import struct
-from STANAG4609 import STANAG4609_SEI
+from AcraNetwork.MPEG.STANAG4609 import STANAG4609_SEI
 import sys
 
 NAL_HEADER = 0x00000001

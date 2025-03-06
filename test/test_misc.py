@@ -29,4 +29,4 @@ class MiscTest(unittest.TestCase):
             number=1_000_000,
             setup="from AcraNetwork import endianness_swap",
         )
-        print(rt)
+        #

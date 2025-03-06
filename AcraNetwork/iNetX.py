@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -24,22 +25,27 @@ class iNetX(object):
 
     Capture a UDP packet and unpack the payload as an iNetX packet
 
-    >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
-    >>> i = iNetX()
-    >>> i.unpack(data)
-    >>> print i.streamid
-    6
+    Here's an example where you take some bytes, decode it as an iNetX packet, then build the same
+    packet from scratch and compare the two
 
-    :type inetxcontrol: int
-    :type streamid: int
-    :type sequence: int
-    :type packetlen: int
-    :type ptptimeseconds: int
-    :type ptptimenanoseconds: int
-    :type pif: int
-    :type payload: bytes
+
+    >>> from base64 import b64decode
+    >>> data = b64decode('EQAAAAAAANwAAAABAAAAHgAAAAEAAAABAAAAAAUA')
+    >>> pkt = iNetX()
+    >>> pkt.unpack(data)
+    True
+    >>> print(f"{pkt.streamid:#0X}")
+    0XDC
+    >>> i = iNetX()
+    >>> i.sequence = 1
+    >>> i.pif = 0
+    >>> i.streamid = 0xDC
+    >>> i.setPacketTime(1, 1)
+    True
+    >>> i.payload = struct.pack("H", 0x5)
+    >>> i == pkt
+    True
+
     """
 
     DEF_CONTROL_WORD = 0x11000000  #: (Object Constant) The default iNetX control word.
@@ -47,12 +53,16 @@ class iNetX(object):
     INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
     REQ_ATTR = ("inetxcontrol", "streamid", "sequence", "ptptimeseconds", "ptptimenanoseconds", "pif", "payload")
 
-    def __init__(self, buf=None):
-        """Creator method for an iNetX class"""
-        self.inetxcontrol: int = iNetX.DEF_CONTROL_WORD  #: Control Word
+    def __init__(self, buf: bytes = None):
+        """Creator method for an iNetX class
+
+        Args:
+            buf (bytes, optional): Optionally unpack the byte buffer into an iNetX object. Defaults to None.
+        """
+        self.inetxcontrol: int = iNetX.DEF_CONTROL_WORD  #: Control Word Defaults to 0x11000000
         self.streamid: int = 0  #: Stream ID. Typically to identify a unique packet in an FTI network. 4 bytes in size
         self.sequence: int = 0  #: Unique rollover counter per stream ID.Rolls over at 2^64
-        self.packetlen: int = 0  #: Packet Length
+        self.packetlen: int = 0  #: Packet Length in bytes
         self.ptptimeseconds: int = 0  #: Timestamp of first parameter in the packet. EPOCH time
         self.ptptimenanoseconds: int = 0  #: Nanaosecond timestamp
         self.pif: int = 0  #: Payload Information Field

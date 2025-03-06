@@ -21,13 +21,6 @@ class ParserAlignedBlock(object):
     """
     A class to handle a single Parser Block. Returns an object containing all the fields of a parser block
 
-    :type error: bool
-    :type errorcode: int
-    :type quadbytes: int
-    :type messagecount: int
-    :type busid: int
-    :type elapsedtime: int
-    :type payload: str
     """
 
     def __init__(self):
@@ -115,19 +108,22 @@ class ParserAlignedBlock(object):
 
 class ParserAlignedPacket(object):
     """
-    A class that handles parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks
+    A class that handles iNetx parser aligned packets. Unpack a buffer to populate the field into a list of parserblocks
 
     Capture a UDP packet,unpack as iNetX whose payload is parser aligned
 
+    >>> from base64 import b64decode
     >>> import AcraNetwork.iNetX as inetx
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> data = b64decode('EQAAAAAAAAEAAAAAAAAAQAAAAAAAAAAAAAAAAAADAAAAAAAAQJ+3iAADAQIAAAAAekKvKAADAgYAACcQ7Z6oWA==')
     >>> i = inetx.iNetX()
     >>> i.unpack(data)
+    True
     >>> p = ParserAlignedPacket()
     >>> p.unpack(i.payload)
-    >>> print p
+    True
+    >>> print(p[0])
+    QuadBytes=3 Error=False ErrorCode=0 BusID=0 MessageCount=0 ElapsedTime=0
+
 
     :type parserblocks: list[ParserAlignedBlock]
     :type numberofblocks: int

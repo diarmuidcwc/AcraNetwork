@@ -1,7 +1,7 @@
 Parser Aligned Documentation
 *****************************
 
-.. py:currentmodule:: ParserAligned
+.. py:currentmodule:: AcraNetwork.ParserAligned
 
 Parser can generate iNetX or IENA payloads which have a specific format. This packet format is known as ParserAligned
 payloads. This class will unpack the payload into ParserAlignedPackets.

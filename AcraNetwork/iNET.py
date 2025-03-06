@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __copyright__ = "Copyright 2018"
 __maintainer__ = "Diarmuid Collins"
@@ -87,15 +88,13 @@ class iNET(object):
 
     Capture a UDP packet and unpack the _payload as an iNET packet
 
-    >>> import socket
-    >>>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('EAAAAAAAAAYAAAAAAAAAGAAAAAAAAAAA')
     >>> i = iNET()
     >>> i.unpack(data)
-    >>> print i.definition_ID
+    True
+    >>> print(i.definition_ID)
     6
-    >>> print i.packages[0].definitionID
-    2
 
     :type flags: int
     :type type: int
@@ -125,7 +124,7 @@ class iNET(object):
 
     def __init__(self):
         """Creator method for an iNET class"""
-        self.flags = None  #: Message Flags. Bits 15:8 Reserved.
+        self.flags = 0  #: Message Flags. Bits 15:8 Reserved.
         self.type = 0  #: Message type
         self._option_wc = 0
         self.version = 1  #: Message version
@@ -136,9 +135,7 @@ class iNET(object):
         self.ptptimenanoseconds = 0  #: PTP timestamps in nanoseconds
         self.app_fields = []  #: Optional Application Defined fields.
         self._payload = bytes()  # Payload
-        self.packages: typing.List[
-            iNETPackage
-        ] = (
+        self.packages: typing.List[iNETPackage] = (
             []
         )  #: The payload is made up of packages. The packagaes are stored in this attribute list[:class:`iNETPackage`]
 

@@ -99,7 +99,7 @@ class PMTStream(object):
     def __init__(self) -> None:
         self.streamtype: int = 0x0
         self.elementary_pid: int = 0
-        self.descriptor_tags: typing.List[DescriptorTag] = []
+        self.elementary_stream_descriptors: bytes = bytes()
 
     def unpack(self, buffer: bytes) -> bytes:
         """Extract a stream from the specified buffer and return the remainder bytes
@@ -107,13 +107,11 @@ class PMTStream(object):
         (self.streamtype, _pid, _len) = struct.unpack_from(PMTStream.FMT, buffer)
         self.elementary_pid = _pid & 0x1FFF
         es_len = _len & 0xFFF
-        es_buffer = buffer[MIN_STREAM_LEN : es_len + MIN_STREAM_LEN]
-        while len(es_buffer) >= MIN_STREAM_LEN:
-            tag = DescriptorTag()
-            es_buffer = tag.unpack(es_buffer)
-            self.descriptor_tags.append(tag)
+        self.elementary_stream_descriptors = buffer[
+            struct.calcsize(PMTStream.FMT) : struct.calcsize(PMTStream.FMT) + es_len
+        ]
         # Return the remainder
-        return buffer[es_len + MIN_STREAM_LEN :]
+        return buffer[es_len + struct.calcsize(PMTStream.FMT) :]
 
     def pack(self) -> bytes:
         """Convert the PMTSream into bytes
@@ -121,17 +119,17 @@ class PMTStream(object):
         Returns:
             bytes: _description_
         """
-        _payload = bytes()
-        for tag in self.descriptor_tags:
-            _payload += tag.pack()
-        hdr = struct.pack(PMTStream.FMT, self.streamtype, self.elementary_pid + 0xE000, len(_payload) + 0xF000)
-        return hdr + _payload
+
+        hdr = struct.pack(
+            PMTStream.FMT,
+            self.streamtype,
+            self.elementary_pid + 0xE000,
+            len(self.elementary_stream_descriptors) + 0xF000,
+        )
+        return hdr + self.elementary_stream_descriptors
 
     def __len__(self) -> int:
-        r = struct.calcsize(PMTStream.FMT)
-        for t in self.descriptor_tags:
-            r += len(t)
-        return r
+        return struct.calcsize(PMTStream.FMT) + len(self.elementary_stream_descriptors)
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, PMTStream):
@@ -139,15 +137,13 @@ class PMTStream(object):
         if (
             self.streamtype != value.streamtype
             or self.elementary_pid != value.elementary_pid
-            or self.descriptor_tags != value.descriptor_tags
+            or self.elementary_stream_descriptors != value.elementary_stream_descriptors
         ):
             return False
         return True
 
     def __repr__(self) -> str:
-        r = f"Stream Type={self.streamtype:#04X} Elementary PID={self.elementary_pid:#06X}\n"
-        for t in self.descriptor_tags:
-            r += f" Descriptor: {repr(t)}\n"
+        r = f"Stream Type={self.streamtype:#04X} Elementary PID={self.elementary_pid:#06X} Descriptor len={len(self.elementary_stream_descriptors)}"
         return r
 
 
@@ -190,6 +186,7 @@ class MPEGPacketPMT(MPEGPacket):
         self.pcr_pid: int = 0x0
         self.program_info_len: int = 0x0
         self.streams: typing.List[PMTStream] = []
+        self.descriptor_tags: typing.List[DescriptorTag] = []
         self._crc = None
 
     def unpack(self, buf: bytes) -> bool:
@@ -213,11 +210,21 @@ class MPEGPacketPMT(MPEGPacket):
         self.current_next_indicator = _ver & 0x1
         self.pcr_pid = _pcr & 0x1FFF
         self.program_info_len = _pil & 0xFFF
+        _offset = struct.calcsize(MPEGPacketPMT.FMT) + struct.calcsize(MPEGPacketPMT.FMT_POINTER) + _pointer
+        if self.program_info_len > 0:
+            descriptor_tag_buffer = self.payload[_offset : _offset + self.program_info_len]
+            while len(descriptor_tag_buffer) > 0:
+                dt = DescriptorTag()
+                descriptor_tag_buffer = dt.unpack(descriptor_tag_buffer)
+                self.descriptor_tags.append(dt)
+            _offset += self.program_info_len
 
         # Offset to the start of the streams
-        _offset = struct.calcsize(MPEGPacketPMT.FMT) + struct.calcsize(MPEGPacketPMT.FMT_POINTER) + _pointer
+
         # Length of the stream payload
-        stream_len = _len - struct.calcsize(MPEGPacketPMT.FMT) + MPEGPacketPMT.HDR_LEN_NOT_INCL_IN_LEN
+        stream_len = (
+            _len - struct.calcsize(MPEGPacketPMT.FMT) + MPEGPacketPMT.HDR_LEN_NOT_INCL_IN_LEN - self.program_info_len
+        )
         stream_buf = self.payload[_offset : (stream_len + _offset)]
         # The buffer over which to calculate the CRC
         crc_buffer = self.payload[
@@ -248,6 +255,10 @@ class MPEGPacketPMT(MPEGPacket):
         _len = struct.calcsize(MPEGPacketPMT.FMT) - MPEGPacketPMT.HDR_LEN_NOT_INCL_IN_LEN + MPEGPacketPMT.CRC_LEN
         for s in self.streams:
             _len += len(s)
+        self.program_info_len = 0
+        for _t in self.descriptor_tags:
+            _len += len(_t)
+            self.program_info_len += len(_t)
         _buf = struct.pack(MPEGPacketPMT.FMT_POINTER, 0x0)
         _buf += struct.pack(
             MPEGPacketPMT.FMT,
@@ -260,6 +271,8 @@ class MPEGPacketPMT(MPEGPacket):
             (0x7 << 13) + self.pcr_pid,
             (0xF << 12) + self.program_info_len,
         )
+        for _t in self.descriptor_tags:
+            _buf += _t.pack()
         for s in self.streams:
             _buf += s.pack()
         _crc = crc32mpeg2(_buf[struct.calcsize(MPEGPacketPMT.FMT_POINTER) :])
@@ -271,7 +284,9 @@ class MPEGPacketPMT(MPEGPacket):
         r = super().__repr__()
         r += f"PMT: TableID={self.tableid:#04X} ProgramNumer={self.program_number:#06X} SectionNumber={self.section} LastSection={self.last_section} PCR={self.pcr_pid:#06X} PiL={self.program_info_len}\n"
         for s in self.streams:
-            r += f"{repr(s)}"
+            r += f"{repr(s)}\n"
+        for _t in self.descriptor_tags:
+            r += f"{repr(_t)}\n"
         return r
 
     def __eq__(self, __value: object) -> bool:
@@ -295,6 +310,7 @@ class MPEGPacketPMT(MPEGPacket):
             "pcr_pid",
             "program_info_len",
             "streams",
+            "descriptor_tags",
         ]
         for attr in match_attr:
             if getattr(self, attr) != getattr(__value, attr):

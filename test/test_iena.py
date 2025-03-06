@@ -21,7 +21,7 @@ import AcraNetwork.Pcap as pcap
 import struct
 import os
 from copy import copy
-
+from base64 import b64encode
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -213,6 +213,34 @@ class IENATest(unittest.TestCase):
             self.assertEqual(p.paramid, idx)
             self.assertEqual(p.delay, idx * 2)
             self.assertEqual(len(p.dataset), idx + 5)
+
+    def test_create_ienam_small(self):
+        i = iena.IENAM()
+        i.key = 0xDC
+        i.endfield = 0xDEAD
+        i.keystatus = 0
+        i.sequence = 2
+        i.n2 = 0
+        for idx in range(1, 2):
+            mparam = iena.MParameter(paramid=idx, delay=idx * 2, dataset=bytes(1))
+            i.parameters.append(mparam)
+
+        buf = i.pack()
+        print(b64encode(buf))
+
+    def test_create_ienaq_small(self):
+        i = iena.IENAQ()
+        i.key = 0xDC
+        i.endfield = 0xDEAD
+        i.keystatus = 0
+        i.sequence = 2
+        i.n2 = 0
+        for idx in range(2, 3):
+            mparam = iena.QParameter(paramid=idx, dataset=bytes(1))
+            i.parameters.append(mparam)
+
+        buf = i.pack()
+        print(b64encode(buf))
 
     def test_create_ienaq(self):
         i = iena.IENAQ()

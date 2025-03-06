@@ -10,14 +10,15 @@ __author__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Prototype"
 
-import AcraNetwork.Chapter10.Chapter10 as ch10
+import AcraNetwork.IRIG106.Chapter11 as ch10
 import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
-import AcraNetwork.Chapter10.UART as ch10uart
-import AcraNetwork.Chapter10.PCM as ch10pcm
-import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
-import AcraNetwork.Chapter10.TimeDataFormat as ch10time
-import AcraNetwork.Chapter10.ComputerData as chcomputer
-import AcraNetwork.Chapter10.ARINC429 as charinc
+import AcraNetwork.IRIG106.Chapter11.UART as ch10uart
+import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
+import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
+import AcraNetwork.IRIG106.Chapter11.TimeDataFormat as ch10time
+import AcraNetwork.IRIG106.Chapter11.ComputerData as chcomputer
+import AcraNetwork.IRIG106.Chapter11.ARINC429 as charinc
+from AcraNetwork.IRIG106.Chapter10 import FileParser
 from AcraNetwork import endianness_swap
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as eth
@@ -126,7 +127,7 @@ def encapsulate_ch10_ptk(ch10payload: bytes) -> bytes:
     return ethpkt.pack()
 
 
-def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter10:
+def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter11:
     """Wrap the tmats data in a ch10 file for writing to a ch10 file
 
     Args:
@@ -137,7 +138,7 @@ def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter10:
     """
     with open(tmats_file, mode="rb") as f:
         tmats = f.read()
-        c = ch10.Chapter10()
+        c = ch10.Chapter11()
         c.channelID = 0
         c.sequence = 0
         c.packetflag = 0
@@ -149,7 +150,7 @@ def encapsulate_tmats(tmats_file: str, rtctime: int) -> ch10.Chapter10:
         return c
 
 
-def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> ch10.Chapter10:
+def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> ch10.Chapter11:
     """Return a time packet that maps the seconds / nanoseconds to the rtctime
 
     Args:
@@ -160,7 +161,7 @@ def get_ch10_time(ptptime: PTPTime, sequence: int = 0, channelid: int = 512) -> 
     Returns:
         ch10.Chapter10: _description_
     """
-    c = ch10.Chapter10()
+    c = ch10.Chapter11()
     c.channelID = channelid
     c.sequence = sequence
     c.packetflag = 0
@@ -234,10 +235,10 @@ def clone_ch10_payload(
 
 
 def clone_ch10(
-    original_ch10: ch10.Chapter10,
+    original_ch10: ch10.Chapter11,
     syncword: typing.Optional[int] = None,
     minor_frame_size_bytes: typing.Dict[int, typing.Optional[int]] = {},
-) -> ch10.Chapter10:
+) -> ch10.Chapter11:
     """Clone the ch10 packet but remove the secondary header
 
     Args:
@@ -246,7 +247,7 @@ def clone_ch10(
     Returns:
         ch10.Chapter10: _description_
     """
-    new_ch10 = ch10.Chapter10()
+    new_ch10 = ch10.Chapter11()
     new_ch10.syncpattern = original_ch10.syncpattern
     new_ch10.channelID = original_ch10.channelID
     new_ch10.datatypeversion = original_ch10.datatypeversion
@@ -255,7 +256,7 @@ def clone_ch10(
     new_ch10.datatype = original_ch10.datatype
 
     # logging.debug(f"Fkags={original_ch10.packetflag:#0X}")
-    if original_ch10.packetflag & ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME != 0:
+    if original_ch10.packetflag & ch10.Chapter11.PKT_FLAG_SEC_HDR_TIME != 0:
         new_ch10.packetflag &= 0x33
         logging.debug(f"Converting timestamps and overwrite packet flag {new_ch10.packetflag:#0X}")
         new_ch10.relativetimecounter = original_ch10.ptptime.to_pinksheet_rtc()
@@ -306,7 +307,7 @@ def main(args):
         pf_tmp = pcap.Pcap(args.pcapdebug, mode="w")
     else:
         pf_tmp = None
-    fp = ch10.FileParser(args.ch10, mode="wb")
+    fp = FileParser.FileParser(args.ch10, mode="wb")
 
     CH10_DATA_OFFSET = 0x2A
     CH10_DATA_LEN_MIN = 30
@@ -339,7 +340,7 @@ def main(args):
                     # Get the UDP payload (ie the chapter10 packet)
                     pkt_payload = eth_pkt[CH10_DATA_OFFSET:]
                     ch10udp_pkt = ch10udp.Chapter10UDP()
-                    ch10_pkt = ch10.Chapter10()
+                    ch10_pkt = ch10.Chapter11()
                     # Unpack the ch10 UDP and ch10 packets
                     try:
                         ch10udp_pkt.unpack(pkt_payload)

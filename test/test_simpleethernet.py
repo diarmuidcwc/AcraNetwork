@@ -151,7 +151,7 @@ class SimpleEthernetTest(unittest.TestCase):
 
     def test_defICMP(self):
         i = SimpleEthernet.ICMP()
-        self.assertRaises(ValueError, lambda: i.pack())
+        self.assertEqual(i.pack(), b"\x00\x00\xff\xff\x00\x00\x00\x00")
 
     ######################
     # Read a complete pcap file
@@ -296,6 +296,31 @@ class SimpleEthernetTest(unittest.TestCase):
         i.payload = act_b + struct.pack(">{}B".format(pad_len), *([0] * pad_len))
         e.payload = i.pack()
         r.packet = e.pack(fcs=True)
+        p.write(r)
+        p.close()
+
+    ######################
+    # ARP
+    ######################
+
+    def test_ARP(self):
+        a = SimpleEthernet.ARP()
+        a.dstip = "192.168.28.2"
+        a.dstmac = 0x0
+        a.srcip = "192.168.28.5"
+        a.srcmac = 0xAF72B6D5B
+        buf = a.pack()
+        b = SimpleEthernet.ARP()
+        self.assertIsNone(b.unpack(buf))
+        self.assertEqual(a, b)
+        p = pcap.Pcap("_arp.pcap", mode="w")
+        r = pcap.PcapRecord()
+        e = SimpleEthernet.Ethernet()
+        e.srcmac = 0x001122334455
+        e.dstmac = 0xFF_FF_FF_FF_FF_FF
+        e.type = SimpleEthernet.Ethernet.TYPE_ARP
+        e.payload = buf
+        r.packet = e.pack(fcs=False)
         p.write(r)
         p.close()
 
