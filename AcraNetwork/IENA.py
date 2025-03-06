@@ -6,6 +6,7 @@
 .. moduleauthor:: Diarmuid Collins <dcollins@curtisswright.com>
 
 """
+
 __author__ = "Diarmuid Collins"
 __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
@@ -48,7 +49,7 @@ class IENA(object):
     Read in some data stored in a UDP packet in a pcap file
 
     >>> import AcraNetwork.Pcap as pcap
-    >>> p = pcap.Pcap("../test/iena_test.pcap")
+    >>> p = pcap.Pcap("test/iena_test.pcap")
     >>> rec_payload = p[0].payload
     >>> i = IENA()
     >>> i.unpack(rec_payload[0x2a:])  # Offset into the pcap record
@@ -214,7 +215,7 @@ class MParameter(namedtuple("MParameter", "paramid, delay, dataset")):
     :param delay: The delay for this parameter
     :type delay: int
     :param dataset: The dataset payload as a string
-    :type dwords: bytes
+    :type dataset: bytes
     """
 
     def __repr__(self):
@@ -235,14 +236,13 @@ class IENAM(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ANwADAAAAAAAAAAAAAIAAQACAAEAAN6t')
     >>> i = IENAM()
     >>> i.unpack(data)
     >>> for param in i:
-    ...   print param.paramid
-    6
+    ...   print(param.paramid)
+    1
 
     """
 
@@ -252,9 +252,9 @@ class IENAM(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            MParameter
-        ] = []  #: The list of all MParameters in thie IENA-M packet Each entry is of class :class:`MParameter`
+        self.parameters: typing.List[MParameter] = (
+            []
+        )  #: The list of all MParameters in thie IENA-M packet Each entry is of class :class:`MParameter`
         self._req_attr = IENAM.REQ_ATTR
 
     def unpack(self, buf: bytes) -> None:
@@ -366,14 +366,13 @@ class IENAQ(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ANwACwAAAAAAAAAAAAIAAgABAADerQ==')
     >>> i = IENAQ()
     >>> i.unpack(data)
     >>> for param in i:
-    ...   print param.paramid
-    6
+    ...   print(param.paramid)
+    2
 
     """
 
@@ -496,13 +495,12 @@ class IENAD(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ABoAGAAB0QYFQAAAAMX/////AAAAAAAAAAAAAAAAAAABFAAAARQBEAGALpMAAN6t')
     >>> i = IENAD()
     >>> i.unpack(data)
-    >>> print len(i.parameters)
-    6
+    >>> print(len(i.parameters))
+    8
 
     :type parameters: list[DParameter]
     """
@@ -512,9 +510,9 @@ class IENAD(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            DParameter
-        ] = []  #: The list of all DParameters in thie IENA-D packet Each entry is of class :class:`DParameter`
+        self.parameters: typing.List[DParameter] = (
+            []
+        )  #: The list of all DParameters in thie IENA-D packet Each entry is of class :class:`DParameter`
         self._req_attr = IENAD.REQ_ATTR
 
     def unpack(self, buf: bytes):
@@ -604,16 +602,14 @@ class IENAN(IENA):
 
     Unpack some received packet from the network
 
-    >>> import socket
-    >>> recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    >>> data, addr = recv_socket.recvfrom(2048)
+    >>> from base64 import b64decode
+    >>> data = b64decode('ABoAGAAB0QYFQAAAAMX/////AAAAAAAAAAAAAAAAAAABFAAAARQBEAGALpMAAN6t')
     >>> i = IENAN()
     >>> i.unpack(data)
-    >>> print len(i.parameters)
-    6
-    >>> print i.parameters[0].paramid
-    >>>
-    4
+    >>> print(len(i.parameters))
+    16
+    >>> print(i.parameters[0].paramid)
+    65535
 
     :type parameters: list[NParameter]
 
@@ -624,9 +620,9 @@ class IENAN(IENA):
 
     def __init__(self):
         IENA.__init__(self)
-        self.parameters: typing.List[
-            NParameter
-        ] = []  #: List of all N-type parameters. Each entry is of class :class:`NParameter`
+        self.parameters: typing.List[NParameter] = (
+            []
+        )  #: List of all N-type parameters. Each entry is of class :class:`NParameter`
         self._req_attr = IENAN.REQ_ATTR
 
     def unpack(self, buf: bytes) -> None:

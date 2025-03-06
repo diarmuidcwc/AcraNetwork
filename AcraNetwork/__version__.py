@@ -86,5 +86,19 @@
 # 0.17.6  - Reverted last change
 # 0.17.7  - Allowed ch10 UART packet to be little endian
 # 0.17.8  - Fixed ch10 secondary header checksum calculation
-
-__version__ = "0.17.8"
+# 0.17.9  - Downgraded the offset error in ch7 to a warning. Added type hintint to ch7
+# 0.17.10 - Added support for ARP in SimpleEthernet
+# 0.17.11 - Added the SamDec class to support capturing live data from a SamDec
+# 0.17.13 - Added chapter 10 recorder script.
+# 0.17.14 - Fixed the PMT packet in MPEGTS
+# 0.17.15 - Added support for reading SamDec pcap files
+# 0.17.16 - Added documentation details
+# 0.17.17 - Docstring updates
+# 1.0.0   - First 1.0 release. No functional change from 0.17.17
+# 1.1.0   - Moved all Chapter10 stuff into IRIG106 and then into the module according to the spec. Existing code will work but with a Deprecation warning
+# 1.1.1   - Version tag not updates
+# 1.1.2   - Fixed the ch10 examples
+# 1.1.4   - Updates to the MPEGTS packets to build and decom a PTS / DTS packet
+# 1.1.5   - Missing ut file added
+# 1.1.6   - No chnage but tagging as 1.1.6
+__version__ = "1.1.6"

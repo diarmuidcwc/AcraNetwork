@@ -7,16 +7,16 @@ sys.path.append("..")
 import unittest
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
-import AcraNetwork.Chapter10.Chapter10 as ch10
-import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
-import AcraNetwork.Chapter10.ARINC429 as ch10arinc
-import AcraNetwork.Chapter10.UART as ch10uart
-import AcraNetwork.Chapter10.TimeDataFormat as ch10time
-import AcraNetwork.Chapter10.ARINC429 as ch10arinc
-import AcraNetwork.Chapter10.MILSTD1553 as ch10mil
-import AcraNetwork.Chapter10.PCM as ch10pcm
-import AcraNetwork.Chapter10.Video as ch10video
-from AcraNetwork.Chapter10 import (
+import AcraNetwork.IRIG106.Chapter11 as ch10
+import AcraNetwork.IRIG106.Chapter10.Chapter10UDP as ch10udp
+import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
+import AcraNetwork.IRIG106.Chapter11.UART as ch10uart
+import AcraNetwork.IRIG106.Chapter11.TimeDataFormat as ch10time
+import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
+import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
+import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
+import AcraNetwork.IRIG106.Chapter11.Video as ch10video
+from AcraNetwork.IRIG106.Chapter11 import (
     DATA_TYPE_TIMEFMT_1,
     DATA_TYPE_TIMEFMT_2,
     DATA_TYPE_PCM_DATA_FMT1,
@@ -35,13 +35,14 @@ import tempfile
 import logging
 import csv
 import AcraNetwork.MPEGTS as ampeg
+import base64
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = tempfile.gettempdir()
 
 
 logging.basicConfig(level=logging.INFO)
-logging.info(f"Temp folder={TMP_DIR}")
+# logging.info(f"Temp folder={TMP_DIR}")
 
 
 def getEthernetPacket(data: bytes = b""):
@@ -88,7 +89,7 @@ arinc_packet = """ARINCPayload: MessageCount=11
 
 
 def get_ch10(len=4):
-    c = ch10.Chapter10()
+    c = ch10.Chapter11()
     c.channelID = 1
     c.datatypeversion = 2
     c.sequence = 3
@@ -105,7 +106,7 @@ class CH10UDPTest(unittest.TestCase):
         self.full = ch10udp.Chapter10UDP()
         self.full.type = ch10udp.Chapter10UDP.TYPE_FULL
         self.full.sequence = 1
-        self.ch10 = ch10.Chapter10()
+        self.ch10 = ch10.Chapter11()
         self.ch10.channelID = 1
         self.ch10.datatypeversion = 2
         self.ch10.sequence = 3
@@ -120,7 +121,7 @@ class CH10UDPTest(unittest.TestCase):
         self.seg.channelID = 0x232
         self.seg.channelsequence = 100
         self.seg.segmentoffset = 3
-        self.ch10seg = ch10.Chapter10()
+        self.ch10seg = ch10.Chapter11()
         self.ch10seg.channelID = 1
         self.ch10seg.datatypeversion = 2
         self.ch10seg.sequence = 3
@@ -129,7 +130,7 @@ class CH10UDPTest(unittest.TestCase):
         self.ch10seg.relativetimecounter = 100
         self.seg.payload = self.ch10seg.pack()
 
-        self.c = ch10.Chapter10()
+        self.c = ch10.Chapter11()
         self.c.channelID = 1
         self.c.datatypeversion = 2
         self.c.sequence = 3
@@ -200,7 +201,7 @@ class CH10UDPTest(unittest.TestCase):
         self.pcapw.close()
 
     def test_ch10_comp(self):
-        ref = ch10.Chapter10()
+        ref = ch10.Chapter11()
         # self.c._payload = struct.pack(">II", 33, 44)
         pay = self.c.pack()
         ref.unpack(pay)
@@ -210,11 +211,11 @@ class CH10UDPTest(unittest.TestCase):
         c = ch10udp.Chapter10UDP()
         c.type = ch10udp.Chapter10UDP.TYPE_FULL
         c.sequence = 1
-        d = ch10.Chapter10()
+        d = ch10.Chapter11()
         d.channelID = 1
         d.datatypeversion = 2
         d.sequence = 3
-        d.packetflag = ch10.Chapter10.PKT_FLAG_SECONDARY
+        d.packetflag = ch10.Chapter11.PKT_FLAG_SECONDARY
         d.datatype = 4
         d.ts_source = ch10.TS_IEEE1558
         d.ptptime = PTPTime(101, int(200e6))
@@ -265,7 +266,7 @@ class CH10UDPTest(unittest.TestCase):
             c.sequence = 0x15
             c.payload = get_ch10(16).pack()
             self.assertTrue(c.pack())
-            print(repr(c))
+            # print(repr(c))
             c2 = ch10udp.Chapter10UDP()
             c2.unpack(c.pack())
             rec.payload = getEthernetPacket(c.pack())
@@ -292,7 +293,7 @@ class CH10UDPTest(unittest.TestCase):
         # Now I have a _payload that will be an inetx packet
         c = ch10udp.Chapter10UDP()
         self.assertTrue(c.unpack(u.payload))
-        d = ch10.Chapter10()
+        d = ch10.Chapter11()
         d.unpack(c.payload)
 
         # Check the Ch10 packets
@@ -340,7 +341,7 @@ class Ch10UARTTest(unittest.TestCase):
         self.full = ch10udp.Chapter10UDP()
         self.full.type = ch10udp.Chapter10UDP.TYPE_FULL
         self.full.sequence = 10
-        self.chfull = ch10.Chapter10()
+        self.chfull = ch10.Chapter11()
         self.chfull.channelID = 23
         self.chfull.datatypeversion = 2
         self.chfull.sequence = 3
@@ -381,7 +382,7 @@ class Ch10UARTTest(unittest.TestCase):
         mypcaprecord = p[0]
         ch10udppkt = ch10udp.Chapter10UDP()
         ch10udppkt.unpack(mypcaprecord.payload[0x2A:-4])  # FCS
-        ch10pkt = ch10.Chapter10()
+        ch10pkt = ch10.Chapter11()
         ch10pkt.unpack(ch10udppkt.payload)
         self.assertEqual(ch10pkt.packetflag, 0xC4)
         uart = ch10uart.UARTDataPacket(TS_IEEE1558)
@@ -400,10 +401,11 @@ class Ch10UARTTest(unittest.TestCase):
         self.assertEqual(uart, uart2)
         self.assertEqual(repr(uart2), uart_pkt)
 
+    @unittest.skip("missing pcap")
     def test_uart_le_unpack(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ch10_uart_le.pcap"))
         mypcaprecord = p[0]
-        ch10pkt = ch10.Chapter10()
+        ch10pkt = ch10.Chapter11()
         ch10pkt.unpack(mypcaprecord.payload[0x2E:-4])
         uart = ch10uart.UARTDataPacket(TS_IEEE1558, ch10uart.Endianness.LITTLE)
         uart.unpack(ch10pkt.payload)
@@ -525,14 +527,12 @@ class GenPCAP(unittest.TestCase):
         rec = pcap.PcapRecord()
         for idx in range(3):
             c = get_ch10(16)
-            if idx == 1:
-                c.has_secondary_header = True
-                c.ptptime = PTPTime(333344, 42322)
-                c.packetflag = (
-                    ch10.Chapter10.PKT_FLAG_SECONDARY
-                    + ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME
-                    + ch10.Chapter10.PKT_FLAG_1588_TIME
-                )
+            c.ptptime = PTPTime(333344, 42322)
+            c.packetflag = (
+                ch10.Chapter11.PKT_FLAG_SECONDARY
+                + ch10.Chapter11.PKT_FLAG_SEC_HDR_TIME
+                + ch10.Chapter11.PKT_FLAG_1588_TIME
+            )
             cu = ch10udp.Chapter10UDP()
             cu.type = ch10udp.Chapter10UDP.TYPE_FULL
             cu.sequence = 1
@@ -574,7 +574,7 @@ class PCMData(unittest.TestCase):
         pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_pcm.pcap", mode="w")
         rec = pcap.PcapRecord()
         u = ch10udp.Chapter10UDP()
-        c = ch10.Chapter10()
+        c = ch10.Chapter11()
         u.type = ch10udp.Chapter10UDP.TYPE_FULL
         u.sequence = 0
         c = get_ch10()
@@ -601,13 +601,13 @@ class PCMData(unittest.TestCase):
         self.assertEqual(pcmdf, pcmdf2)
         pcmdf3 = ch10pcm.PCMDataPacket(syncword=None)
         self.assertTrue(pcmdf3.unpack(packed_data))
-        print(pcmdf3)
+        # print(pcmdf3)
 
     def test_pcm_throughput(self):
         pcmdf = ch10pcm.PCMDataPacket()
         pcmdf.channel_specific_word = 0x100000  #
         mf = ch10pcm.PCMMinorFrame(throughput=True)
-        mf.minor_frame_data = struct.pack("<HH", 0xFE6B, 0x2840)
+        mf.minor_frame_data = struct.pack("<HHI", 0xFE6B, 0x2840, 0)
         pcmdf.minor_frames.append(mf)
         packed = pcmdf.pack()
         pcmdf2 = ch10pcm.PCMDataPacket()
@@ -615,8 +615,9 @@ class PCMData(unittest.TestCase):
         self.assertEqual(pcmdf, pcmdf2)
         self.assertEqual(
             repr(pcmdf2),
-            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=4\n",
+            "PCM Data Packet Format 1. Channel Specific Word =0X100000\nMinor Frame Throughput mode Time=None Payload_len=8\n",
         )
+        print(base64.b64encode(packed))
 
     def test_pcm_endianness(self):
         mf = ch10pcm.PCMMinorFrame(throughput=True)
@@ -635,13 +636,13 @@ class MnACQData(unittest.TestCase):
 
         for pkt_count, rec in enumerate(p):
             wrapper = ch10udp.Chapter10UDP()
-            pkt = ch10.Chapter10()
+            pkt = ch10.Chapter11()
             wrapper.unpack(rec.payload[0x2A:])
 
             if wrapper.type == ch10udp.Chapter10UDP.TYPE_SEG and wrapper.segmentoffset == 0 and ch10_payload != b"":
                 # segmented packet with existing payload
                 self.assertTrue(pkt.unpack(ch10_payload))
-                print(repr(pkt))
+                # print(repr(pkt))
                 ch10_payload = b""
                 self.assertEqual(pkt.datatype, DATA_TYPE_PCM_DATA_FMT1)
                 pcm = ch10pcm.PCMDataPacket()
@@ -665,7 +666,7 @@ class MnACQData(unittest.TestCase):
                 ch10_payload += wrapper.payload
             else:
                 pkt.unpack(wrapper.payload)
-                print(repr(pkt))
+                # print(repr(pkt))
 
         cf.close()
         p.close()
@@ -678,10 +679,10 @@ class CH10SampleFile(unittest.TestCase):
         total_len = 0
         with fileparser as chf:
             for pkt in chf:
-                print(repr(pkt))
+                # print(repr(pkt))
                 total_len += pkt.packetlen
                 # self.assertTrue(False)
-        print(f"{total_len:,d}")
+        # print(f"{total_len:,d}")
 
     @unittest.skip("Not a test")
     def test_read_ch10(self):
@@ -692,7 +693,7 @@ class CH10SampleFile(unittest.TestCase):
                 pkt_repr = repr(pkt)
                 total_len += pkt.packetlen
                 # self.assertTrue(False)
-        print(f"{total_len:,d}")
+        # print(f"{total_len:,d}")
 
     @unittest.skip("Not a test")
     def test_extract_tmats(self):
@@ -758,7 +759,7 @@ class Video(unittest.TestCase):
             mpgsts.append(mpegp)
         vid.mpegts = mpgsts
         buf = vid.pack()
-        print(repr(buf))
+        # print(repr(buf))
         vid2 = ch10video.VideoFormat2()
         vid2.unpack(buf)
         self.assertEqual(vid, vid2)

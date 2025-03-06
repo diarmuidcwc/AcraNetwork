@@ -1,7 +1,7 @@
 SimpleEthernet Documentation
 *****************************
 
-.. py:currentmodule:: SimpleEthernet
+.. py:currentmodule:: AcraNetwork.SimpleEthernet
 
 This module containts a number of simple classes than can be used to create Ethernet, IP and UDP packets. The basic functionality
 of these packet formats are supported which should cover 95% of the use cases.
@@ -15,9 +15,9 @@ is the byte representation of the packet.
 
 Packet types which encapsulate other packets are unpacked by passing the payload of the outter packet to the inner packet. For example
 
->>> import SimpleEthernet as se
+>>> import AcraNetwork.SimpleEthernet as se
 >>> ip_pkt = se.IP()
->>> ip_pkt.payload = "hello"
+>>> ip_pkt.payload = b"\xFF"
 >>> ip_pkt.dstip = "192.168.28.2"
 >>> ip_pkt.srcip = "192.168.28.1"
 >>> eth_pkt = se.Ethernet()
@@ -54,9 +54,32 @@ Used to build UDP packets. Payload encapsulated is typically an iNetX or IENA pa
    :members:
 
 
+:class:`ARP` Objects
+=======================
+Minimal ARP implementation
+
+.. autoclass:: ARP
+   :members:
+
+:class:`ICMP` Objects
+=======================
+Minimal ICMP implementation
+
+.. autoclass:: ICMP
+   :members:
+
+   
+:class:`IGMPv3` Objects
+=======================
+Minimal IGMPv3 implementation
+
+.. autoclass:: IGMPv3
+   :members:
+
 SimpleEthernet functions
 =========================
 These are useful functions than are associated with Ethernet packets
 
 .. autofunction:: unpack48
 .. autofunction:: mactoreadable
+.. autofunction:: combine_ip_fragments

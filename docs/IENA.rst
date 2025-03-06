@@ -1,7 +1,7 @@
 IENA Documentation
 *******************
 
-.. py:currentmodule:: IENA
+.. py:currentmodule:: AcraNetwork.IENA
 
 IENA Packet is an AIRBUS packet format that is used in FTI. The packet format is fully described in a technical document
 issued by Airbus Referemce:RP0701637

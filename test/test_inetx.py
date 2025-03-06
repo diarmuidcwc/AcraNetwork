@@ -10,6 +10,8 @@ import AcraNetwork.Pcap as pcap
 import struct
 import os
 import copy
+from base64 import b64encode
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -36,6 +38,7 @@ class iNetXTest(unittest.TestCase):
         expected_payload = struct.pack(
             inetx.iNetX.INETX_HEADER_FORMAT, inetx.iNetX.DEF_CONTROL_WORD, 0xDC, 1, 30, 1, 1, 0
         ) + struct.pack("H", 0x5)
+        print(b64encode(expected_payload))
         self.assertEqual(i.pack(), expected_payload)
 
     def test_unpackiNet(self):

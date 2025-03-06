@@ -4,6 +4,7 @@ import os
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
+from base64 import b64encode
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -104,6 +105,11 @@ class testINET(unittest.TestCase):
         i2.unpack(ref_str)
 
         self.assertEqual(self.i, i2)
+
+    def test_minimalinet(self):
+        i = iNET.iNET()
+        i.definition_ID = 6
+        print(b64encode(i.pack()))
 
 
 if __name__ == "__main__":

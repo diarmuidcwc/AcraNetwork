@@ -1,7 +1,7 @@
 iNetX Documentation
 ********************
 
-.. py:currentmodule:: iNetX
+.. py:currentmodule:: AcraNetwork.iNetX
 
 iNetX is a FTI packet format that is decribed in Tech Note 69. It is typically encapsulated in a UDP payload.
 
