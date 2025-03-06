@@ -54,8 +54,8 @@ def getEthernetPacket(data: bytes = b""):
     i.srcip = "192.168.1.1"
     i.protocol = SimpleEthernet.IP.PROTOCOLS["UDP"]
     u = SimpleEthernet.UDP()
-    u.dstport = 6679
-    u.srcport = 6679
+    u.dstport = 51000
+    u.srcport = 51000
     u.payload = data
     i.payload = u.pack()
     e.payload = i.pack()
@@ -95,6 +95,7 @@ def get_ch10(len=4):
     c.packetflag = 0  # No secondary
     c.datatype = 4
     c.relativetimecounter = 100
+    c.has_secondary_header = False
     c.payload = os.urandom(len)
     return c
 
@@ -518,21 +519,23 @@ class Time_Test(unittest.TestCase):
 
 class GenPCAP(unittest.TestCase):
     def test_ch10_fmt1(self):
+        # self.assertEqual(TMP_DIR, "")
         pcapw = pcap.Pcap(TMP_DIR + "/test_ch10_sample.pcap", mode="w")
 
         rec = pcap.PcapRecord()
-        for fmt in [1, 2, 3]:
+        for idx in range(3):
             c = get_ch10(16)
-            c.ptptime = PTPTime(333344, 42322)
-            c.packetflag = (
-                ch10.Chapter10.PKT_FLAG_SECONDARY
-                + ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME
-                + ch10.Chapter10.PKT_FLAG_1588_TIME
-            )
+            if idx == 1:
+                c.has_secondary_header = True
+                c.ptptime = PTPTime(333344, 42322)
+                c.packetflag = (
+                    ch10.Chapter10.PKT_FLAG_SECONDARY
+                    + ch10.Chapter10.PKT_FLAG_SEC_HDR_TIME
+                    + ch10.Chapter10.PKT_FLAG_1588_TIME
+                )
             cu = ch10udp.Chapter10UDP()
             cu.type = ch10udp.Chapter10UDP.TYPE_FULL
             cu.sequence = 1
-            cu.chapter10 = c
             # format 2
             cu.segmentoffset = 0x0
             cu.channelID = c.channelID
@@ -542,11 +545,11 @@ class GenPCAP(unittest.TestCase):
             cu.sequence = 0x3
             cu.offset_pkt_start = 0x0
 
-            cu.format = fmt
+            cu.format = 1
 
             # Write it out
 
-            full_payload = getEthernetPacket(cu.pack())
+            full_payload = getEthernetPacket(cu.pack() + c.pack())
             rec.payload = full_payload
             self.assertIsNone(pcapw.write(rec))
         pcapw.close()
