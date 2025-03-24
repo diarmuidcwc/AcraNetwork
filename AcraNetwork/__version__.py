@@ -102,4 +102,5 @@
 # 1.1.5   - Missing ut file added
 # 1.1.6   - No chnage but tagging as 1.1.6
 # 1.1.7   - Added logging error for incorrect IP checksum
-__version__ = "1.1.7"
+# 1.1.8   - No change but tagging as 1.1.8
+__version__ = "1.1.8"
