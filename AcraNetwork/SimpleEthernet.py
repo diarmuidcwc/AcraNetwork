@@ -316,6 +316,12 @@ class IP(object):
         # Fill IP payload with number of bytes declared in header's length field, leaving any trailer behind (e.g. typically padding to reach 64bytes)
         self.payload = buf[IP.IP_HEADER_SIZE : self.len]
 
+        computed_ip_checksum = ip_calc_checksum(buf[: IP.IP_HEADER_SIZE])
+        if computed_ip_checksum != 0:
+            logging.error(
+                f"Invalid IP Header Checksum. Computed Checksum = 0x{computed_ip_checksum:04X} (should be 0x0000). Raw received Checksum = 0x{checksum:04X}."
+            )
+
         return True
 
     def pack(self) -> bytes:
