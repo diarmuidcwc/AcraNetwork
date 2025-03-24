@@ -47,6 +47,8 @@ coverage html
 ```
 
 ## To Make a Distribution
+This can be skipped and let githugb actions do it by tagging as vx.y.z
+
 
 ```shell
 python -m sphinx -T -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html 
