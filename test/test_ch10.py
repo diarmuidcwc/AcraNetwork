@@ -16,6 +16,7 @@ import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
 import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
 import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
 import AcraNetwork.IRIG106.Chapter11.Video as ch10video
+import AcraNetwork.IRIG106
 from AcraNetwork.IRIG106.Chapter11 import (
     DATA_TYPE_TIMEFMT_1,
     DATA_TYPE_TIMEFMT_2,
@@ -763,6 +764,22 @@ class Video(unittest.TestCase):
         vid2 = ch10video.VideoFormat2()
         vid2.unpack(buf)
         self.assertEqual(vid, vid2)
+
+
+class CustomException(Exception):
+    def __init__(self, message=""):
+        print(f"Exception : {message}")
+
+
+class ExceptionOverride(unittest.TestCase):
+
+    @unittest.skip("Not supported")
+    def test_cillian(self):
+        p = pcap.Pcap(os.path.join(THIS_DIR, "CH10_CW_Extract_20250313.pcap"))
+        mypcaprecord = p[0]
+        p.close()
+        _ch10pkt = ch10udp.Chapter10UDP()
+        _ch10pkt.unpack(mypcaprecord.payload[0x2A:])
 
 
 if __name__ == "__main__":

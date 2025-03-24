@@ -101,4 +101,5 @@
 # 1.1.4   - Updates to the MPEGTS packets to build and decom a PTS / DTS packet
 # 1.1.5   - Missing ut file added
 # 1.1.6   - No chnage but tagging as 1.1.6
-__version__ = "1.1.6"
+# 1.1.7   - Added logging error for incorrect IP checksum
+__version__ = "1.1.7"
