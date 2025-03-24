@@ -269,7 +269,7 @@ class Chapter11(object):
     @packetflag.setter
     def packetflag(self, val):
         if val > 0xFF:
-            raise Exception("Packet flag ={:#0X} to valuid".format(val))
+            raise Exception("Packet flag ={:#0X} to valud".format(val))
         self._packetflag = val
 
         if self._packetflag >> 7 == 1:
@@ -364,8 +364,7 @@ class Chapter11(object):
         offset_hdr = struct.calcsize(Chapter11.CH10_HDR_FORMAT) - 2
         exp_checksum = get_checksum_buf(buffer[:offset_hdr])
         if checksum != exp_checksum:
-            raise Exception("Ch10 Header checksum {:#0X} does not match expected={:#0X}".format(checksum, exp_checksum))
-            # print("Ch10 Header checksum does not match expected={:#0X}".format(exp_checksum))
+            logger.error("Ch10 Header checksum {:#0X} does not match expected={:#0X}".format(checksum, exp_checksum))
 
         self.relativetimecounter = _rtc_lwr + (_rtc_upr << 32)
 
@@ -385,7 +384,7 @@ class Chapter11(object):
             )
 
             if _checksum_sec != sec_exp_checksum:
-                raise Exception(
+                logger.error(
                     "Ch10 Secondary Header checksum ({:#0X}) does not match expected={:#0X}".format(
                         _checksum_sec, sec_exp_checksum
                     )
