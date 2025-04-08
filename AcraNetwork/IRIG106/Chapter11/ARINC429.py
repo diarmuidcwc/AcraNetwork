@@ -15,7 +15,7 @@ class ARINC429DataWord(object):
     LO_SPEED = 0  #: Bus speed constant
     HI_SPEED = 1  #: Bus speed constant
 
-    HDR_FORMAT = ">HBB"
+    HDR_FORMAT = "<I"
 
     def __init__(self):
         self.gaptime: int = 0  #: The gap time from the beginning of the preceding bus word (regardless of bus) to the
@@ -31,9 +31,14 @@ class ARINC429DataWord(object):
         Pack the ARINC-429 data packet object into a binary buffer
 
         """
-        _flag = (self.format_error << 7) + (self.parity_error << 6) + (self.bus_speed << 5) + (self.gaptime >> 16)
-        _gap = self.gaptime & 0xFFFF
-        hdr = struct.pack(ARINC429DataWord.HDR_FORMAT, _gap, _flag, self.bus)
+        _ipdh = (
+            (self.bus << 24)
+            + (self.format_error << 23)
+            + (self.parity_error << 22)
+            + (self.bus_speed << 21)
+            + (self.gaptime)
+        )
+        hdr = struct.pack(ARINC429DataWord.HDR_FORMAT, _ipdh)
 
         return hdr + self.payload
 
@@ -45,12 +50,13 @@ class ARINC429DataWord(object):
         :type buffer: bytes
         :rtype: None
         """
-        (_gap, _flag, self.bus) = struct.unpack_from(ARINC429DataWord.HDR_FORMAT, buffer)
+        (_ipdh,) = struct.unpack_from(ARINC429DataWord.HDR_FORMAT, buffer)
         self.payload = buffer[struct.calcsize(ARINC429DataWord.HDR_FORMAT) :]
-        self.format_error = bool((_flag >> 7) & 0x1)
-        self.parity_error = bool((_flag >> 6) & 0x1)
-        self.bus_speed = (_flag >> 6) & 0x1
-        self.gaptime = (_flag << 16) + _gap
+        self.bus = _ipdh >> 24
+        self.format_error = bool((_ipdh >> 23) & 0x1)
+        self.parity_error = bool((_ipdh >> 22) & 0x1)
+        self.bus_speed = (_ipdh >> 21) & 0x1
+        self.gaptime = _ipdh & 0xFFFFF
 
         return True
 
