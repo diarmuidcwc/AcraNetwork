@@ -16,25 +16,7 @@ __status__ = "Production"
 
 # This is a direct porting of the C code from the IRIG106 starndard.
 import struct
-
-try:
-    from functools import lru_cache
-except:
-    from functools import wraps
-
-    # Python2 compatiabilitu
-    def lru_cache(_func=None, maxsize=2):
-        def decorator_repeat(func):
-            @wraps(func)
-            def wrapper_repeat(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            return wrapper_repeat
-
-        if _func is None:
-            return decorator_repeat
-        else:
-            return decorator_repeat(_func)
+from functools import lru_cache
 
 
 GOLAY_SIZE = 0x1000

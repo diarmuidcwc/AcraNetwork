@@ -21,26 +21,27 @@ from AcraNetwork.IRIG106.Chapter7 import Golay
 import math
 import logging
 import typing
-
+from enum import IntEnum
 
 ch7_logger = logging.getLogger(__name__)
 
-PTDP_CONTENT_FILL = 0x0
-PTDP_CONTENT_ASP = 0x1
-PTDP_CONTENT_TEST_CNT = 0x2
-PTDP_CONTENT_CH10 = 0x3
-PTDP_CONTENT_MAC = 0x4
-PTDP_CONTENT_IP = 0x5
-PTDP_CONTENT_CH24 = 0x6
 
-PTDP_CONTENT_TEXT = ["Fill", "ASP", "Test Counter", "Chapter 10", "Ethernet MAC", "IP", "Chapter 24"]
+class PTDPContent(IntEnum):
+    FILL = 0x0
+    ASP = 0x1
+    TEST_COUNTER = 0x2
+    CHAPTER_10 = 0x3
+    ETHERNET_MAC = 0x4
+    IP = 0x5
+    CHAPTER_24 = 0x6
 
-PTDP_FRAGMENT_COMPLETE = 0x0
-PTDP_FRAGMENT_FIRST = 0x1
-PTDP_FRAGMENT_MIDDLE = 0x2
-PTDP_FRAGMENT_LAST = 0x3
 
-PTDP_FRAGMENT_TEXT = ["Complete", "First", "Middle", "Last"]
+class PTDPFragment(IntEnum):
+    COMPLETE = 0x0
+    FIRST = 0x1
+    MIDDLE = 0x2
+    LAST = 0x3
+
 
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
@@ -112,8 +113,8 @@ def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[bytes, bool]) -> typing.G
         if len(buffer) <= PTDP_MAX_LEN:
             ptdp_pkt = PTDP()
             ptdp_pkt.low_latency = llp
-            ptdp_pkt.fragment = PTDP_FRAGMENT_COMPLETE
-            ptdp_pkt.content = PTDP_CONTENT_MAC
+            ptdp_pkt.fragment = PTDPFragment.COMPLETE
+            ptdp_pkt.content = PTDPContent.ETHERNET_MAC
             ptdp_pkt.payload = buffer
             ptdp_pkt.length = len(buffer)
             yield ptdp_pkt
@@ -123,16 +124,16 @@ def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[bytes, bool]) -> typing.G
             for i in range(number_of_packets):
                 ptdp_pkt = PTDP()
                 ptdp_pkt.low_latency = llp
-                ptdp_pkt.content = PTDP_CONTENT_MAC  # Assume it's Ethernet for the moment
+                ptdp_pkt.content = PTDPContent.ETHERNET_MAC  # Assume it's Ethernet for the moment
                 # Label the fragments
                 if i == 0:
-                    ptdp_pkt.fragment = PTDP_FRAGMENT_FIRST
+                    ptdp_pkt.fragment = PTDPFragment.FIRST
                     ptdp_pkt.payload = buffer[:PTDP_MAX_LEN]
                 elif i == number_of_packets - 1:
-                    ptdp_pkt.fragment = PTDP_FRAGMENT_LAST
+                    ptdp_pkt.fragment = PTDPFragment.LAST
                     ptdp_pkt.payload = buffer[i * PTDP_MAX_LEN :]
                 else:
-                    ptdp_pkt.fragment = PTDP_FRAGMENT_MIDDLE
+                    ptdp_pkt.fragment = PTDPFragment.MIDDLE
                     ptdp_pkt.payload = buffer[PTDP_MAX_LEN * i : PTDP_MAX_LEN * (i + 1)]
 
                 ptdp_pkt.length = len(ptdp_pkt.payload)
@@ -144,8 +145,8 @@ class PTDP(object):
         self.payload: bytes = bytes()
         self.low_latency: bool = False
         self.length: int = 0
-        self.content: int = PTDP_CONTENT_FILL
-        self.fragment: int = PTDP_FRAGMENT_COMPLETE
+        self.content: PTDPContent = PTDPContent.FILL
+        self.fragment: int = PTDPFragment.COMPLETE
         self._payload: bytes = bytes()
         self._golay: Golay.Golay = golay
 
@@ -191,8 +192,8 @@ class PTDP(object):
         msw = self._golay.decode(buffer[3:6])
 
         self.length = msw + ((lsw & 0xF) << 12)
-        self.fragment = (lsw >> 4) & 0x3
-        self.content = (lsw >> 6) & 0xF
+        self.fragment = PTDPFragment((lsw >> 4) & 0x3)
+        self.content = PTDPContent((lsw >> 6) & 0xF)
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
         elif len(buffer[6:]) < self.length:
@@ -222,7 +223,7 @@ class PTDP(object):
 
     def __repr__(self):
         return "PTDP: Len={} Content={} Fragment={} LowLatency={}".format(
-            self.length, PTDP_CONTENT_TEXT[self.content], PTDP_FRAGMENT_TEXT[self.fragment], self.low_latency
+            self.length, self.content, self.fragment, self.low_latency
         )
 
 
