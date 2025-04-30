@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# Requires cryptography
+# Requires cryptography and zstandard
+# pip install zstandard
 # pip install cryptography
 # -*- coding: utf-8 -*-
 
@@ -31,6 +32,8 @@ import tempfile
 from os import remove
 from shutil import rmtree
 import struct
+import zstandard
+
 
 RED = "\033[31m"
 RESET = "\033[0m"
@@ -70,6 +73,9 @@ def create_parser():
         "--unwrap", type=str, required=False, default=None, help="folder to write unwrapped ethernet packets"
     )
     parser.add_argument("--key", type=str, required=False, default=False, help="RSA private key")
+    parser.add_argument(
+        "--decompress", action="store_true", required=False, default=False, help="decompress the file before validation"
+    )
 
     return parser
 
@@ -111,9 +117,13 @@ def decrypt_file(input_filename, output_filename, private_key):
         outfile.write(decryptor.finalize())
 
 
-def enc_to_ch10(encfile, key, tmpdir: str):
+def enc_to_ch10(encfile, key, tmpdir: str, iszstd: bool = False):
     p = Path(encfile)
-    newfile = Path(tmpdir, f"{p.stem}.ch10")
+    if iszstd:
+        _ext = "zstd"
+    else:
+        _ext = "ch10"
+    newfile = Path(tmpdir, f"{p.stem}.{_ext}")
     st = time.time()
     decrypt_file(encfile, newfile, key)
     try:
@@ -121,6 +131,25 @@ def enc_to_ch10(encfile, key, tmpdir: str):
     except:
         decrypt_rate = 0.0
     print(f"Decrypted {encfile} to temp file {newfile} at {decrypt_rate:.1f}MBps")
+    return newfile
+
+
+def zstd_to_ch10(zstdfile, tmpdir: str) -> str:
+    p = Path(zstdfile)
+    newfile = Path(tmpdir, f"{p.stem}.ch10")
+    st = time.time()
+    with open(zstdfile, "rb") as compressed:
+        with open(newfile, "wb") as decompressed:
+            dctx = zstandard.ZstdDecompressor()
+            dctx.copy_stream(compressed, decompressed)
+    try:
+        decompress_rate = os.path.getsize(zstdfile) / ((time.time() - st) * 1e6)
+    except:
+        decompress_rate = 0.0
+    print(f"Decompressed {zstdfile} to temp file {newfile} at {decompress_rate:.1f}MBps")
+    decompressed_size = os.path.getsize(newfile)
+    compressed_size = os.path.getsize(zstdfile)
+    print(f"Compression Ratio ={decompressed_size/compressed_size:.1f}")
     return newfile
 
 
@@ -185,6 +214,9 @@ def main(args):
     if args.key:
         all_files = glob.glob(os.path.join(args.folder, "*.enc"))
         dir = tempfile.mkdtemp()
+    elif args.decompress:
+        all_files = glob.glob(os.path.join(args.folder, "*.zst"))
+        dir = tempfile.mkdtemp()
     else:
         all_files = glob.glob(os.path.join(args.folder, "*.ch10"))
         dir = None
@@ -201,9 +233,17 @@ def main(args):
     wrapped_valid_count = 0
     for _file in all_files:
         if args.key:
-            chfile = enc_to_ch10(_file, args.key, dir)
+            if args.decompress:
+                zstd_file = enc_to_ch10(_file, args.key, dir, True)
+                chfile = zstd_to_ch10(zstd_file, dir)
+                os.remove(zstd_file)
+            else:
+                chfile = zstd_to_ch10(zstd_file, args.key, dir)
         else:
-            chfile = _file
+            if args.decompress:
+                chfile = zstd_to_ch10(_file, dir)
+            else:
+                chfile = _file
         if args.unwrap:
             pf = pcap.Pcap(ch10_to_pcap(chfile, args.unwrap), mode="w")
             prec = pcap.PcapRecord()
@@ -270,7 +310,7 @@ def main(args):
                         _ch.sequence = pkt.sequence
                     else:
                         channels[pkt.channelID] = Channels(pkt.channelID, pkt.sequence, 0, 0, 0)
-        if args.key:
+        if args.key or args.decompress:
             os.remove(chfile)
 
         print_summary(channels)
