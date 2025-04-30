@@ -33,8 +33,8 @@ class TestCaseCh7(unittest.TestCase):
         remainder = bytes()
         while remainder == bytes():
             ch7_pd = ch7.PTDP()
-            ch7_pd.content = ch7.PTDP_CONTENT_MAC
-            ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
+            ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
+            ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
             ch7_pd.payload = os.urandom(58)
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
             # print("Packet added")
@@ -56,8 +56,8 @@ class TestCaseCh7(unittest.TestCase):
         remainder = bytes()
         while remainder == bytes():
             ch7_pd = ch7.PTDP()
-            ch7_pd.content = ch7.PTDP_CONTENT_MAC
-            ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
+            ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
+            ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
             ch7_pd.payload = os.urandom(58)
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
             # print("Packet added")
@@ -72,8 +72,8 @@ class TestCaseCh7(unittest.TestCase):
 
     def test_comparsion(self):
         ch7_pd = ch7.PTDP()
-        ch7_pd.content = ch7.PTDP_CONTENT_MAC
-        ch7_pd.fragment = ch7.PTDP_FRAGMENT_COMPLETE
+        ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
+        ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
         ch7_pd.payload = os.urandom(60)
         ch_pd_copy = copy.deepcopy(ch7_pd)
         self.assertTrue(ch7_pd == ch_pd_copy)
@@ -170,7 +170,7 @@ class TestRealEthernet(unittest.TestCase):
                     continue
                 else:
                     eth_p += p.payload
-                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or p.fragment == ch7.PTDP_FRAGMENT_LAST:
+                    if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
                         r.setCurrentTime()
                         r.payload = eth_p
                         # Verify the size of the packets and it's probably good. I could unpack them here too
@@ -216,7 +216,7 @@ class TestRealEthernet(unittest.TestCase):
                 else:
                     # print(repr(p))
                     eth_p += p.payload
-                    if p.fragment == ch7.PTDP_FRAGMENT_COMPLETE or p.fragment == ch7.PTDP_FRAGMENT_LAST:
+                    if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
                         if ptdp_idx == 0:
                             self.assertEqual(p.low_latency, True)
                         r.setCurrentTime()
@@ -254,12 +254,12 @@ class TestRealEthernet(unittest.TestCase):
 
             for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
                 if p is not None:
-                    if p.content != ch7.PTDP_CONTENT_FILL:
+                    if p.content != ch7.PTDPContent.FILL:
                         mac_count += 1
                         # print(repr(p))
                     if p.low_latency:
                         llc_count += 1
-                    if p.content == ch7.PTDP_CONTENT_FILL:
+                    if p.content == ch7.PTDPContent.FILL:
                         fill_count += 1
         # print("{} {} {}".format(llc_count, fill_count, mac_count))
         self.assertEqual(4, llc_count)
