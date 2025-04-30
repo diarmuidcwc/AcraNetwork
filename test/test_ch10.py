@@ -88,6 +88,10 @@ arinc_packet = """ARINCPayload: MessageCount=11
   ARINCData: GapTime=3900 FormatError=False ParityError=False BusSpeed=0 Bus=23
 """
 
+arinc_updated = base64.b64decode(
+    """AQBeAAABABEiM0RVCABFAABYAABAABQRnunAqBwB6wAAAhFcGhcARAAAAQsAACXrAQo4AAAAFAAAAAYAxDg0OgAAAABwaPi7FgAAAAAAAADJAQIAAAAAACABlAEAQIBwIAGWBgAg7QSKXA=="""
+)
+
 
 def get_ch10(len=4):
     c = ch10.Chapter11()
@@ -321,6 +325,13 @@ class CH10UDPTest(unittest.TestCase):
                 self.assertEqual(
                     repr(aw), "ARINCData: GapTime=15375 FormatError=False ParityError=False BusSpeed=0 Bus=23"
                 )
+
+    def test_arinc2(self):
+        dp = ch10arinc.ARINC429DataPacket()
+        dp.unpack(arinc_updated[0x52:])
+        print(repr(dp))
+        for adw in dp:
+            self.assertEqual(adw.bus_speed, 1)
 
     @unittest.skip("No trying to guess format1")
     def test_format1_looks_like_2(self):

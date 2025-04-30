@@ -1,5 +1,5 @@
 import unittest
-import AcraNetwork.Chapter7 as ch7
+import AcraNetwork.IRIG106.Chapter7 as ch7
 import AcraNetwork.SimpleEthernet as eth
 import AcraNetwork.Pcap as pcap
 import os

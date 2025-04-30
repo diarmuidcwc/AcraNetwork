@@ -1,7 +1,8 @@
 import sys
+
 sys.path.append("..")
 import unittest
-import AcraNetwork.Golay as Golay
+import AcraNetwork.IRIG106.Chapter7.Golay as Golay
 from pstats import Stats
 import cProfile
 import random
@@ -17,7 +18,7 @@ class GolayTestCase(unittest.TestCase):
         g = Golay.Golay()
         for attempt in range(20):
             input = random.randint(0, 0xFFF)
-            #print("{:0X}".format(g2.decode(g.encode(raw))))
+            # print("{:0X}".format(g2.decode(g.encode(raw))))
             self.assertEqual(input, g.decode(g.encode(input)))
 
     def test_encode_string(self):
@@ -31,7 +32,7 @@ class GolayTestCase(unittest.TestCase):
     def test_decode(self):
         g = Golay.Golay()
         v = 0x1007B408A722
-        #print(repr(g.decode(v)))
+        # print(repr(g.decode(v)))
 
     def test_with_error(self):
         g = Golay.Golay()
@@ -44,7 +45,7 @@ class GolayTestCase(unittest.TestCase):
                 # Introduce errors
                 bits_to_flip = random.sample(range(16), error_bits)
                 for b in bits_to_flip:
-                    encoded ^= (1 << b)
+                    encoded ^= 1 << b
                 logging.debug("Errorbits={} {:#0X}".format(bits_to_flip, encoded))
                 decoded = g.decode(encoded)
                 logging.debug("Decoded={:#X} Errors={}".format(g.decode(encoded), g._errors(encoded)))
@@ -52,7 +53,6 @@ class GolayTestCase(unittest.TestCase):
                     self.assertEqual(input, decoded)
                 else:
                     self.assertNotEqual(input, decoded)
-
 
 
 class GolayProfile(unittest.TestCase):
@@ -63,16 +63,16 @@ class GolayProfile(unittest.TestCase):
 
     def tearDown(self):
         p = Stats(self.pr)
-        p.sort_stats('cumtime')
-        #p.print_stats()
+        p.sort_stats("cumtime")
+        # p.print_stats()
 
     def test_profile(self):
         g = Golay.Golay()
         g2 = Golay.Golay()
         for val in range(100, 2000):
-            #val = 100
-            
-            #print("{:0X}".format(g2.decode(g.encode(raw))))
+            # val = 100
+
+            # print("{:0X}".format(g2.decode(g.encode(raw))))
             self.assertEqual(val, g2.decode(g.encode(val)))
         # Original implementation
         #         ncalls  tottime  percall  cumtime  percall filename:lineno(function)
@@ -94,8 +94,9 @@ class GolayProfile(unittest.TestCase):
         for code in [0x0, 0x1, 0x37, 0xFFFFFF]:
             self.assertEqual(Golay.Golay._onesincode_old(code, size), Golay.Golay._onesincode(code, size))
 
-        #print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode(0x2, 24)', number=10000)
-        #print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode2(0x2, 24)', number=10000)
+        # print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode(0x2, 24)', number=10000)
+        # print timeit.timeit('import AcraNetwork.Golay as Golay; Golay.Golay._onesincode2(0x2, 24)', number=10000)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
