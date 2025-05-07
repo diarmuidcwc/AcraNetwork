@@ -105,4 +105,5 @@
 # 1.1.8   - No change but tagging as 1.1.8
 # 1.1.9   - Fixed ARINC ch10 intra packet header
 # 1.2.0   - Moved Chapter 7 into the IRIG106 folder. Removed old Chapter10 directory
-__version__ = "1.2.0"
+# 1.2.1   - Fixed logging in IP error message
+__version__ = "1.2.1"

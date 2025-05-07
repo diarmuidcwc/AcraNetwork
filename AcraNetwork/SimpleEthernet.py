@@ -318,7 +318,7 @@ class IP(object):
 
         computed_ip_checksum = ip_calc_checksum(buf[: IP.IP_HEADER_SIZE])
         if computed_ip_checksum != 0:
-            logging.error(
+            logger.error(
                 f"Invalid IP Header Checksum. Computed Checksum = 0x{computed_ip_checksum:04X} (should be 0x0000). Raw received Checksum = 0x{checksum:04X}."
             )
 
