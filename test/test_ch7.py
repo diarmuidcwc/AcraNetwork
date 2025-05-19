@@ -25,6 +25,23 @@ def buf_generator(count, llp_count=0):
         yield buf_len, low_latency
 
 
+def ptfr_to_pcm_frame(
+    count: int,
+):
+    remainder = bytes()
+    pcm_frame_len = 1024
+    offset_ptfr = 30
+    zero_buf = struct.pack(">B", 0) * offset_ptfr
+    pcm_frame = zero_buf
+    for ptfr in ch7.datapkts_to_ptfr(buf_generator(count)):
+        pcm_frame += ptfr.pack()
+        if len(pcm_frame) >= pcm_frame_len:
+            remainder = pcm_frame[pcm_frame_len:]
+            pcm_frame = pcm_frame[:pcm_frame_len]
+            yield pcm_frame
+            pcm_frame = zero_buf + remainder
+
+
 class TestCaseCh7(unittest.TestCase):
     def test_basic(self):
         ch7_pkt = ch7.PTFR()
@@ -85,7 +102,7 @@ class TestGenerators(unittest.TestCase):
             # print(repr(ptdp_pkt))
             self.assertIsInstance(ptdp_pkt, ch7.PTDP)
 
-    def test_ptfr_geenerator(self):
+    def test_ptfr_generator(self):
         remainder = bytes()
         for ptfr in ch7.datapkts_to_ptfr(buf_generator(5), ptfr_len=200):
             # print(repr(ptfr))
