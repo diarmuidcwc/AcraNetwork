@@ -23,6 +23,7 @@ import logging
 import typing
 from enum import IntEnum
 
+
 ch7_logger = logging.getLogger(__name__)
 
 
@@ -164,6 +165,7 @@ class PTDP(object):
             )
 
         self._payload = val
+        self.length = len(val)
 
     def pack(self) -> bytes:
         """
@@ -222,9 +224,7 @@ class PTDP(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "PTDP: Len={} Content={} Fragment={} LowLatency={}".format(
-            self.length, self.content, self.fragment, self.low_latency
-        )
+        return f"PTDP: Len={self.length} Content={repr(self.content)} Fragment={repr(self.fragment)} LowLatency={self.low_latency}"
 
 
 class PTFR(object):
