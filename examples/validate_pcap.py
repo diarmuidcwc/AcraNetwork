@@ -22,6 +22,7 @@ import datetime
 from dataclasses import dataclass, field
 import typing
 import zstandard as zstd
+import sys
 
 VERSION = "0.5.0"
 
