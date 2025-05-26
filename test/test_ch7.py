@@ -8,9 +8,13 @@ import struct
 import logging
 from pstats import Stats
 import cProfile
+import typing
+import random
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
 
 
 def buf_generator(count, llp_count=0):
@@ -256,7 +260,6 @@ class TestRealEthernet(unittest.TestCase):
         llc_count = 0
         fill_count = 0
         mac_count = 0
-        logging.basicConfig(level=logging.WARN)
         remainder = b""
         for i in range(3, 6):
             f = open(THIS_DIR + "/ptfr_{}.bin".format(i), "rb")
@@ -282,6 +285,65 @@ class TestRealEthernet(unittest.TestCase):
         self.assertEqual(4, llc_count)
         self.assertEqual(164, fill_count)
         self.assertEqual(4, mac_count)
+
+
+def get_pkts() -> typing.Generator[tuple[bytes, bool], None, None]:
+
+    count = 0
+    while True:
+        # pkt_len = random.randint(2, 180)
+        pkt_len = (count % 178) + 2
+        paylaod_int = [pkt_len] + [count] * (pkt_len - 1)
+        payload = struct.pack(f">{pkt_len}Q", *paylaod_int)
+        count += 1
+        logging.debug(f"TX: Generated payload of length {pkt_len*8} count={count}")
+        yield payload, False
+
+
+def get_pcm_frame(offset_ptfr: int = 0):
+    pcm_frame_len = 1024
+    ptfr_len = pcm_frame_len - offset_ptfr - 4
+    zero_buf = struct.pack(">B", 0) * offset_ptfr
+    for ptfr in ch7.datapkts_to_ptfr(get_pkts(), ptfr_len=ptfr_len):
+        pcm_frame = zero_buf + ptfr.pack()
+        logging.debug(f"TX pcm_frame_len={len(pcm_frame)} ptfr_len={ptfr_len}")
+        yield pcm_frame
+
+
+class TestRandomSizedDecom(unittest.TestCase):
+    def test_basic(self):
+        offset = 0
+        first_PTFR = True
+        eth_p = bytes()
+        prev_eth_count = None
+        remainder = None
+        count = 0
+        for frame in get_pcm_frame(offset):
+            ch7_pkt = ch7.PTFR()
+            ch7_buffer = frame[offset:]
+            ch7_pkt.length = len(ch7_buffer)
+            ch7_pkt.unpack(ch7_buffer)
+            count += 1
+            if count > 10000:
+                return
+
+            for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                first_PTFR = False
+                if p is not None:
+                    if p.length != 0:
+                        if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
+                            eth_p += p.payload
+                            logging.debug(repr(p))
+                            self.assertGreaterEqual(len(eth_p), 16)
+                            (expected_len, count) = struct.unpack_from(">QQ", eth_p, 0x0)
+                            logging.debug(f"RX payload count={count} len={len(eth_p)}")
+                            if prev_eth_count is not None:
+                                if prev_eth_count + 1 != count:
+                                    self.assertEqual(prev_eth_count + 1, count)
+                                self.assertEqual(expected_len * 8, len(eth_p))
+
+                            prev_eth_count = count
+                            eth_p = bytes()
 
 
 if __name__ == "__main__":

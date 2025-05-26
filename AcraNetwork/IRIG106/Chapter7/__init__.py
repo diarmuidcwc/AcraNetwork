@@ -35,6 +35,11 @@ class PTDPContent(IntEnum):
     ETHERNET_MAC = 0x4
     IP = 0x5
     CHAPTER_24 = 0x6
+    ILLEGAL = 0xF
+
+    @classmethod
+    def _missing_(cls, value):
+        return PTDPContent.ILLEGAL
 
 
 class PTDPFragment(IntEnum):
@@ -42,6 +47,11 @@ class PTDPFragment(IntEnum):
     FIRST = 0x1
     MIDDLE = 0x2
     LAST = 0x3
+    ILLEGAL = 0x4
+
+    @classmethod
+    def _missing_(cls, value):
+        return PTDPFragment.ILLEGAL
 
 
 PTDP_HDR_LEN = 0x6  # 24bits x2
@@ -80,8 +90,10 @@ def datapkts_to_ptfr(
     for ptdp in datapkts_to_ptdp(eth_ch10_packets):
         # Encapsulate the data in PTDP packets
         # Add the payload to the PTFR frame. IF we get a remainder then this from is full
+
         remainder = ptfr.add_payload(ptdp.pack(), ptdp.low_latency)
-        while remainder != bytes():
+        ch7_logger.debug(f"PTDP ({ptdp}) to be added to PTRF leaving remainder of len={len(remainder)}")
+        while not ptfr.has_space():
             # Spit out the full frame
             yield ptfr
             # Create anew frame
@@ -200,7 +212,7 @@ class PTDP(object):
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
         elif len(buffer[6:]) < self.length:
             raise PTDPRemainingData(
-                "Buffer length={} GolayHdr=len={} fragment={} content={}".format(
+                "Not a full PTDP packet. Rest likely in next packet . Buffer length={} GolayHdr=len={} fragment={} content={}".format(
                     len(buffer[6:]), self.length, self.fragment, self.content
                 )
             )
@@ -255,7 +267,7 @@ class PTFR(object):
     def add_payload(self, buffer: bytes, is_llp: bool = False) -> bytes:
         """
         Add the buffer to the payload ensuring not to go over the length field
-        Return the remained
+        Return the remainder
         """
         if is_llp and len(self._payload) > 0 and self.llp:
             ch7_logger.debug(
@@ -278,8 +290,8 @@ class PTFR(object):
             self.llp = True
             self._payload = buffer + struct.pack(">B", 0xFF)
         else:
-            ch7_logger.debug("Adding a normal PTDP buffer len={}".format(len(buffer)))
             self._payload += buffer
+            ch7_logger.debug(f"Adding a normal PTDP buffer of len={len(buffer)} to a total len={len(self._payload)}")
 
         if len(self._payload) > self.length:
             len_to_take = self.length - len(self._payload)
@@ -288,6 +300,9 @@ class PTFR(object):
             return remainder
         else:
             return bytes()
+
+    def has_space(self) -> bool:
+        return len(self.payload) < self.length
 
     def pack(self) -> bytes:
         """
@@ -326,9 +341,7 @@ class PTFR(object):
     def check_offsets(self, act_offset: int) -> bool:
         if (act_offset != self.ptdp_offset) and (self.ptdp_offset != 2047):
             ch7_logger.warning(
-                "Offset of unpacked PTDP packet ({}) does not match the declared offset ({})".format(
-                    act_offset, self.ptdp_offset
-                )
+                f"Offset of unpacked PTDP packet ({act_offset}) does not match the declared offset ({self.ptdp_offset})"
             )
             return False
         elif self.ptdp_offset != 2047:
@@ -383,15 +396,19 @@ class PTFR(object):
                 )
             )
 
+        do_offset_check = True
         if is_llp:
             byte_offset = 0
         elif remainder is None:  # Fake the offset if we have jumped into the middle of a data stream
             byte_offset = self.ptdp_offset
         else:
             byte_offset = -1 * len(remainder)
-        do_offset_check = True
+            if len(remainder) == 0:
+                do_offset_check = False
+
         offset_check_count = 0
         while aligned:
+            logging.debug(f"Starting to check buf of lenght={len(buf)}")
             p = PTDP(self._golay)
             try:
                 buf = p.unpack(buf)
@@ -456,7 +473,10 @@ class PTFR(object):
                             if len(remainder) > 0:
                                 do_offset_check = False
 
+                logging.debug(f"Returning p={repr(p)} and no remainder")
                 yield (p, bytes(), "")
+
+        logging.debug("------PTFR expired-----")
 
     def __eq__(self, other: PTFR):
         if not isinstance(other, PTFR):
@@ -472,6 +492,6 @@ class PTFR(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "PTFR: Length={} StreamID={:#0X} Offset={} LowLatency={}\n".format(
-            self.length, self.streamid, self.ptdp_offset, self.llp
+        return (
+            f"PTFR: Length={self.length} StreamID={self.streamid:#0X} Offset={self.ptdp_offset} LowLatency={self.llp}\n"
         )
