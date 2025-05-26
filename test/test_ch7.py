@@ -287,7 +287,7 @@ class TestRealEthernet(unittest.TestCase):
         self.assertEqual(4, mac_count)
 
 
-def get_pkts() -> typing.Generator[tuple[bytes, bool], None, None]:
+def get_pkts(some_low_latency: bool = False) -> typing.Generator[tuple[bytes, bool], None, None]:
 
     count = 0
     while True:
@@ -296,35 +296,46 @@ def get_pkts() -> typing.Generator[tuple[bytes, bool], None, None]:
         paylaod_int = [pkt_len] + [count] * (pkt_len - 1)
         payload = struct.pack(f">{pkt_len}Q", *paylaod_int)
         count += 1
+        # llc_pkts = [True, False, False, False, False, False, False]
+        llc_pkts = [True, True, True, True, True, True, True]
+        if some_low_latency:
+            low_latency = llc_pkts[count % 7]
+        else:
+            low_latency = False
         logging.debug(f"TX: Generated payload of length {pkt_len*8} count={count}")
-        yield payload, False
+        yield payload, low_latency
 
 
-def get_pcm_frame(offset_ptfr: int = 0):
+def get_pcm_frame(offset_ptfr: int = 0, some_low_latency: bool = False):
     pcm_frame_len = 1024
     ptfr_len = pcm_frame_len - offset_ptfr - 4
     zero_buf = struct.pack(">B", 0) * offset_ptfr
-    for ptfr in ch7.datapkts_to_ptfr(get_pkts(), ptfr_len=ptfr_len):
+    for ptfr in ch7.datapkts_to_ptfr(get_pkts(some_low_latency), ptfr_len=ptfr_len):
         pcm_frame = zero_buf + ptfr.pack()
         logging.debug(f"TX pcm_frame_len={len(pcm_frame)} ptfr_len={ptfr_len}")
         yield pcm_frame
 
 
+def missing_elements(L):
+    start, end = L[0], L[-1]
+    return sorted(set(range(start, end + 1)).difference(L))
+
+
 class TestRandomSizedDecom(unittest.TestCase):
-    def test_basic(self):
+    def test_no_llc(self):
         offset = 0
         first_PTFR = True
         eth_p = bytes()
         prev_eth_count = None
         remainder = None
         count = 0
-        for frame in get_pcm_frame(offset):
+        for frame in get_pcm_frame(offset, some_low_latency=False):
             ch7_pkt = ch7.PTFR()
             ch7_buffer = frame[offset:]
             ch7_pkt.length = len(ch7_buffer)
             ch7_pkt.unpack(ch7_buffer)
             count += 1
-            if count > 10000:
+            if count > 50000:
                 return
 
             for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
@@ -344,6 +355,40 @@ class TestRandomSizedDecom(unittest.TestCase):
 
                             prev_eth_count = count
                             eth_p = bytes()
+
+    def test_some_llc(self):
+        offset = 0
+        first_PTFR = True
+        eth_p = bytes()
+        remainder = None
+        count = 0
+        numbers_found = []
+        for frame in get_pcm_frame(offset, some_low_latency=True):
+            ch7_pkt = ch7.PTFR()
+            ch7_buffer = frame[offset:]
+            ch7_pkt.length = len(ch7_buffer)
+            ch7_pkt.unpack(ch7_buffer)
+            count += 1
+            if count > 500:
+                return
+
+            for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                first_PTFR = False
+                if p is not None:
+                    if p.length != 0:
+                        if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
+                            eth_p += p.payload
+                            logging.debug(repr(p))
+                            self.assertGreaterEqual(len(eth_p), 16)
+                            (expected_len, count) = struct.unpack_from(">QQ", eth_p, 0x0)
+                            logging.info(f"RX payload count={count} len={len(eth_p)}")
+                            numbers_found.append(count)
+                            self.assertEqual(expected_len * 8, len(eth_p))
+
+                            eth_p = bytes()
+
+        numbers_found.sort()
+        self.assertEqual(missing_elements(numbers_found), [])
 
 
 if __name__ == "__main__":

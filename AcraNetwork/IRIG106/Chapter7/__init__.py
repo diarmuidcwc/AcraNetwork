@@ -106,10 +106,11 @@ def datapkts_to_ptfr(
                 remainder = remainder[ptfr_len:]  # If we have more data then save it for the next frame
                 ptfr = _new_ptfr(ptfr_len, streamid, golay)
 
-            # Point to the first offset of the frame.
-            ptfr.ptdp_offset = len(remainder)
-            # Add the PTDS to the frame
-            remainder = ptfr.add_payload(remainder)
+            if len(remainder) > 0:
+                # Point to the first offset of the frame.
+                ptfr.ptdp_offset = len(remainder)
+                # Add the PTDS to the frame
+                remainder = ptfr.add_payload(remainder)
 
 
 def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[bytes, bool]) -> typing.Generator[PTDP, None, None]:
@@ -269,6 +270,8 @@ class PTFR(object):
         Add the buffer to the payload ensuring not to go over the length field
         Return the remainder
         """
+        if len(buffer) == 0:
+            raise Exception("Can't add payload of len = 0")
         if is_llp and len(self._payload) > 0 and self.llp:
             ch7_logger.debug(
                 "Adding an LLP buffer to some existing llp payload. Shifting original data and adding llp at "
@@ -301,8 +304,8 @@ class PTFR(object):
         else:
             return bytes()
 
-    def has_space(self) -> bool:
-        return len(self.payload) < self.length
+    def has_space(self, expected_addition: int = 0) -> bool:
+        return (len(self.payload) + expected_addition) < self.length
 
     def pack(self) -> bytes:
         """
@@ -340,7 +343,7 @@ class PTFR(object):
 
     def check_offsets(self, act_offset: int) -> bool:
         if (act_offset != self.ptdp_offset) and (self.ptdp_offset != 2047):
-            ch7_logger.warning(
+            ch7_logger.debug(
                 f"Offset of unpacked PTDP packet ({act_offset}) does not match the declared offset ({self.ptdp_offset})"
             )
             return False
@@ -407,8 +410,9 @@ class PTFR(object):
                 do_offset_check = False
 
         offset_check_count = 0
+
         while aligned:
-            logging.debug(f"Starting to check buf of lenght={len(buf)}")
+            # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
             p = PTDP(self._golay)
             try:
                 buf = p.unpack(buf)
@@ -419,6 +423,7 @@ class PTFR(object):
                         len(buf), e, self.ptdp_offset
                     )
                 )
+                exit()
                 yield (None, None, e)
             except PTDPRemainingData as e:
                 aligned = False
@@ -433,12 +438,16 @@ class PTFR(object):
                 yield (None, buf, e)
             else:
                 if not is_llp and do_offset_check and byte_offset >= 0:
+                    # ch7_logger.debug(f"do_offset_check={do_offset_check} byte_offset={byte_offset}")
                     self.check_offsets(byte_offset)
                     do_offset_check = False
                     offset_check_count += 1
                 elif not is_llp and not do_offset_check and offset_check_count < 1:
                     do_offset_check = True
                     byte_offset += len(p)
+                    # ch7_logger.debug(
+                    #    f"Enable do_offset_check because {offset_check_count} < 1 byte_offset={byte_offset} len_p={len(p)}"
+                    # )
                 elif not is_llp:
                     byte_offset += len(p)
 
@@ -473,10 +482,10 @@ class PTFR(object):
                             if len(remainder) > 0:
                                 do_offset_check = False
 
-                logging.debug(f"Returning p={repr(p)} and no remainder")
+                # ch7_logger.debug(f"Returning p={repr(p)} and no remainder")
                 yield (p, bytes(), "")
 
-        logging.debug("------PTFR expired-----")
+        # ch7_logger.debug("------PTFR expired-----")
 
     def __eq__(self, other: PTFR):
         if not isinstance(other, PTFR):
