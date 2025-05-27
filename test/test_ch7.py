@@ -362,10 +362,11 @@ class TestRandomSizedDecom(unittest.TestCase):
         first_PTFR = True
         eth_p = bytes()
         remainder = None
+        golay = ch7.Golay.Golay()
         count = 0
         numbers_found = []
         for frame in get_pcm_frame(offset, some_low_latency=True, max_len=50):
-            ch7_pkt = ch7.PTFR()
+            ch7_pkt = ch7.PTFR(golay)
             ch7_buffer = frame[offset:]
             ch7_pkt.length = len(ch7_buffer)
             ch7_pkt.unpack(ch7_buffer)
