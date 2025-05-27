@@ -455,7 +455,7 @@ class PTFR(object):
                         len(buf), e, self.ptdp_offset
                     )
                 )
-                exit()
+
                 yield (None, None, e)
             except PTDPRemainingData as e:
                 aligned = False
