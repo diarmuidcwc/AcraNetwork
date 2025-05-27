@@ -57,7 +57,7 @@ class PTDPFragment(IntEnum):
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
 
-
+PTDT_LLP_TRAILER_LEN = 1
 PTDP_MAX_LEN = 0x800
 
 
@@ -88,9 +88,22 @@ def datapkts_to_ptfr(
     # Create a new frame
     ptfr = _new_ptfr(ptfr_len, streamid, golay)
     for ptdp in datapkts_to_ptdp(eth_ch10_packets):
-        # Encapsulate the data in PTDP packets
-        # Add the payload to the PTFR frame. IF we get a remainder then this from is full
 
+        remaining_space = ptfr.remaining_space()
+        # logging.debug(f"Adding ptdp {ptdp} with remaining space {remaining_space}")
+        # If we have a low latency packet but not enough space to insert it full then
+        # insert a fill packet
+        if ptdp.low_latency and remaining_space <= (len(ptdp) + PTDT_LLP_TRAILER_LEN):
+            # logging.warning(f"Need to add fill packet to fill remaining space={remaining_space}")
+            fill = ptdp_fill(remaining_space)
+            remainder = ptfr.add_payload(fill.pack(), False)
+            yield ptfr
+            ptfr = _new_ptfr(ptfr_len, streamid, golay)
+            if len(remainder) > 0:
+                ptfr.add_payload(remainder)
+                # logging.debug(f"Added remainder of len {len(remainder)}. Remainder={ptfr.remaining_space()}")
+
+        # Add the packet and if there is remainder push out the ptfr packet and start a new one
         remainder = ptfr.add_payload(ptdp.pack(), ptdp.low_latency)
         ch7_logger.debug(f"PTDP ({ptdp}) to be added to PTRF leaving remainder of len={len(remainder)}")
         while not ptfr.has_space():
@@ -240,6 +253,17 @@ class PTDP(object):
         return f"PTDP: Len={self.length} Content={repr(self.content)} Fragment={repr(self.fragment)} LowLatency={self.low_latency}"
 
 
+def ptdp_fill(total_len_min: int) -> PTDP:
+    _p = PTDP()
+    _p.content = PTDPContent.FILL
+    if total_len_min < (PTDP_HDR_LEN + 1):
+        payload_len = 1
+    else:
+        payload_len = total_len_min - PTDP_HDR_LEN
+    _p.payload = struct.pack(f">{payload_len}B", *([0xFF] * payload_len))
+    return _p
+
+
 class PTFR(object):
     """
     Object to represent the PTFR frame
@@ -272,9 +296,13 @@ class PTFR(object):
         """
         if len(buffer) == 0:
             raise Exception("Can't add payload of len = 0")
+        if is_llp and len(buffer) + len(self._payload) > self.length:
+            raise Exception(
+                f"LLP packet ({len(buffer)}) cannot be added (ptfrlen={self.length}) as it will push the payload ({len(self.payload)}) into the next frame. Add a fill word"
+            )
         if is_llp and len(self._payload) > 0 and self.llp:
             ch7_logger.debug(
-                "Adding an LLP buffer to some existing llp payload. Shifting original data and adding llp at "
+                f"Adding an LLP buffer({len(buffer)}) to some existing llp payload ({len(self._payload)}). Shifting original data and adding llp at "
                 "start. len={}".format(len(buffer) + 1)
             )
             self.ptdp_offset += len(buffer) + 1
@@ -291,7 +319,8 @@ class PTFR(object):
         elif is_llp and len(self.payload) == 0:
             ch7_logger.debug("Adding first LLP buffer len={}".format(len(buffer) + 1))
             self.llp = True
-            self._payload = buffer + struct.pack(">B", 0xFF)
+            self._payload = buffer + struct.pack(">B", 0x00)  # Further LLPs will be added in front of this one
+            self.ptdp_offset += len(buffer) + 1
         else:
             self._payload += buffer
             ch7_logger.debug(f"Adding a normal PTDP buffer of len={len(buffer)} to a total len={len(self._payload)}")
@@ -306,6 +335,9 @@ class PTFR(object):
 
     def has_space(self, expected_addition: int = 0) -> bool:
         return (len(self.payload) + expected_addition) < self.length
+
+    def remaining_space(self) -> int:
+        return self.length - len(self.payload)
 
     def pack(self) -> bytes:
         """
@@ -412,7 +444,7 @@ class PTFR(object):
         offset_check_count = 0
 
         while aligned:
-            # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
+            ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
             p = PTDP(self._golay)
             try:
                 buf = p.unpack(buf)
@@ -459,6 +491,7 @@ class PTFR(object):
                     (next_llp,) = struct.unpack_from(">B", buf)
                     # Check if the next PTDP is low latency before yielding
                     if next_llp == 0xFF:
+                        ch7_logger.debug("Next packet is LLP")
                         is_llp = True
                         buf = buf[1:]
                         byte_offset += len(p) + 1
