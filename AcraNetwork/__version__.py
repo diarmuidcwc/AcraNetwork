@@ -108,4 +108,5 @@
 # 1.2.1   - Fixed logging in IP error message
 # 1.2.2   - Fixed chapter 7 packet generation
 # 1.2.3   - Last release was nto successful
-__version__ = "1.2.3"
+# 1.2.4   - Removed exit in the ch7
+__version__ = "1.2.4"
