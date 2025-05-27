@@ -244,9 +244,10 @@ class TestRealEthernet(unittest.TestCase):
                         r.payload = eth_p
                         # Verify the size of the packets and it's probably good. I could unpack them here too
                         # self.assertEqual(2*64+eth.UDP.UDP_HEADER_SIZE+eth.IP.IP_HEADER_SIZE+eth.Ethernet.HEADERLEN, len(eth_p))
-                        if eth_p not in TestRealEthernet.pkts_sent:
-                            self.assertTrue(False)
-                        pkt_count += 1
+                        if p.content != ch7.PTDPContent.FILL:
+                            if eth_p not in TestRealEthernet.pkts_sent:
+                                self.assertTrue(False)
+                            pkt_count += 1
                         pf.write(r)
                         eth_p = bytes()
                     ptdp_idx += 1
