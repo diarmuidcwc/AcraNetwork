@@ -107,4 +107,5 @@
 # 1.2.0   - Moved Chapter 7 into the IRIG106 folder. Removed old Chapter10 directory
 # 1.2.1   - Fixed logging in IP error message
 # 1.2.2   - Fixed chapter 7 packet generation
-__version__ = "1.2.1"
+# 1.2.3   - Last release was nto successful
+__version__ = "1.2.3"
