@@ -27,7 +27,6 @@ except ImportError:
     warnings.warn("C extension for Golay not found. Falling back to pure Python.", RuntimeWarning)
     _use_c_extension = False
 
-# _use_c_extension = False
 
 GOLAY_SIZE = 0x1000
 G_P = [0xC75, 0x63B, 0xF68, 0x7B4, 0x3DA, 0xD99, 0x6CD, 0x367, 0xDC6, 0xA97, 0x93E, 0x8EB]

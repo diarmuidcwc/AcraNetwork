@@ -18,7 +18,7 @@ static const uint16_t H_P[12] = {
 // Lookup tables
 static uint32_t EncodeTable[GOLAY_SIZE];
 static uint16_t SyndromeTable[GOLAY_SIZE];
-static uint16_t CorrectTable[GOLAY_SIZE];
+static uint32_t CorrectTable[GOLAY_SIZE];
 static uint8_t ErrorTable[GOLAY_SIZE];
 
 // Function to count the number of ones in a code

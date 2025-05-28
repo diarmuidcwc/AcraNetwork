@@ -109,4 +109,5 @@
 # 1.2.2   - Fixed chapter 7 packet generation
 # 1.2.3   - Last release was nto successful
 # 1.2.4   - Removed exit in the ch7
-__version__ = "1.2.4"
+# 1.2.5   - Added C implementation of Golay. Also improved the existing python impl
+__version__ = "1.2.5"
