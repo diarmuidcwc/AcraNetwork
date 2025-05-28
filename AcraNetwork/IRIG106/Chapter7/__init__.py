@@ -17,6 +17,7 @@ __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
 
 import struct
+
 from AcraNetwork.IRIG106.Chapter7 import Golay
 import math
 import logging
