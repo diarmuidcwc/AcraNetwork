@@ -17,24 +17,75 @@ __status__ = "Production"
 # This is a direct porting of the C code from the IRIG106 starndard.
 import struct
 from functools import lru_cache
+import warnings
 
+try:
+    from . import golay_c as _golay_native
+
+    _use_c_extension = True
+except ImportError:
+    warnings.warn("C extension for Golay not found. Falling back to pure Python.", RuntimeWarning)
+    _use_c_extension = False
+
+# _use_c_extension = False
 
 GOLAY_SIZE = 0x1000
-
 G_P = [0xC75, 0x63B, 0xF68, 0x7B4, 0x3DA, 0xD99, 0x6CD, 0x367, 0xDC6, 0xA97, 0x93E, 0x8EB]
-
 H_P = [0xA4F, 0xF68, 0x7B4, 0x3DA, 0x1ED, 0xAB9, 0xF13, 0xDC6, 0x6E3, 0x93E, 0x49F, 0xC75]
 
 
-class Golay:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Golay(object):
+    __metaclass__ = Singleton
     """
     Encode and Decode Golay numbers
     """
 
     def __init__(self):
-        self.SyndromeTable = [0] * GOLAY_SIZE
-        self.CorrectTable = [0] * GOLAY_SIZE
-        self.ErrorTable = [0] * GOLAY_SIZE
+        if _use_c_extension:
+            _golay_native.golay_init_tables()
+        else:
+            self.SyndromeTable = [0] * GOLAY_SIZE
+            self.CorrectTable = [0] * GOLAY_SIZE
+            self.ErrorTable = [0] * GOLAY_SIZE
+            self._initgolaydecode()
+
+    def encode(self, raw, as_string=False):
+        if not (0 <= raw <= 0xFFF):
+            raise ValueError("Only 12-bit unsigned values allowed")
+
+        if _use_c_extension:
+            encoded = _golay_native.golay_encode(raw)
+        else:
+            encoded = self._encode_python(raw)
+
+        if as_string:
+            return struct.pack(">BH", encoded >> 16, encoded & 0xFFFF)
+        return encoded
+
+    def decode(self, encoded):
+        if isinstance(encoded, bytes):
+            if len(encoded) != 3:
+                raise ValueError("3-byte input required")
+            (b, w) = struct.unpack(">BH", encoded)
+            v = w + (b << 16)
+        elif not (0 <= encoded <= 0xFFFFFF):
+            raise ValueError("Only 24-bit unsigned values supported")
+        else:
+            v = encoded
+
+        if _use_c_extension:
+            return _golay_native.golay_decode(v)
+        else:
+            return self._decode_python(v)
 
     @staticmethod
     @lru_cache()
@@ -48,8 +99,7 @@ class Golay:
 
         return EncodeTable
 
-    @lru_cache(maxsize=20)
-    def encode(self, raw, as_string=False):
+    def _encode_python(self, raw, as_string=False):
         """
         Encode the value as a 24b code
 
@@ -66,8 +116,7 @@ class Golay:
         else:
             return encoded
 
-    @lru_cache(maxsize=20)
-    def decode(self, encoded):
+    def _decode_python(self, encoded):
         """
         Decode a 24b number as a golay
 
@@ -85,7 +134,6 @@ class Golay:
         else:
             v = encoded
 
-        self._initgolaydecode()
         return self._decode2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
     def _syndrome2(self, v1, v2):
@@ -103,6 +151,12 @@ class Golay:
     def _errors(self, v):
         return self._errors2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
+    def errors(self, v):
+        if _use_c_extension:
+            return _golay_native.golay_errors(v)
+        else:
+            return self._errors(v)
+
     @staticmethod
     def _onesincode(code, size):
         """Optimised version of the code below. Runs 2x"""
@@ -118,7 +172,6 @@ class Golay:
 
         return ret
 
-    @lru_cache()
     def _initgolaydecode(self):
         for x in range(GOLAY_SIZE):
             self.SyndromeTable[x] = 0
