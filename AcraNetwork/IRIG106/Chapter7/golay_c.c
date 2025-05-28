@@ -58,7 +58,7 @@ static void InitGolayDecode(void)
     for (uint32_t x = 0; x < GOLAY_SIZE; x++)
     {
         SyndromeTable[x] = 0;
-       
+
         for (int i = 0; i < 12; i++)
         {
             if ((x >> (11 - i)) & 1)
@@ -68,8 +68,6 @@ static void InitGolayDecode(void)
                 CorrectTable[x] = 0x0FFF;
             }
         }
-        
-        
     }
 
     ErrorTable[0] = 0;
@@ -118,29 +116,64 @@ static PyObject *py_golay_encode(PyObject *self, PyObject *args)
 // Python wrapper for golay_decode
 static PyObject *py_golay_decode(PyObject *self, PyObject *args)
 {
+    PyObject *input;
+    if (!PyArg_ParseTuple(args, "O", &input))
+    {
+        return NULL;
+    }
+
     uint32_t encoded;
-    if (!PyArg_ParseTuple(args, "I", &encoded))
+
+    // Handle bytes input (should be 3 bytes)
+    if (PyBytes_Check(input))
     {
+        if (PyBytes_Size(input) != 3)
+        {
+            PyErr_SetString(PyExc_ValueError, "3-byte input required");
+            return NULL;
+        }
+        const unsigned char *buf = (const unsigned char *)PyBytes_AsString(input);
+        // Convert big-endian bytes to 24-bit unsigned integer
+        encoded = ((uint32_t)buf[0] << 16) | ((uint32_t)buf[1] << 8) | buf[2];
+    }
+    // Handle integer input
+    else if (PyLong_Check(input))
+    {
+        encoded = PyLong_AsUnsignedLong(input);
+        if (PyErr_Occurred())
+        {
+            return NULL; // Overflow or invalid conversion
+        }
+        if (encoded > 0xFFFFFF)
+        {
+            PyErr_SetString(PyExc_ValueError, "Input must be a 24-bit unsigned integer.");
+            return NULL;
+        }
+    }
+    else
+    {
+        PyErr_SetString(PyExc_TypeError, "Expected a 3-byte bytes object or 24-bit integer.");
         return NULL;
     }
-    if (encoded > 0xFFFFFF)
-    {
-        PyErr_SetString(PyExc_ValueError, "Input must be a 24-bit unsigned integer.");
-        return NULL;
-    }
+
+    // Decode logic
     uint16_t v1 = (encoded >> 12) & 0x0FFF;
     uint16_t v2 = encoded & 0x0FFF;
     uint16_t syndrome = SyndromeTable[v2] ^ v1;
     uint16_t corrected = v1 ^ CorrectTable[syndrome];
+
     return PyLong_FromUnsignedLong(corrected);
 }
 
-static PyObject* py_golay_errors(PyObject* self, PyObject* args) {
+static PyObject *py_golay_errors(PyObject *self, PyObject *args)
+{
     uint32_t v;
-    if (!PyArg_ParseTuple(args, "I", &v)) {
+    if (!PyArg_ParseTuple(args, "I", &v))
+    {
         return NULL;
     }
-    if (v > 0xFFFFFF) {
+    if (v > 0xFFFFFF)
+    {
         PyErr_SetString(PyExc_ValueError, "Input must be a 24-bit unsigned integer.");
         return NULL;
     }
@@ -151,7 +184,6 @@ static PyObject* py_golay_errors(PyObject* self, PyObject* args) {
     uint8_t errors = ErrorTable[syndrome];
     return PyLong_FromUnsignedLong(errors);
 }
-
 
 // Module method definitions
 static PyMethodDef GolayMethods[] = {
