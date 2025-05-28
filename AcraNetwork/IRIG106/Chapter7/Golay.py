@@ -71,19 +71,18 @@ class Golay(object):
         return encoded
 
     def decode(self, encoded):
-        if isinstance(encoded, bytes):
-            if len(encoded) != 3:
-                raise ValueError("3-byte input required")
-            (b, w) = struct.unpack(">BH", encoded)
-            v = w + (b << 16)
-        elif not (0 <= encoded <= 0xFFFFFF):
-            raise ValueError("Only 24-bit unsigned values supported")
-        else:
-            v = encoded
-
         if _use_c_extension:
-            return _golay_native.golay_decode(v)
+            return _golay_native.golay_decode(encoded)
         else:
+            if isinstance(encoded, bytes):
+                if len(encoded) != 3:
+                    raise ValueError("3-byte input required")
+                (b, w) = struct.unpack(">BH", encoded)
+                v = w + (b << 16)
+            elif not (0 <= encoded <= 0xFFFFFF):
+                raise ValueError("Only 24-bit unsigned values supported")
+            else:
+                v = encoded
             return self._decode_python(v)
 
     @staticmethod
