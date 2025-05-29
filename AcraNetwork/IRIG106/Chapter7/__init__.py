@@ -405,32 +405,32 @@ class PTFR(object):
         is_llp = self.llp
 
         if is_llp:
-            ch7_logger.debug("LLP flag set. First packet should be LLP")
+            # ch7_logger.debug("LLP flag set. First packet should be LLP")
             buf = self.payload
         elif remainder is None and self.ptdp_offset > 0 and self.ptdp_offset < 0x7FF:
             buf = self.payload[self.ptdp_offset :]
-            ch7_logger.debug(
-                "Start of analysis. Could be in the middle of a packet offset={} buffer length={}".format(
-                    self.ptdp_offset, len(buf)
-                )
-            )
+            # ch7_logger.debug(
+            #    "Start of analysis. Could be in the middle of a packet offset={} buffer length={}".format(
+            #        self.ptdp_offset, len(buf)
+            #    )
+            # )
         elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x7FF:
             buf = self.payload[self.ptdp_offset :]
-            ch7_logger.debug(
-                "No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf))
-            )
+            # ch7_logger.debug(
+            #    "No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf))
+            # )
         elif remainder is None:
             buf = self.payload
-            ch7_logger.debug(
-                "Buffer length={}. Ignoring offset={} Remainder undefined".format(len(buf), self.ptdp_offset)
-            )
+            # ch7_logger.debug(
+            #    "Buffer length={}. Ignoring offset={} Remainder undefined".format(len(buf), self.ptdp_offset)
+            # )
         else:
             buf = remainder + self.payload
-            ch7_logger.debug(
-                "Buffer length={}. Ignoring offset={} Remainder length={}".format(
-                    len(buf), self.ptdp_offset, len(remainder)
-                )
-            )
+            # ch7_logger.debug(
+            #    "Buffer length={}. Ignoring offset={} Remainder length={}".format(
+            #        len(buf), self.ptdp_offset, len(remainder)
+            #    )
+            # )
 
         do_offset_check = True
         if is_llp:
@@ -445,7 +445,7 @@ class PTFR(object):
         offset_check_count = 0
 
         while aligned:
-            ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
+            # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
             p = PTDP(self._golay)
             try:
                 buf = p.unpack(buf)
@@ -460,19 +460,19 @@ class PTFR(object):
                 yield (None, None, e)
             except PTDPRemainingData as e:
                 aligned = False
-                ch7_logger.debug(
-                    "Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(
-                        len(buf), e, self.ptdp_offset
-                    )
-                )
-                if not is_llp and byte_offset > 0 and do_offset_check:
-                    self.check_offsets(byte_offset)
+                # ch7_logger.debug(
+                #    "Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(
+                #        len(buf), e, self.ptdp_offset
+                #    )
+                # )
+                # if not is_llp and byte_offset > 0 and do_offset_check:
+                #    self.check_offsets(byte_offset)
 
                 yield (None, buf, e)
             else:
                 if not is_llp and do_offset_check and byte_offset >= 0:
                     # ch7_logger.debug(f"do_offset_check={do_offset_check} byte_offset={byte_offset}")
-                    self.check_offsets(byte_offset)
+                    # self.check_offsets(byte_offset)
                     do_offset_check = False
                     offset_check_count += 1
                 elif not is_llp and not do_offset_check and offset_check_count < 1:
@@ -492,7 +492,7 @@ class PTFR(object):
                     (next_llp,) = struct.unpack_from(">B", buf)
                     # Check if the next PTDP is low latency before yielding
                     if next_llp == 0xFF:
-                        ch7_logger.debug("Next packet is LLP")
+                        # ch7_logger.debug("Next packet is LLP")
                         is_llp = True
                         buf = buf[1:]
                         byte_offset += len(p) + 1
@@ -500,7 +500,7 @@ class PTFR(object):
                         is_llp = False
                         # if ((remainder == bytes()) or first_PTFR)  and self.ptdp_offset > 0:
                         if ((remainder == bytes()) and self.ptdp_offset > 0) or first_PTFR:
-                            ch7_logger.debug("LLP Packets extracted, jumping to offset")
+                            # ch7_logger.debug("LLP Packets extracted, jumping to offset")
                             buf = self.payload[self.ptdp_offset :]
                             do_offset_check = False
                             byte_offset = self.ptdp_offset
