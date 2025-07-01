@@ -111,5 +111,9 @@
 # 1.2.4   - Removed exit in the ch7
 # 1.2.5   - Added C implementation of Golay. Also improved the existing python impl
 # 1.2.6   - Further optimisation of the C Golay implementation
-# 1.2.7   - Chagned setup so as not to break if extension cannot be compiled
-__version__ = "1.2.7"
+# 1.2.7   - Changed setup so as not to break if extension cannot be compiled
+# 1.2.8   (FJP 2025-07-01)
+#         - Added Context Manager support to Pcap.py
+#         - Allow Golay.decode() to accept bytearray or other bytes-like object instead of only bytes (if not int)
+#         - simplified Golay.py; removed some redundant checks
+__version__ = "1.2.8"
