@@ -116,4 +116,5 @@
 #         - Added Context Manager support to Pcap.py
 #         - Allow Golay.decode() to accept bytearray or other bytes-like object instead of only bytes (if not int)
 #         - simplified Golay.py; removed some redundant checks
-__version__ = "1.2.8"
+# 1.2.9   - Added __init__.py back into the test folder to allow pytest to run
+__version__ = "1.2.9"
