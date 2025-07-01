@@ -114,6 +114,56 @@ class PcapBasicTest(unittest.TestCase):
         p.close()
         os.remove("_tmp2.pcap")
 
+    def test_context_manager(self):
+        """
+        tests the use of __enter__() and __exit() to allow "with" to ensure
+        the file is closed. Also verifies the behaviour of the rec_no value.        
+        """
+        test_filename = "_tmp3.pcap"
+
+        # define a payload for packet i
+        def pkt_payload(i): return i+1234
+
+        with pcap.Pcap(test_filename, mode="w") as p:
+            for i in range(10):
+                r = pcap.PcapRecord(now=True)
+                r.packet = getEthernetPacket(pkt_payload(i))
+                p.write(r)
+                self.assertEqual(p.rec_no, i+1)
+        self.assertTrue(p.fopen.closed)
+        
+        # Read the file back. This also shows how to handle an exception when 
+        # opening the file... the first filename will be invalid, the second 
+        # will work.
+        for filename in ("this_file_does_not_exist", test_filename):
+            exception_msg = None
+            if filename == test_filename:
+                exp_exception_msg = None
+            else:
+                exp_exception_msg = f"Failed to open {filename}. err=[Errno 2] No such file or directory: '{filename}'"
+            try:
+                p = pcap.Pcap(filename, mode="r")
+            except IOError as e:
+                exception_msg = str(e)
+            else:
+                with p:
+                    for i, rec in enumerate(p):
+                        e = SimpleEthernet.Ethernet()
+                        e.unpack(rec.packet)
+
+                        self.assertEqual(e.payload, 
+                                         struct.pack("H", pkt_payload(i))
+                                        )
+            self.assertEqual(exception_msg, exp_exception_msg)
+            if filename == test_filename:
+                # file should have been closed properly by __exit__()
+                self.assertTrue(p.fopen.closed)
+            else:
+                # exception should have happened so object has not even been
+                # created
+                self.assertIsNot(exception_msg, None)
+        os.remove(test_filename)
+        
 
 if __name__ == "__main__":
     unittest.main()
