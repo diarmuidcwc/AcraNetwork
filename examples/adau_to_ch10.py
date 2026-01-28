@@ -10,8 +10,8 @@ __author__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Prototype"
 
+import AcraNetwork.IRIG106.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.IRIG106.Chapter11 as ch10
-import AcraNetwork.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.IRIG106.Chapter11.UART as ch10uart
 import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
 import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 import logging
 from collections import defaultdict
 import struct
-from AcraNetwork.Chapter10 import (
+from AcraNetwork.IRIG106.Chapter11 import (
     TS_CH4,
     TS_IEEE1558,
     PTPTime,
@@ -188,14 +188,14 @@ def clone_ch10_payload(
         tuple of bytes and minor frame length
     """
     if datatype == DataType.ARINC429:
-        p = charinc.ARINC429DataPacket()
+        p: charinc.ARINC429DataPacket = charinc.ARINC429DataPacket()
         p.unpack(original_buffer)
         for arincpay in p:
             arincpay.payload = endianness_swap(arincpay.payload, 4)
         return p.pack(), None
 
     elif datatype == DataType.MILSTD1553:
-        p = ch10mil.MILSTD1553DataPacket(TS_IEEE1558)
+        p: ch10mil.MILSTD1553DataPacket = ch10mil.MILSTD1553DataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
         # Go through each message and conver the timestamp to RTC
         for milpayload in p:
@@ -205,7 +205,7 @@ def clone_ch10_payload(
         return p.pack(), None
 
     elif datatype == DataType.UART:
-        p = ch10uart.UARTDataPacket(TS_IEEE1558)
+        p: ch10uart.UARTDataPacket = ch10uart.UARTDataPacket(TS_IEEE1558)
         p.unpack(original_buffer)
         # Go through each message and conver the timestamp to RTC
         for dataword in p:
@@ -214,7 +214,7 @@ def clone_ch10_payload(
         return p.pack(), None
 
     elif datatype == DataType.PCM:
-        p = ch10pcm.PCMDataPacket(
+        p: ch10pcm.PCMDataPacket = ch10pcm.PCMDataPacket(
             ipts_source=TS_IEEE1558, syncword=pcmsyncword, minor_frame_size_bytes=minor_frame_size_bytes
         )
         p.unpack(original_buffer)
