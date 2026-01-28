@@ -162,7 +162,7 @@ class TmNSMessage:
     >>> pkt = ch24.TmNSMessage()
     >>> pkt.flags.acquired = ch24.DataSourceAcquiredDataFlag.SIMULATED
     >>> pkt.flags.fragmentation = ch24.MessageFragmentationFlags.LASTFRAGMENT
-    >>> pkt.defintionid = 0x1234
+    >>> pkt.definitionid = 0x1234
     >>> pkt.sequence = 100
     >>> pkt.payload = struct.pack(">HH", 0x1, 0x2)
     >>> b = pkt.pack()
@@ -173,7 +173,7 @@ class TmNSMessage:
     msgtype: int = TYPE_TMNS
     optionwordcount: int = 0
     version: int = VERSION
-    defintionid: int = 0
+    definitionid: int = 0
     sequence: int = 0
     length: int = 0
     timestamp: int = 0
@@ -185,7 +185,7 @@ class TmNSMessage:
         Convert the byte buffer into a TmNSMessage object
         """
         self.flags.unpack(buffer[0:2])
-        (_type, _ver_opt, self.defintionid, self.sequence, self.length, self.timestamp) = struct.unpack_from(
+        (_type, _ver_opt, self.definitionid, self.sequence, self.length, self.timestamp) = struct.unpack_from(
             TMNS_STRUCT, buffer, 2
         )
         self.msgtype = _type & 0xF
@@ -209,7 +209,7 @@ class TmNSMessage:
             TMNS_STRUCT,
             self.msgtype,
             self.optionwordcount + (self.version << 4),
-            self.defintionid,
+            self.definitionid,
             self.sequence,
             self.length,
             self.timestamp,

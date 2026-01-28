@@ -1,10 +1,4 @@
 import unittest
-
-__author__ = "diarmuid"
-import sys
-
-sys.path.append("..")
-import unittest
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.IRIG106.Chapter11 as ch10
@@ -12,7 +6,6 @@ import AcraNetwork.IRIG106.Chapter10.Chapter10UDP as ch10udp
 import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
 import AcraNetwork.IRIG106.Chapter11.UART as ch10uart
 import AcraNetwork.IRIG106.Chapter11.TimeDataFormat as ch10time
-import AcraNetwork.IRIG106.Chapter11.ARINC429 as ch10arinc
 import AcraNetwork.IRIG106.Chapter11.MILSTD1553 as ch10mil
 import AcraNetwork.IRIG106.Chapter11.PCM as ch10pcm
 import AcraNetwork.IRIG106.Chapter11.Video as ch10video
