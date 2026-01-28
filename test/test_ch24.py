@@ -46,7 +46,7 @@ class Ch24UDP(unittest.TestCase):
         pkt = ch24.TmNSMessage()
         pkt.flags.acquired = ch24.DataSourceAcquiredDataFlag.SIMULATED
         pkt.flags.fragmentation = ch24.MessageFragmentationFlags.LASTFRAGMENT
-        pkt.defintionid = 0x1234
+        pkt.definitionid = 0x1234
         pkt.sequence = 100
         pkt.payload = struct.pack(">HH", 0x1, 0x2)
         b = pkt.pack()
