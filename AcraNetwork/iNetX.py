@@ -15,6 +15,7 @@ __status__ = "Production"
 
 
 import struct
+import typing
 
 
 class iNetX(object):
@@ -53,7 +54,7 @@ class iNetX(object):
     INETX_HEADER_LENGTH = struct.calcsize(INETX_HEADER_FORMAT)
     REQ_ATTR = ("inetxcontrol", "streamid", "sequence", "ptptimeseconds", "ptptimenanoseconds", "pif", "payload")
 
-    def __init__(self, buf: bytes = None):
+    def __init__(self, buf: typing.Optional[bytes] = None):
         """Creator method for an iNetX class
 
         Args:
