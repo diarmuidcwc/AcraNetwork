@@ -1,18 +1,18 @@
 __author__ = "diarmuid"
 import sys
-
-sys.path.append("..")
-import os
-
+import os.path
 import unittest
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import AcraNetwork.Pcap as pcap
 import struct
 import logging
+import tempfile
+import timeit
 
 logging.basicConfig(level=logging.DEBUG)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+TMP_DIR = tempfile.gettempdir()
 
 
 class SimpleEthernetTest(unittest.TestCase):
@@ -186,7 +186,7 @@ class SimpleEthernetTest(unittest.TestCase):
 
     def test_ipv4fragment(self):
         p = pcap.Pcap(os.path.join(THIS_DIR, "ipv4frags.pcap"))
-        pw = pcap.Pcap(os.path.join(THIS_DIR, "combined.pcap"), mode="w")
+        pw = pcap.Pcap(os.path.join(TMP_DIR, "combined.pcap"), mode="w")
 
         r = pcap.PcapRecord()
         e = SimpleEthernet.Ethernet()
@@ -323,6 +323,33 @@ class SimpleEthernetTest(unittest.TestCase):
         r.packet = e.pack(fcs=False)
         p.write(r)
         p.close()
+
+
+class EthernetManipulation(unittest.TestCase):
+    ######################
+    # Ethernet
+    ######################
+    def setUp(self):
+        e = SimpleEthernet.Ethernet()
+        e.dstmac = 0x1234
+        e.srcmac = 0x4567
+        e.type = SimpleEthernet.Ethernet.TYPE_PAUSE
+        e.payload = struct.pack(">10H", *(range(10)))
+
+        self.ref_bytes = e.pack(fcs=True)
+
+    def test_unpack_and_repack(self):
+
+        def unpack_pack(buffer: bytes) -> bytes:
+            e = SimpleEthernet.Ethernet()
+            new_dst = 0x456
+            new_src = 0x678
+            e.unpack(buffer)
+            e.dstmac = new_dst
+            e.srcmac = new_src
+            return e.pack(fcs=True)
+
+        timeit.timeit("unpack_pack(ref)", setup="import unpack_pack, ")
 
 
 if __name__ == "__main__":

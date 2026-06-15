@@ -20,12 +20,13 @@ from functools import lru_cache
 import warnings
 
 try:
-    from . import golay_c as _golay_native
+    from . import golay_c as _golay_native  # type: ignore
 
-    _use_c_extension = True
+    _c_extension_available = True
 except ImportError:
     warnings.warn("C extension for Golay not found. Falling back to pure Python.", RuntimeWarning)
-    _use_c_extension = False
+    _c_extension_available = False
+_use_c_extension = _c_extension_available  # default behavior, unchanged
 
 
 GOLAY_SIZE = 0x1000
@@ -47,14 +48,20 @@ class Golay:
     CorrectTable = None
     ErrorTable = None
 
-    def __init__(self):
-        if _use_c_extension:
+    def __init__(self, use_c_extension=None):
+        if use_c_extension:
+            use_c_extension = _use_c_extension
+        if use_c_extension and not _c_extension_available:
+            raise RuntimeError("C extension for Golay requested but not available")
+        self._use_c_extension = use_c_extension
+
+        if self._use_c_extension:
             _golay_native.golay_init_tables()
         else:
-            if Golay.EncodeTable is None:        
+            if Golay.EncodeTable is None:
                 self._init_encode_table()
-            self._initgolaydecode()
-
+            if Golay.SyndromeTable is None:
+                self._initgolaydecode()
 
     def _init_encode_table(self):
         Golay.EncodeTable = [0] * GOLAY_SIZE
@@ -68,7 +75,7 @@ class Golay:
         if not (0 <= raw <= 0xFFF):
             raise ValueError("Only 12-bit unsigned values allowed")
 
-        if _use_c_extension:
+        if self._use_c_extension:
             encoded = _golay_native.golay_encode(raw)
         else:
             encoded = self._encode_python(raw)
@@ -78,7 +85,7 @@ class Golay:
         return encoded
 
     def decode(self, encoded):
-        if _use_c_extension:
+        if self._use_c_extension:
             return _golay_native.golay_decode(encoded)
         else:
             # encoded is either an integer <= 0xFFFFFF, or is a bytes-like type
@@ -92,7 +99,6 @@ class Golay:
                 v = encoded
             return self._decode_python(v)
 
-
     def _encode_python(self, raw):
         """
         Encode the value as a 24b code
@@ -104,7 +110,7 @@ class Golay:
         :param raw: value to be encoded that is already validated to be 0..FFF
         :return: encoded value as a 24-bit integer
         """
-        # self.encode() has already checked that 0 <= raw <= 0xFFF so do not 
+        # self.encode() has already checked that 0 <= raw <= 0xFFF so do not
         # check again
         # Also, there is no to_string argument because that is handled by
         # encode()
@@ -122,9 +128,9 @@ class Golay:
         :param v: integer that has already been validated to be 24bit
         :return: decoded 12-bit value
         """
-        # self.decode() has converted the value to an integer and verified 
+        # self.decode() has converted the value to an integer and verified
         # that it is valid. So do not repeat the check.
-        
+
         return self._decode2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
     def _syndrome2(self, v1, v2):
@@ -143,7 +149,7 @@ class Golay:
         return self._errors2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
     def errors(self, v):
-        if _use_c_extension:
+        if self._use_c_extension:
             return _golay_native.golay_errors(v)
         else:
             return self._errors(v)
