@@ -52,7 +52,6 @@ static void InitGolayEncode(void)
     }
 }
 
-// Initialize the Golay decoding lookup tables
 static void InitGolayDecode(void)
 {
     for (uint32_t x = 0; x < GOLAY_SIZE; x++)
@@ -80,7 +79,7 @@ static void InitGolayDecode(void)
             for (int k = 0; k < 24; k++)
             {
                 uint32_t error = (1 << i) | (1 << j) | (1 << k);
-                uint16_t syndrome = SyndromeTable[(error >> 12) & 0x0FFF] ^ (error & 0x0FFF);
+                uint16_t syndrome = SyndromeTable[error & 0x0FFF] ^ ((error >> 12) & 0x0FFF);
                 CorrectTable[syndrome] = (error >> 12) & 0x0FFF;
                 ErrorTable[syndrome] = ones_in_code(error, 24);
             }
@@ -124,17 +123,24 @@ static PyObject *py_golay_decode(PyObject *self, PyObject *args)
 
     uint32_t encoded;
 
-    // Handle bytes input (should be 3 bytes)
-    if (PyBytes_Check(input))
+    // Handle bytes-like input (bytes, bytearray, memoryview, etc.)
+    if (PyObject_CheckBuffer(input))
     {
-        if (PyBytes_Size(input) != 3)
+        Py_buffer view;
+        if (PyObject_GetBuffer(input, &view, PyBUF_SIMPLE) != 0)
         {
+            return NULL; // GetBuffer already sets an exception
+        }
+        if (view.len != 3)
+        {
+            PyBuffer_Release(&view);
             PyErr_SetString(PyExc_ValueError, "3-byte input required");
             return NULL;
         }
-        const unsigned char *buf = (const unsigned char *)PyBytes_AsString(input);
+        const unsigned char *buf = (const unsigned char *)view.buf;
         // Convert big-endian bytes to 24-bit unsigned integer
         encoded = ((uint32_t)buf[0] << 16) | ((uint32_t)buf[1] << 8) | buf[2];
+        PyBuffer_Release(&view);
     }
     // Handle integer input
     else if (PyLong_Check(input))
@@ -142,21 +148,21 @@ static PyObject *py_golay_decode(PyObject *self, PyObject *args)
         encoded = PyLong_AsUnsignedLong(input);
         if (PyErr_Occurred())
         {
-            return NULL; // Overflow or invalid conversion
+            return NULL;
         }
         if (encoded > 0xFFFFFF)
         {
-            PyErr_SetString(PyExc_ValueError, "Input must be a 24-bit unsigned integer.");
+            PyErr_SetString(PyExc_ValueError, "Only 24-bit unsigned values supported");
             return NULL;
         }
     }
     else
     {
-        PyErr_SetString(PyExc_TypeError, "Expected a 3-byte bytes object or 24-bit integer.");
+        PyErr_SetString(PyExc_TypeError, "Expected a bytes-like object (3 bytes) or 24-bit integer.");
         return NULL;
     }
 
-    // Decode logic
+    // Decode logic unchanged
     uint16_t v1 = (encoded >> 12) & 0x0FFF;
     uint16_t v2 = encoded & 0x0FFF;
     uint16_t syndrome = SyndromeTable[v2] ^ v1;
