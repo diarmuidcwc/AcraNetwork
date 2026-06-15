@@ -22,10 +22,11 @@ import warnings
 try:
     from . import golay_c as _golay_native  # type: ignore
 
-    _use_c_extension = True
+    _c_extension_available = True
 except ImportError:
     warnings.warn("C extension for Golay not found. Falling back to pure Python.", RuntimeWarning)
-    _use_c_extension = False
+    _c_extension_available = False
+_use_c_extension = _c_extension_available  # default behavior, unchanged
 
 
 GOLAY_SIZE = 0x1000
@@ -47,8 +48,14 @@ class Golay:
     CorrectTable = None
     ErrorTable = None
 
-    def __init__(self):
-        if _use_c_extension:
+    def __init__(self, use_c_extension=None):
+        if use_c_extension:
+            use_c_extension = _use_c_extension
+        if use_c_extension and not _c_extension_available:
+            raise RuntimeError("C extension for Golay requested but not available")
+        self._use_c_extension = use_c_extension
+
+        if self._use_c_extension:
             _golay_native.golay_init_tables()
         else:
             if Golay.EncodeTable is None:
@@ -67,7 +74,7 @@ class Golay:
         if not (0 <= raw <= 0xFFF):
             raise ValueError("Only 12-bit unsigned values allowed")
 
-        if _use_c_extension:
+        if self._use_c_extension:
             encoded = _golay_native.golay_encode(raw)
         else:
             encoded = self._encode_python(raw)
@@ -77,7 +84,7 @@ class Golay:
         return encoded
 
     def decode(self, encoded):
-        if _use_c_extension:
+        if self._use_c_extension:
             return _golay_native.golay_decode(encoded)
         else:
             # encoded is either an integer <= 0xFFFFFF, or is a bytes-like type
@@ -141,7 +148,7 @@ class Golay:
         return self._errors2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
     def errors(self, v):
-        if _use_c_extension:
+        if self._use_c_extension:
             return _golay_native.golay_errors(v)
         else:
             return self._errors(v)

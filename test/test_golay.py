@@ -5,6 +5,7 @@ import cProfile
 import random
 import logging
 import timeit
+import typing
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -333,10 +334,15 @@ testdata_decode = (
 )
 
 
-class GolayTestCase(unittest.TestCase):
+class GolayTestCase:
+
+    use_c_extension: typing.Optional[bool] = None  # set by subclasses
+
+    def _make_golay(self):
+        return Golay.Golay(use_c_extension=self.use_c_extension)
 
     def test_encode(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         for attempt in range(200):
             input = random.randint(0, 0xFFF)
             # print("{:0X}".format(g2.decode(g.encode(raw))))
@@ -344,7 +350,7 @@ class GolayTestCase(unittest.TestCase):
             # print(f"({input}, {g.encode(input)}),", end="")
 
     def test_encode_too_big(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         # Attempting to encode a value > 0xFFF should raise an exception
         # a) last legal value does not raise an exception
         #    Using the C reference code, 0xFFF encodes to 0xFFFFFF
@@ -368,13 +374,13 @@ class GolayTestCase(unittest.TestCase):
         self.assertIs(v, None)
 
     def test_encode_vectors(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         for input, output in vectors:
             self.assertEqual(output, g.encode(input))
 
     def test_encode_string(self):
         # Encode with as_string=True; actually returns bytes, not string
-        g = Golay.Golay()
+        g = self._make_golay()
         v = 0x101
         s = g.encode(v, as_string=True)
         self.assertEqual(3, len(s))
@@ -384,7 +390,7 @@ class GolayTestCase(unittest.TestCase):
     def test_errors(self):
         # Check that up to 4 bit errors can be detected and that up to 3
         # bit errors will be corrected.
-        g = Golay.Golay()
+        g = self._make_golay()
         for check in testdata_decode:
             dataword = check[1]  # value to be encoded
             codeword = check[2]  # this is the encoding with no bit errors
@@ -418,7 +424,7 @@ class GolayTestCase(unittest.TestCase):
 
     def test_decode_bytearray(self):
         # decode can now take bytearray(), bytes() or integer
-        g = Golay.Golay()
+        g = self._make_golay()
         for dataword, codeword in vectors:
             cw_b = codeword.to_bytes(3, "big")  # codeword, as bytes
             cw_ba = bytearray(cw_b)  # codeword, as a bytearray object
@@ -427,7 +433,7 @@ class GolayTestCase(unittest.TestCase):
             self.assertEqual(dataword, g.decode(cw_ba))
 
     def test_decode(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         for check in testdata_decode:
             # check[0] is a codeword that may have bit errors
             # check[1] is the decoded value of check[0]
@@ -473,7 +479,7 @@ class GolayTestCase(unittest.TestCase):
                 self.assertEqual(g.decode(codeword), dataword)
 
     def test_decode_too_big(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         # Attempting to decode a bytes value that is not exactly 3 bytes
         # or an integer value < 0xFFFFFF should raise an exception
 
@@ -541,7 +547,7 @@ class GolayTestCase(unittest.TestCase):
 
     @unittest.skip("Not working in c")
     def test_with_error(self):
-        g = Golay.Golay()
+        g = self._make_golay()
         for attempt in range(6):
             for error_bits in range(0, 7):
                 logging.debug("----{}----".format(error_bits))
@@ -561,7 +567,21 @@ class GolayTestCase(unittest.TestCase):
                     self.assertNotEqual(input, decoded)
 
 
-class GolayProfile(unittest.TestCase):
+class GolayTestCasePython(GolayTestCase, unittest.TestCase):
+    use_c_extension = False
+
+
+@unittest.skipUnless(Golay._c_extension_available, "C extension not built")
+class GolayTestCaseC(GolayTestCase, unittest.TestCase):
+    use_c_extension = True
+
+
+class GolayProfile:
+
+    use_c_extension: typing.Optional[bool] = None  # set by subclasses
+
+    def _make_golay(self):
+        return Golay.Golay(use_c_extension=self.use_c_extension)
 
     def setUp(self):
         self.pr = cProfile.Profile()
@@ -570,11 +590,11 @@ class GolayProfile(unittest.TestCase):
     def tearDown(self):
         p = Stats(self.pr)
         p.sort_stats("cumtime")
-        # p.print_stats()
+        p.print_stats()
 
     def test_profile(self):
-        g = Golay.Golay()
-        g2 = Golay.Golay()
+        g = self._make_golay()
+        g2 = self._make_golay()
         for val in range(100, 2000):
             # val = 100
 
@@ -609,10 +629,19 @@ class GolayProfile(unittest.TestCase):
         print(
             timeit.timeit(
                 "g.decode(g.encode(100))",
-                setup="import AcraNetwork.IRIG106.Chapter7.Golay as Golay; g=Golay.Golay()",
+                setup="import AcraNetwork.IRIG106.Chapter7.Golay as Golay; g=self._make_golay()",
                 number=100000,
             )
         )
+
+
+class GolayProfilePython(GolayProfile, unittest.TestCase):
+    use_c_extension = False
+
+
+@unittest.skipUnless(Golay._c_extension_available, "C extension not built")
+class GolayProfileC(GolayProfile, unittest.TestCase):
+    use_c_extension = True
 
 
 if __name__ == "__main__":
