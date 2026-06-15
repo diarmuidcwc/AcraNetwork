@@ -118,4 +118,5 @@
 #         - simplified Golay.py; removed some redundant checks
 # 1.2.9   - Added __init__.py back into the test folder to allow pytest to run
 # 1.3.0   - STart to add support for TmNSMessage
-__version__ = "1.3.0"
+# 1.3.1   - Fixed typo in defintionid
+__version__ = "1.3.1"

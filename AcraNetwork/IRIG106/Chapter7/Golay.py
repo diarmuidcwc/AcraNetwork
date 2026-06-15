@@ -60,7 +60,8 @@ class Golay:
         else:
             if Golay.EncodeTable is None:
                 self._init_encode_table()
-            self._initgolaydecode()
+            if Golay.SyndromeTable is None:
+                self._initgolaydecode()
 
     def _init_encode_table(self):
         Golay.EncodeTable = [0] * GOLAY_SIZE
