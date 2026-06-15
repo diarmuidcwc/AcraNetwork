@@ -20,7 +20,7 @@ from functools import lru_cache
 import warnings
 
 try:
-    from . import golay_c as _golay_native
+    from . import golay_c as _golay_native  # type: ignore
 
     _use_c_extension = True
 except ImportError:
@@ -51,10 +51,9 @@ class Golay:
         if _use_c_extension:
             _golay_native.golay_init_tables()
         else:
-            if Golay.EncodeTable is None:        
+            if Golay.EncodeTable is None:
                 self._init_encode_table()
             self._initgolaydecode()
-
 
     def _init_encode_table(self):
         Golay.EncodeTable = [0] * GOLAY_SIZE
@@ -92,7 +91,6 @@ class Golay:
                 v = encoded
             return self._decode_python(v)
 
-
     def _encode_python(self, raw):
         """
         Encode the value as a 24b code
@@ -104,7 +102,7 @@ class Golay:
         :param raw: value to be encoded that is already validated to be 0..FFF
         :return: encoded value as a 24-bit integer
         """
-        # self.encode() has already checked that 0 <= raw <= 0xFFF so do not 
+        # self.encode() has already checked that 0 <= raw <= 0xFFF so do not
         # check again
         # Also, there is no to_string argument because that is handled by
         # encode()
@@ -122,9 +120,9 @@ class Golay:
         :param v: integer that has already been validated to be 24bit
         :return: decoded 12-bit value
         """
-        # self.decode() has converted the value to an integer and verified 
+        # self.decode() has converted the value to an integer and verified
         # that it is valid. So do not repeat the check.
-        
+
         return self._decode2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
 
     def _syndrome2(self, v1, v2):
