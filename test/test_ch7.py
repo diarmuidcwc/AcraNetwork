@@ -11,7 +11,6 @@ import cProfile
 import typing
 import random
 
-
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
@@ -324,6 +323,7 @@ def missing_elements(L):
 
 class TestRandomSizedDecom(unittest.TestCase):
     def test_no_llc(self):
+
         offset = 0
         first_PTFR = True
         eth_p = bytes()
@@ -337,7 +337,7 @@ class TestRandomSizedDecom(unittest.TestCase):
             ch7_pkt.unpack(ch7_buffer)
             count += 1
             if count > 10000:
-                return
+                break
 
             for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
                 first_PTFR = False
@@ -347,7 +347,7 @@ class TestRandomSizedDecom(unittest.TestCase):
                             eth_p += p.payload
                             logging.debug(repr(p))
                             self.assertGreaterEqual(len(eth_p), 16)
-                            (expected_len, count) = struct.unpack_from(">QQ", eth_p, 0x0)
+                            expected_len, count = struct.unpack_from(">QQ", eth_p, 0x0)
                             logging.debug(f"RX payload count={count} len={len(eth_p)}")
                             if prev_eth_count is not None:
                                 if prev_eth_count + 1 != count:
@@ -383,7 +383,7 @@ class TestRandomSizedDecom(unittest.TestCase):
                             logging.debug(repr(p))
                             if p.content != ch7.PTDPContent.FILL:
                                 self.assertGreaterEqual(len(eth_p), 16)
-                                (expected_len, count) = struct.unpack_from(">QQ", eth_p, 0x0)
+                                expected_len, count = struct.unpack_from(">QQ", eth_p, 0x0)
                                 logging.debug(f"RX payload count={count} len={len(eth_p)}")
                                 numbers_found.append(count)
                                 self.assertEqual(expected_len * 8, len(eth_p))
@@ -392,6 +392,41 @@ class TestRandomSizedDecom(unittest.TestCase):
 
         numbers_found.sort()
         self.assertEqual(missing_elements(numbers_found), [])
+
+
+class TestProfile(unittest.TestCase):
+    def test_no_llc(self):
+
+        frames = []
+        for _i, frame in enumerate(get_pcm_frame(0, some_low_latency=False)):
+            frames.append(frame)
+            if _i == 1000:
+                break
+
+        pr = cProfile.Profile()
+        pr.enable()
+        offset = 0
+        first_PTFR = True
+        eth_p = bytes()
+        remainder = None
+        for i in range(100):
+            for frame in frames:
+                ch7_pkt = ch7.PTFR()
+                ch7_buffer = frame[offset:]
+                ch7_pkt.length = len(ch7_buffer)
+                ch7_pkt.unpack(ch7_buffer)
+
+                for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                    first_PTFR = False
+                    if p is not None:
+                        if p.length != 0:
+                            if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
+                                eth_p += p.payload
+                                eth_p = bytes()
+            ps = Stats(pr)
+        ps.sort_stats("cumtime")
+        print("jellp")
+        ps.print_stats()
 
 
 if __name__ == "__main__":
