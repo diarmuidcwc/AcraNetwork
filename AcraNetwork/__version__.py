@@ -120,5 +120,5 @@
 # 1.3.0   - STart to add support for TmNSMessage
 # 1.3.1   - Fixed typo in defintionid
 # 1.3.2   - Aligned the C implementation of Golay with the python code. Unittest tests both C and Python. Performance improvements in python code
-
-__version__ = "1.3.2"
+# 1.3.3   - Small performance improvements
+__version__ = "1.3.3"
