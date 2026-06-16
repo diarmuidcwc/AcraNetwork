@@ -24,7 +24,6 @@ import logging
 import typing
 from enum import IntEnum
 
-
 ch7_logger = logging.getLogger(__name__)
 
 
@@ -55,6 +54,37 @@ class PTDPFragment(IntEnum):
         return PTDPFragment.ILLEGAL
 
 
+# perf: precomputed lookup tables so PTDP.unpack() doesn't pay the IntEnum
+# metaclass cost (Enum.__call__ / __new__) on every header it decodes.
+# Indices are the raw bit-masked values pulled out of the Golay-decoded
+# header word, so these must stay in sync with the bit widths used there.
+_FRAGMENT_BY_BITS = (
+    PTDPFragment.COMPLETE,  # 0
+    PTDPFragment.FIRST,  # 1
+    PTDPFragment.MIDDLE,  # 2
+    PTDPFragment.LAST,  # 3
+)
+
+_CONTENT_BY_BITS = (
+    PTDPContent.FILL,  # 0
+    PTDPContent.ASP,  # 1
+    PTDPContent.TEST_COUNTER,  # 2
+    PTDPContent.CHAPTER_10,  # 3
+    PTDPContent.ETHERNET_MAC,  # 4
+    PTDPContent.IP,  # 5
+    PTDPContent.CHAPTER_24,  # 6
+    PTDPContent.ILLEGAL,  # 7
+    PTDPContent.ILLEGAL,  # 8
+    PTDPContent.ILLEGAL,  # 9
+    PTDPContent.ILLEGAL,  # 10
+    PTDPContent.ILLEGAL,  # 11
+    PTDPContent.ILLEGAL,  # 12
+    PTDPContent.ILLEGAL,  # 13
+    PTDPContent.ILLEGAL,  # 14
+    PTDPContent.ILLEGAL,  # 15
+)
+
+
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
 
@@ -79,7 +109,7 @@ def _new_ptfr(ptfr_len: int, streamid: int = 0x1, golay=Golay.Golay()) -> PTFR:
 
 
 def datapkts_to_ptfr(
-    eth_ch10_packets: typing.Iterable[bytes, bool], ptfr_len: int = 500, streamid: int = 0x1, golay=Golay.Golay()
+    eth_ch10_packets: typing.Iterable[tuple[bytes, bool]], ptfr_len: int = 500, streamid: int = 0x1, golay=Golay.Golay()
 ) -> typing.Generator[PTFR, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
@@ -127,7 +157,7 @@ def datapkts_to_ptfr(
                 remainder = ptfr.add_payload(remainder)
 
 
-def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[bytes, bool]) -> typing.Generator[PTDP, None, None]:
+def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[tuple[bytes, bool]]) -> typing.Generator[PTDP, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
     and return the PTDPs encapsulating the payload
@@ -169,8 +199,7 @@ def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[bytes, bool]) -> typing.G
 
 
 class PTDP(object):
-    def __init__(self, golay=Golay.Golay()):
-        self.payload: bytes = bytes()
+    def __init__(self, golay=Golay.Golay()) -> None:
         self.low_latency: bool = False
         self.length: int = 0
         self.content: PTDPContent = PTDPContent.FILL
@@ -221,24 +250,24 @@ class PTDP(object):
         msw = self._golay.decode(buffer[3:6])
 
         self.length = msw + ((lsw & 0xF) << 12)
-        self.fragment = PTDPFragment((lsw >> 4) & 0x3)
-        self.content = PTDPContent((lsw >> 6) & 0xF)
+        self.fragment = _FRAGMENT_BY_BITS[(lsw >> 4) & 0x3]
+        self.content = _CONTENT_BY_BITS[(lsw >> 6) & 0xF]
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
-        elif len(buffer[6:]) < self.length:
+        elif len(buffer) < self.length + 6:
             raise PTDPRemainingData(
                 "Not a full PTDP packet. Rest likely in next packet . Buffer length={} GolayHdr=len={} fragment={} content={}".format(
                     len(buffer[6:]), self.length, self.fragment, self.content
                 )
             )
-        self.payload = buffer[6 : self.length + 6]
+        self._payload = buffer[6 : self.length + 6]
 
         return buffer[self.length + 6 :]
 
     def __len__(self):
-        return len(self.payload) + PTDP_HDR_LEN
+        return self.length + PTDP_HDR_LEN
 
-    def __eq__(self, other: PTDP):
+    def __eq__(self, other: object):
         if not isinstance(other, PTDP):
             return False
         for attr in ["payload", "length", "fragment", "content"]:
@@ -247,7 +276,7 @@ class PTDP(object):
 
         return True
 
-    def __ne__(self, other: PTDP):
+    def __ne__(self, other: object):
         return not self.__eq__(other)
 
     def __repr__(self):
@@ -271,7 +300,7 @@ class PTFR(object):
     Pass in a Golay object as creation of one is expensive so sharing and caching speeds things up a lot
     """
 
-    def __init__(self, golay=Golay.Golay()):
+    def __init__(self, golay=Golay.Golay()) -> None:
         self.version: int = 0x0
         self.streamid: int = 0x0
         self.llp: bool = False
@@ -388,9 +417,13 @@ class PTFR(object):
             )
         return True
 
-    def get_aligned_payload(
-        self, first_PTFR: bool, remainder: typing.Optional[bytes] = None
-    ) -> typing.Generator[typing.Tuple[PTDP, bytes, str], None, None]:
+    def get_aligned_payload(self, first_PTFR: bool, remainder: typing.Optional[bytes] = None) -> typing.Generator[
+        typing.Tuple[
+            typing.Optional[PTDP], typing.Optional[bytes], typing.Union[PTDPLengthError, PTDPRemainingData, str]
+        ],
+        None,
+        None,
+    ]:
         """
         Return the payload as PTDP packets with the final partial payload
         The remainder is the bytes from the end of the previous PTFR. IF this is the middle of a
@@ -521,7 +554,7 @@ class PTFR(object):
 
         # ch7_logger.debug("------PTFR expired-----")
 
-    def __eq__(self, other: PTFR):
+    def __eq__(self, other: object):
         if not isinstance(other, PTFR):
             return False
 
