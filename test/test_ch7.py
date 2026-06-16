@@ -394,6 +394,7 @@ class TestRandomSizedDecom(unittest.TestCase):
         self.assertEqual(missing_elements(numbers_found), [])
 
 
+@unittest.skip("perfo only")
 class TestProfile(unittest.TestCase):
     def test_no_llc(self):
 
