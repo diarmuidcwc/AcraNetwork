@@ -17,14 +17,17 @@ __status__ = "Production"
 # This is a direct porting of the C code from the IRIG106 starndard.
 import struct
 from functools import lru_cache
-import warnings
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 try:
     from . import golay_c as _golay_native  # type: ignore
 
     _c_extension_available = True
 except ImportError:
-    warnings.warn("C extension for Golay not found. Falling back to pure Python.", RuntimeWarning)
+    logger.warning("C extension for Golay not found. Falling back to pure Python.")
     _c_extension_available = False
 _use_c_extension = _c_extension_available  # default behavior, unchanged
 
