@@ -96,10 +96,6 @@ class PTDPLengthError(Exception):
     pass
 
 
-class PTDPRemainingData(Exception):
-    pass
-
-
 def _new_ptfr(ptfr_len: int, streamid: int = 0x1, golay=Golay.Golay()) -> PTFR:
     """Return a new PTFR object initialised with some useful values"""
     ptfr = PTFR(golay)
@@ -235,7 +231,7 @@ class PTDP(object):
 
         return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload
 
-    def unpack(self, buffer: bytes) -> bytes:
+    def unpack(self, buffer: bytes) -> bytes | None:
         """
         Convert a buffer into a PTDP object returning the remaining buffer
 
@@ -244,10 +240,10 @@ class PTDP(object):
         """
 
         if len(buffer) < 6:
-            raise PTDPRemainingData("Can't unpack less than the header length")
-
-        lsw = self._golay.decode(buffer[:3])
-        msw = self._golay.decode(buffer[3:6])
+            return None
+        mv = memoryview(buffer)
+        lsw = self._golay.decode(mv[:3])
+        msw = self._golay.decode(mv[3:6])
 
         self.length = msw + ((lsw & 0xF) << 12)
         self.fragment = _FRAGMENT_BY_BITS[(lsw >> 4) & 0x3]
@@ -255,11 +251,7 @@ class PTDP(object):
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
         elif len(buffer) < self.length + 6:
-            raise PTDPRemainingData(
-                "Not a full PTDP packet. Rest likely in next packet . Buffer length={} GolayHdr=len={} fragment={} content={}".format(
-                    len(buffer[6:]), self.length, self.fragment, self.content
-                )
-            )
+            return None
         self._payload = buffer[6 : self.length + 6]
 
         return buffer[self.length + 6 :]
@@ -290,7 +282,7 @@ def ptdp_fill(total_len_min: int) -> PTDP:
         payload_len = 1
     else:
         payload_len = total_len_min - PTDP_HDR_LEN
-    _p.payload = struct.pack(f">{payload_len}B", *([0xFF] * payload_len))
+    _p.payload = b"\xff" * payload_len
     return _p
 
 
@@ -418,9 +410,7 @@ class PTFR(object):
         return True
 
     def get_aligned_payload(self, first_PTFR: bool, remainder: typing.Optional[bytes] = None) -> typing.Generator[
-        typing.Tuple[
-            typing.Optional[PTDP], typing.Optional[bytes], typing.Union[PTDPLengthError, PTDPRemainingData, str]
-        ],
+        typing.Tuple[typing.Optional[PTDP], typing.Optional[bytes], typing.Union[PTDPLengthError, str]],
         None,
         None,
     ]:
@@ -476,10 +466,10 @@ class PTFR(object):
                 do_offset_check = False
 
         offset_check_count = 0
-
+        p = PTDP(self._golay)
         while aligned:
             # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
-            p = PTDP(self._golay)
+            prev_buf = buf
             try:
                 buf = p.unpack(buf)
             except PTDPLengthError as e:
@@ -491,18 +481,13 @@ class PTFR(object):
                 )
 
                 yield (None, None, e)
-            except PTDPRemainingData as e:
-                aligned = False
-                # ch7_logger.debug(
-                #    "Failed to unpack buffer of length {}bytes. Message={} Offset={}".format(
-                #        len(buf), e, self.ptdp_offset
-                #    )
-                # )
-                # if not is_llp and byte_offset > 0 and do_offset_check:
-                #    self.check_offsets(byte_offset)
 
-                yield (None, buf, e)
             else:
+                if buf is None:
+                    aligned = False
+                    yield (None, prev_buf, "")
+                    break
+
                 if not is_llp and do_offset_check and byte_offset >= 0:
                     # ch7_logger.debug(f"do_offset_check={do_offset_check} byte_offset={byte_offset}")
                     # self.check_offsets(byte_offset)
