@@ -52,7 +52,7 @@ class Golay:
     ErrorTable = None
 
     def __init__(self, use_c_extension=None):
-        if use_c_extension:
+        if use_c_extension is None:
             use_c_extension = _use_c_extension
         if use_c_extension and not _c_extension_available:
             raise RuntimeError("C extension for Golay requested but not available")
