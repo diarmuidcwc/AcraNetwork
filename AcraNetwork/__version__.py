@@ -123,4 +123,5 @@
 # 1.3.3   - Small performance improvements
 # 1.3.4   - Downgraded Golay C warning to a logging messages
 # 1.3.5   - Optimised ch7 code and corrected golay importing
-__version__ = "1.3.5"
+# 1.3.6   - Removed a few len functions
+__version__ = "1.3.6"
