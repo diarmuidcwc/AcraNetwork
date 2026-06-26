@@ -238,8 +238,8 @@ class PTDP(object):
         :type buffer: bytes
         :rtype: bytes
         """
-
-        if len(buffer) < 6:
+        _buf_len = len(buffer)
+        if _buf_len < 6:
             return None
         mv = memoryview(buffer)
         lsw = self._golay.decode(mv[:3])
@@ -250,11 +250,12 @@ class PTDP(object):
         self.content = _CONTENT_BY_BITS[(lsw >> 6) & 0xF]
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
-        elif len(buffer) < self.length + 6:
+        _end = self.length + 6
+        if _buf_len < _end:
             return None
-        self._payload = buffer[6 : self.length + 6]
+        self._payload = buffer[6:_end]
 
-        return buffer[self.length + 6 :]
+        return buffer[_end:]
 
     def __len__(self):
         return self.length + PTDP_HDR_LEN
