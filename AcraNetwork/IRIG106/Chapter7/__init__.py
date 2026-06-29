@@ -485,7 +485,7 @@ class PTFR(object):
                 yield (None, None, e)
 
             else:
-                len_p = len(self._ptdp)
+                len_p = self._ptdp.length + PTDP_HDR_LEN
                 if buf is None:
                     aligned = False
                     yield (None, prev_buf, "")
