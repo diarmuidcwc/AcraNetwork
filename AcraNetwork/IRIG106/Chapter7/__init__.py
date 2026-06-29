@@ -17,14 +17,25 @@ __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
 
 import struct
-
+import logging
 from AcraNetwork.IRIG106.Chapter7 import Golay
 import math
-import logging
 import typing
 from enum import IntEnum
 
 ch7_logger = logging.getLogger(__name__)
+try:
+    # from AcraNetwork.IRIG106.Chapter7 import golay_c as _golay_c
+    _golay_c = None
+    _c_chapter7_available = False
+
+    # _c_chapter7_available = hasattr(_golay_c, "ptdp_unpack") and hasattr(_golay_c, "ptfr_unpack")
+except ImportError:
+    _golay_c = None
+    _c_chapter7_available = False
+
+if _c_chapter7_available:
+    ch7_logger.debug("Chapter7 unpack in C")
 
 
 class PTDPContent(IntEnum):
@@ -202,6 +213,10 @@ class PTDP(object):
         self.fragment: int = PTDPFragment.COMPLETE
         self._payload: bytes = bytes()
         self._golay: Golay.Golay = golay
+        if _c_chapter7_available:
+            self.unpack = self._unpack_c
+        else:
+            self.unpack = self._unpack_python
 
     @property
     def payload(self):
@@ -231,7 +246,32 @@ class PTDP(object):
 
         return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload
 
-    def unpack(self, buffer: bytes) -> bytes | None:
+    def _unpack_c(self, buffer: bytes) -> "bytes | None":
+        """
+        Fast path — uses C extension for Golay decodes and header parsing.
+        Bound directly at construction time; no availability check per call.
+        """
+        result = _golay_c.ptdp_unpack(buffer)
+
+        if result is None:  # buffer too short
+            return None
+
+        if result == -1:  # corrupt Golay length field
+            raise PTDPLengthError("GolayHdr=len corrupt. Must be corrupted")
+
+        length, fragment, content, remainder_start = result
+
+        self.length = length
+        self.fragment = _FRAGMENT_BY_BITS[fragment]
+        self.content = _CONTENT_BY_BITS[content]
+        self._payload = buffer[6 : 6 + length]
+
+        if remainder_start > len(buffer):
+            return None
+
+        return buffer[remainder_start:]
+
+    def _unpack_python(self, buffer: bytes) -> bytes | None:
         """
         Convert a buffer into a PTDP object returning the remaining buffer
 
@@ -299,9 +339,13 @@ class PTFR(object):
         self.llp: bool = False
         self.ptdp_offset: int = 0x0
         self.length: int = 0
-        self._payload: bytes = bytes()
+        self._payload: bytes = bytearray()
         self._golay: Golay.Golay = golay
         self._ptdp = PTDP(self._golay)
+        if _c_chapter7_available:
+            self.unpack = self._unpack_c
+        else:
+            self.unpack = self._unpack_python
 
     @property
     def payload(self):
@@ -380,7 +424,27 @@ class PTFR(object):
 
         return buffer
 
-    def unpack(self, buffer: bytes) -> bool:
+    def _unpack_c(self, buffer: bytes) -> bool:
+        """
+        Fast path — uses C extension for Golay decode and header parsing.
+        Bound directly at construction time; no availability check per call.
+        """
+        result = _golay_c.ptfr_unpack(buffer)
+
+        if result is None:  # buffer too short
+            return False
+
+        version, streamid, llp, ptdp_offset = result
+
+        self.version = version
+        self.streamid = streamid
+        self.llp = bool(llp)
+        self.ptdp_offset = ptdp_offset
+        self.payload = buffer[4:]
+
+        return True
+
+    def _unpack_python(self, buffer: bytes) -> bool:
         """
         Convert the PTFR data from one minor frame into a PTFR object
         :param buffer:

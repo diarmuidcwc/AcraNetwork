@@ -11,6 +11,8 @@ import cProfile
 import typing
 import random
 
+_c_chapter7_available_original = ch7._c_chapter7_available
+
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
@@ -45,14 +47,21 @@ def ptfr_to_pcm_frame(
             pcm_frame = zero_buf + remainder
 
 
-class TestCaseCh7(unittest.TestCase):
+class BaseTestCaseCh7:
+
+    def _make_ptdp(self) -> ch7.PTDP:
+        raise NotImplementedError
+
+    def _make_ptfr(self) -> ch7.PTFR:
+        raise NotImplementedError
+
     def test_basic(self):
-        ch7_pkt = ch7.PTFR()
+        ch7_pkt = self._make_ptfr()
         ch7_pkt.length = 132
         ch7_pkt.llp = 0
         remainder = bytes()
         while remainder == bytes():
-            ch7_pd = ch7.PTDP()
+            ch7_pd = self._make_ptdp()
             ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
             ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
             ch7_pd.payload = os.urandom(58)
@@ -64,25 +73,25 @@ class TestCaseCh7(unittest.TestCase):
         ch7_pkt_copy = copy.deepcopy(ch7_pkt)
         self.assertTrue(ch7_pkt == ch7_pkt_copy)
 
-        ch7_unpack = ch7.PTFR()
+        ch7_unpack = self._make_ptfr()
         ch7_unpack.length = 132
         self.assertTrue(ch7_unpack.unpack(buf))
         self.assertTrue(ch7_unpack == ch7_pkt)
 
     def test_partial_fill(self):
-        ch7_pkt = ch7.PTFR()
+        ch7_pkt = self._make_ptfr()
         ch7_pkt.length = 140
         ch7_pkt.llp = 0
         remainder = bytes()
         while remainder == bytes():
-            ch7_pd = ch7.PTDP()
+            ch7_pd = self._make_ptdp()
             ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
             ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
             ch7_pd.payload = os.urandom(58)
             remainder = ch7_pkt.add_payload(ch7_pd.pack())
             # print("Packet added")
         buf = ch7_pkt.pack()
-        ch7_unpack = ch7.PTFR()
+        ch7_unpack = self._make_ptfr()
         ch7_unpack.length = 140
         self.assertTrue(ch7_unpack.unpack(buf))
         # print(repr(ch7_pkt))
@@ -91,12 +100,52 @@ class TestCaseCh7(unittest.TestCase):
         self.assertTrue(ch7_unpack == ch7_pkt)
 
     def test_comparsion(self):
-        ch7_pd = ch7.PTDP()
+        ch7_pd = self._make_ptdp()
         ch7_pd.content = ch7.PTDPContent.ETHERNET_MAC
         ch7_pd.fragment = ch7.PTDPFragment.COMPLETE
         ch7_pd.payload = os.urandom(60)
         ch_pd_copy = copy.deepcopy(ch7_pd)
         self.assertTrue(ch7_pd == ch_pd_copy)
+
+
+class TestPTDPUnpackPython(BaseTestCaseCh7, unittest.TestCase):
+    """Runs the full suite against the pure Python path."""
+
+    def setUp(self):
+        # Force Python path regardless of C extension availability
+        ch7._c_chapter7_available = False
+
+    def tearDown(self):
+        # Restore — don't pollute other test classes
+        ch7._c_chapter7_available = _c_chapter7_available_original
+
+    def _make_ptdp(self):
+        p = ch7.PTDP()
+        p.unpack = p._unpack_python  # bind explicitly
+        return p
+
+    def _make_ptfr(self):
+        f = ch7.PTFR()
+        f.unpack = f._unpack_python
+        return f
+
+
+class TestPTDPUnpackC(BaseTestCaseCh7, unittest.TestCase):
+    """Runs the full suite against the C extension path."""
+
+    def setUp(self):
+        if not ch7._c_chapter7_available:
+            self.skipTest("C extension not available")
+
+    def _make_ptdp(self):
+        p = ch7.PTDP()
+        p.unpack = p._unpack_c
+        return p
+
+    def _make_ptfr(self):
+        f = ch7.PTFR()
+        f.unpack = f._unpack_c
+        return f
 
 
 class TestGenerators(unittest.TestCase):
