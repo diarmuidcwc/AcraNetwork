@@ -386,7 +386,8 @@ class PTFR(object):
         :param buffer:
         :return:
         """
-        (byte_,) = struct.unpack_from(">B", buffer)
+        mv = memoryview(buffer)
+        byte_ = mv[0]
         self.version = byte_ & 0x3
         self.streamid = (byte_ >> 4) & 0xF
         # Protected field
@@ -510,7 +511,7 @@ class PTFR(object):
 
                 if is_llp:  # If this is a low latency packet
                     # Remove the last byte
-                    (next_llp,) = struct.unpack_from(">B", buf)
+                    next_llp = buf[0]
                     # Check if the next PTDP is low latency before yielding
                     if next_llp == 0xFF:
                         # ch7_logger.debug("Next packet is LLP")
