@@ -96,19 +96,30 @@ static PyObject *py_golay_init_tables(PyObject *self, PyObject *args)
 }
 
 // Python wrapper for golay_encode
-static PyObject *py_golay_encode(PyObject *self, PyObject *args)
+static PyObject *py_golay_encode(PyObject *self, PyObject *args, PyObject *kwargs)
 {
+    static char *kwlist[] = {"raw", "as_string", NULL};
     uint16_t raw;
-    if (!PyArg_ParseTuple(args, "H", &raw))
-    {
+    int as_string = 0;
+    
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|p", kwlist, &raw, &as_string))
+        return NULL;
+
+    if (raw > 0x0FFF) {
+        PyErr_SetString(PyExc_ValueError, "Only 12-bit unsigned values allowed");
         return NULL;
     }
-    if (raw > 0x0FFF)
-    {
-        PyErr_SetString(PyExc_ValueError, "Input must be a 12-bit unsigned integer.");
-        return NULL;
-    }
+    
     uint32_t encoded = EncodeTable[raw & 0x0FFF];
+    
+    if (as_string) {
+        unsigned char buf[3] = {
+            (encoded >> 16) & 0xFF,
+            (encoded >> 8)  & 0xFF,
+             encoded        & 0xFF
+        };
+        return PyBytes_FromStringAndSize((char*)buf, 3);
+    }
     return PyLong_FromUnsignedLong(encoded);
 }
 
@@ -194,7 +205,7 @@ static PyObject *py_golay_errors(PyObject *self, PyObject *args)
 // Module method definitions
 static PyMethodDef GolayMethods[] = {
     {"golay_init_tables", py_golay_init_tables, METH_NOARGS, "Initialize Golay encoding and decoding tables."},
-    {"golay_encode", py_golay_encode, METH_VARARGS, "Encode a 12-bit value using Golay code."},
+    {"golay_encode", (PyCFunction)py_golay_encode, METH_VARARGS | METH_KEYWORDS, "Encode a 12-bit value using Golay code."},
     {"golay_decode", py_golay_decode, METH_VARARGS, "Decode a 24-bit Golay codeword."},
     {"golay_errors", py_golay_errors, METH_VARARGS, "Get the number of bit errors in a 24-bit Golay codeword."},
     {NULL, NULL, 0, NULL}};

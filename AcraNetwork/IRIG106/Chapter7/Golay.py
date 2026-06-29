@@ -60,11 +60,18 @@ class Golay:
 
         if self._use_c_extension:
             _golay_native.golay_init_tables()
+            # Bind fast path methods directly — no per-call branching
+            self.decode = _golay_native.golay_decode
+            self.encode = _golay_native.golay_encode
+            self.errors = _golay_native.golay_errors
         else:
             if Golay.EncodeTable is None:
                 self._init_encode_table()
             if Golay.SyndromeTable is None:
                 self._initgolaydecode()
+            self.decode = self._decode_python_safe
+            self.encode = self._encode_python_safe
+            self.errors = self._errors
 
     def _init_encode_table(self):
         Golay.EncodeTable = [0] * GOLAY_SIZE
@@ -74,33 +81,28 @@ class Golay:
                 if x >> (11 - i) & 1:
                     Golay.EncodeTable[x] ^= G_P[i]
 
-    def encode(self, raw, as_string=False):
+    def _encode_python_safe(self, raw, as_string=False):
         if not (0 <= raw <= 0xFFF):
             raise ValueError("Only 12-bit unsigned values allowed")
 
-        if self._use_c_extension:
-            encoded = _golay_native.golay_encode(raw)
-        else:
-            encoded = self._encode_python(raw)
+        encoded = self._encode_python(raw)
 
         if as_string:
             return encoded.to_bytes(3, "big")
         return encoded
 
-    def decode(self, encoded):
-        if self._use_c_extension:
-            return _golay_native.golay_decode(encoded)
+    def _decode_python_safe(self, encoded):
+
+        # encoded is either an integer <= 0xFFFFFF, or is a bytes-like type
+        if not isinstance(encoded, int):
+            if len(encoded) != 3:
+                raise ValueError("3-byte input required")
+            v = int.from_bytes(encoded, "big")
+        elif not (0 <= encoded <= 0xFFFFFF):
+            raise ValueError("Only 24-bit unsigned values supported")
         else:
-            # encoded is either an integer <= 0xFFFFFF, or is a bytes-like type
-            if not isinstance(encoded, int):
-                if len(encoded) != 3:
-                    raise ValueError("3-byte input required")
-                v = int.from_bytes(encoded, "big")
-            elif not (0 <= encoded <= 0xFFFFFF):
-                raise ValueError("Only 24-bit unsigned values supported")
-            else:
-                v = encoded
-            return self._decode_python(v)
+            v = encoded
+        return self._decode_python(v)
 
     def _encode_python(self, raw):
         """
@@ -150,12 +152,6 @@ class Golay:
 
     def _errors(self, v):
         return self._errors2(((v) >> 12) & 0xFFF, (v) & 0xFFF)
-
-    def errors(self, v):
-        if self._use_c_extension:
-            return _golay_native.golay_errors(v)
-        else:
-            return self._errors(v)
 
     @staticmethod
     def _onesincode(code, size):
