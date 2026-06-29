@@ -125,4 +125,5 @@
 # 1.3.5   - Optimised ch7 code and corrected golay importing
 # 1.3.6   - Removed a few len functions. Minor optimisations to speed up Golay decode
 # 1.3.7   - Added C version of Ch7 unpack functions to speed up code
-__version__ = "1.3.7"
+# 1.3.8   - Bug fix on previous build
+__version__ = "1.3.8"

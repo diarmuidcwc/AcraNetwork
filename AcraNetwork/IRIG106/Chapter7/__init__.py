@@ -25,17 +25,17 @@ from enum import IntEnum
 
 ch7_logger = logging.getLogger(__name__)
 try:
-    # from AcraNetwork.IRIG106.Chapter7 import golay_c as _golay_c
-    _golay_c = None
-    _c_chapter7_available = False
+    from AcraNetwork.IRIG106.Chapter7 import golay_c as _golay_c
 
-    # _c_chapter7_available = hasattr(_golay_c, "ptdp_unpack") and hasattr(_golay_c, "ptfr_unpack")
+    _c_chapter7_available = hasattr(_golay_c, "ptdp_unpack") and hasattr(_golay_c, "ptfr_unpack")
 except ImportError:
     _golay_c = None
     _c_chapter7_available = False
 
 if _c_chapter7_available:
-    ch7_logger.debug("Chapter7 unpack in C")
+    ch7_logger.info("Chapter7 unpack in C")
+else:
+    ch7_logger.info("Chapter7 unpack in Python")
 
 
 class PTDPContent(IntEnum):
@@ -251,6 +251,7 @@ class PTDP(object):
         Fast path — uses C extension for Golay decodes and header parsing.
         Bound directly at construction time; no availability check per call.
         """
+        # ch7_logger.debug("PTDP unpack in C")
         result = _golay_c.ptdp_unpack(buffer)
 
         if result is None:  # buffer too short
@@ -278,6 +279,7 @@ class PTDP(object):
         :type buffer: bytes
         :rtype: bytes
         """
+        # ch7_logger.info("PTDP unpack in Python")
         _buf_len = len(buffer)
         if _buf_len < 6:
             return None
