@@ -301,6 +301,7 @@ class PTFR(object):
         self.length: int = 0
         self._payload: bytes = bytes()
         self._golay: Golay.Golay = golay
+        self._ptdp = PTDP(self._golay)
 
     @property
     def payload(self):
@@ -467,12 +468,12 @@ class PTFR(object):
                 do_offset_check = False
 
         offset_check_count = 0
-        p = PTDP(self._golay)
+
         while aligned:
             # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
             prev_buf = buf
             try:
-                buf = p.unpack(buf)
+                buf = self._ptdp.unpack(buf)
             except PTDPLengthError as e:
                 aligned = False
                 ch7_logger.warning(
@@ -484,6 +485,7 @@ class PTFR(object):
                 yield (None, None, e)
 
             else:
+                len_p = len(self._ptdp)
                 if buf is None:
                     aligned = False
                     yield (None, prev_buf, "")
@@ -496,15 +498,15 @@ class PTFR(object):
                     offset_check_count += 1
                 elif not is_llp and not do_offset_check and offset_check_count < 1:
                     do_offset_check = True
-                    byte_offset += len(p)
+                    byte_offset += len_p
                     # ch7_logger.debug(
                     #    f"Enable do_offset_check because {offset_check_count} < 1 byte_offset={byte_offset} len_p={len(p)}"
                     # )
                 elif not is_llp:
-                    byte_offset += len(p)
+                    byte_offset += len_p
 
                 # set the low latency flag on the current packet now we know if we are at the end of the LLP sequence.
-                p.low_latency = is_llp
+                self._ptdp.low_latency = is_llp
 
                 if is_llp:  # If this is a low latency packet
                     # Remove the last byte
@@ -514,7 +516,7 @@ class PTFR(object):
                         # ch7_logger.debug("Next packet is LLP")
                         is_llp = True
                         buf = buf[1:]
-                        byte_offset += len(p) + 1
+                        byte_offset += len_p + 1
                     else:
                         is_llp = False
                         # if ((remainder == bytes()) or first_PTFR)  and self.ptdp_offset > 0:
@@ -526,17 +528,17 @@ class PTFR(object):
                             offset_check_count = 1
                         elif remainder is None:
                             buf = buf[1:]
-                            byte_offset += len(p) + 1
+                            byte_offset += len_p + 1
                         else:
                             buf = (
                                 remainder + buf[1:]
                             )  # The remainder is only added after all the llp packets are removed
-                            byte_offset += len(p) + 1 - len(remainder)
+                            byte_offset += len_p + 1 - len(remainder)
                             if len(remainder) > 0:
                                 do_offset_check = False
 
                 # ch7_logger.debug(f"Returning p={repr(p)} and no remainder")
-                yield (p, bytes(), "")
+                yield (self._ptdp, bytes(), "")
 
         # ch7_logger.debug("------PTFR expired-----")
 
