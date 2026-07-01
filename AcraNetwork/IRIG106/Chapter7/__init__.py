@@ -211,7 +211,7 @@ class PTDP(object):
         self.length: int = 0
         self.content: PTDPContent = PTDPContent.FILL
         self.fragment: int = PTDPFragment.COMPLETE
-        self._payload: bytes = bytes()
+        self._payload: bytearray = bytearray()
         self._golay: Golay.Golay = golay
         if _c_chapter7_available:
             self.unpack = self._unpack_c
@@ -219,11 +219,11 @@ class PTDP(object):
             self.unpack = self._unpack_python
 
     @property
-    def payload(self):
+    def payload(self) -> bytearray:
         return self._payload
 
     @payload.setter
-    def payload(self, val: bytes):
+    def payload(self, val: bytes | bytearray):
         if len(val) > PTDP_MAX_LEN:
             raise Exception(
                 "One PTDP packet can only be of max length {}. Split your data into multiple PTDP packets".format(
@@ -231,7 +231,7 @@ class PTDP(object):
                 )
             )
 
-        self._payload = val
+        self._payload = bytearray(val)
         self.length = len(val)
 
     def pack(self) -> bytes:
@@ -246,7 +246,7 @@ class PTDP(object):
 
         return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload
 
-    def _unpack_c(self, buffer: bytes) -> "bytes | None":
+    def _unpack_c(self, buffer: bytes | bytearray) -> "bytes | None":
         """
         Fast path — uses C extension for Golay decodes and header parsing.
         Bound directly at construction time; no availability check per call.
@@ -265,14 +265,14 @@ class PTDP(object):
         self.length = length
         self.fragment = _FRAGMENT_BY_BITS[fragment]
         self.content = _CONTENT_BY_BITS[content]
-        self._payload = buffer[6 : 6 + length]
+        self._payload = bytearray(buffer[6 : 6 + length])
 
         if remainder_start > len(buffer):
             return None
 
         return buffer[remainder_start:]
 
-    def _unpack_python(self, buffer: bytes) -> bytes | None:
+    def _unpack_python(self, buffer: bytes | bytearray) -> bytes | None:
         """
         Convert a buffer into a PTDP object returning the remaining buffer
 
@@ -295,7 +295,7 @@ class PTDP(object):
         _end = self.length + 6
         if _buf_len < _end:
             return None
-        self._payload = buffer[6:_end]
+        self._payload = bytearray(buffer[6:_end])
 
         return buffer[_end:]
 
