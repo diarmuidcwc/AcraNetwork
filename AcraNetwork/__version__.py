@@ -126,4 +126,5 @@
 # 1.3.6   - Removed a few len functions. Minor optimisations to speed up Golay decode
 # 1.3.7   - Added C version of Ch7 unpack functions to speed up code
 # 1.3.8   - Bug fix on previous build
-__version__ = "1.3.8"
+# 1.3.9   - Made the payload of ch7 a bytearray so it can be modified inplace f
+__version__ = "1.3.9"
