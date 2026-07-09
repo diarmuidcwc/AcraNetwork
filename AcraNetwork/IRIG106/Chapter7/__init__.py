@@ -22,6 +22,7 @@ from AcraNetwork.IRIG106.Chapter7 import Golay
 import math
 import typing
 from enum import IntEnum
+from collections import namedtuple
 
 ch7_logger = logging.getLogger(__name__)
 try:
@@ -95,12 +96,15 @@ _CONTENT_BY_BITS = (
     PTDPContent.ILLEGAL,  # 15
 )
 
+FILL_LEN2_PATTERN = b"\x00\x00\x00\x00)>\xff\xff"
 
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
 
 PTDT_LLP_TRAILER_LEN = 1
 PTDP_MAX_LEN = 0x800
+
+PTDPDetails = namedtuple("PTDPDetails", ["is_llp", "content"])
 
 
 class PTDPLengthError(Exception):
@@ -116,7 +120,10 @@ def _new_ptfr(ptfr_len: int, streamid: int = 0x1, golay=Golay.Golay()) -> PTFR:
 
 
 def datapkts_to_ptfr(
-    eth_ch10_packets: typing.Iterable[tuple[bytes, bool]], ptfr_len: int = 500, streamid: int = 0x1, golay=Golay.Golay()
+    eth_ch10_packets: typing.Iterable[tuple[bytes, PTDPDetails]],
+    ptfr_len: int = 500,
+    streamid: int = 0x1,
+    golay=Golay.Golay(),
 ) -> typing.Generator[PTFR, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
@@ -164,23 +171,31 @@ def datapkts_to_ptfr(
                 remainder = ptfr.add_payload(remainder)
 
 
-def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[tuple[bytes, bool]]) -> typing.Generator[PTDP, None, None]:
+def datapkts_to_ptdp(
+    eth_ch10_packets: typing.Iterable[tuple[bytes, PTDPDetails]],
+) -> typing.Generator[PTDP, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
     and return the PTDPs encapsulating the payload
 
     :param eth_ch10_packets:
-    :type eth_ch10_packets: collections.Iterable[bytes, bool]
+    :type eth_ch10_packets: collections.Iterable[bytes, PTDPContent]
     :rtype: collections.Iterable[PTDP]
     """
-    for buffer, llp in eth_ch10_packets:
+    for buffer, details in eth_ch10_packets:
+        if details.content == PTDPContent.FILL:
+            if len(buffer) > PTDP_MAX_LEN:
+                raise Exception(f"No support for fill packets greater than PTDP_MAX_LEN{PTDP_MAX_LEN}")
+            yield ptdp_fill(len(buffer))
+            continue
+
         # The packet fits in one PTDP
         if len(buffer) <= PTDP_MAX_LEN:
             ptdp_pkt = PTDP()
-            ptdp_pkt.low_latency = llp
+            ptdp_pkt.low_latency = details.is_llp
             ptdp_pkt.fragment = PTDPFragment.COMPLETE
-            ptdp_pkt.content = PTDPContent.ETHERNET_MAC
-            ptdp_pkt.payload = buffer
+            ptdp_pkt.content = details.content
+            ptdp_pkt.payload = bytearray(buffer)
             ptdp_pkt.length = len(buffer)
             yield ptdp_pkt
         else:
@@ -188,18 +203,18 @@ def datapkts_to_ptdp(eth_ch10_packets: typing.Iterable[tuple[bytes, bool]]) -> t
             number_of_packets = int(math.ceil(float(len(buffer)) / PTDP_MAX_LEN))
             for i in range(number_of_packets):
                 ptdp_pkt = PTDP()
-                ptdp_pkt.low_latency = llp
-                ptdp_pkt.content = PTDPContent.ETHERNET_MAC  # Assume it's Ethernet for the moment
+                ptdp_pkt.low_latency = details.is_llp
+                ptdp_pkt.content = details.content
                 # Label the fragments
                 if i == 0:
                     ptdp_pkt.fragment = PTDPFragment.FIRST
-                    ptdp_pkt.payload = buffer[:PTDP_MAX_LEN]
+                    ptdp_pkt.payload = bytearray(buffer[:PTDP_MAX_LEN])
                 elif i == number_of_packets - 1:
                     ptdp_pkt.fragment = PTDPFragment.LAST
-                    ptdp_pkt.payload = buffer[i * PTDP_MAX_LEN :]
+                    ptdp_pkt.payload = bytearray(buffer[i * PTDP_MAX_LEN :])
                 else:
                     ptdp_pkt.fragment = PTDPFragment.MIDDLE
-                    ptdp_pkt.payload = buffer[PTDP_MAX_LEN * i : PTDP_MAX_LEN * (i + 1)]
+                    ptdp_pkt.payload = bytearray(buffer[PTDP_MAX_LEN * i : PTDP_MAX_LEN * (i + 1)])
 
                 ptdp_pkt.length = len(ptdp_pkt.payload)
                 yield ptdp_pkt
@@ -251,6 +266,14 @@ class PTDP(object):
         Fast path — uses C extension for Golay decodes and header parsing.
         Bound directly at construction time; no availability check per call.
         """
+        if buffer.startswith(FILL_LEN2_PATTERN):
+            self.length = 2
+            self.fragment = PTDPFragment.COMPLETE
+            self.content = PTDPContent.FILL
+            self._payload_buf = buffer
+            self._payload_off = 6
+            self._payload_cache = None
+            return buffer[8:]
         # ch7_logger.debug("PTDP unpack in C")
         result = _golay_c.ptdp_unpack(buffer)
 
@@ -279,6 +302,14 @@ class PTDP(object):
         :type buffer: bytes
         :rtype: bytes
         """
+        if buffer.startswith(FILL_LEN2_PATTERN):
+            self.length = 2
+            self.fragment = PTDPFragment.COMPLETE
+            self.content = PTDPContent.FILL
+            self._payload_buf = buffer
+            self._payload_off = 6
+            self._payload_cache = None
+            return buffer[8:]
         # ch7_logger.info("PTDP unpack in Python")
         _buf_len = len(buffer)
         if _buf_len < 6:
@@ -325,7 +356,7 @@ def ptdp_fill(total_len_min: int) -> PTDP:
         payload_len = 1
     else:
         payload_len = total_len_min - PTDP_HDR_LEN
-    _p.payload = b"\xff" * payload_len
+    _p.payload = bytearray(b"\xff" * payload_len)
     return _p
 
 
