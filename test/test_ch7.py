@@ -27,7 +27,7 @@ def buf_generator(count, llp_count=0):
             low_latency = True
         else:
             low_latency = False
-        yield buf_len, low_latency
+        yield buf_len, ch7.PTDPDetails(low_latency, ch7.PTDPContent.ETHERNET_MAC)
 
 
 def ptfr_to_pcm_frame(
@@ -179,7 +179,7 @@ class TestRealEthernet(unittest.TestCase):
         p.sort_stats("cumtime")
         # p.print_stats()
 
-    pkts_sent = []
+    pkts_sent: typing.List[bytes] = []
 
     @staticmethod
     def eth_gen(count, low_latency_pkts=None, size_mult=128):
@@ -221,7 +221,7 @@ class TestRealEthernet(unittest.TestCase):
             r.payload = e.pack()
             pf.write(r)
             TestRealEthernet.pkts_sent.append(e.pack())
-            yield e.pack(), low_latency
+            yield e.pack(), ch7.PTDPDetails(low_latency, ch7.PTDPContent.ETHERNET_MAC)
         pf.close()
 
     def test_eth_in_packets(self):
@@ -336,7 +336,9 @@ class TestRealEthernet(unittest.TestCase):
         self.assertEqual(4, mac_count)
 
 
-def get_pkts(some_low_latency: bool = False, max_len: int = 178) -> typing.Generator[tuple[bytes, bool], None, None]:
+def get_pkts(
+    some_low_latency: bool = False, max_len: int = 178
+) -> typing.Generator[tuple[bytes, ch7.PTDPDetails], None, None]:
 
     count = 0
     while True:
@@ -351,8 +353,8 @@ def get_pkts(some_low_latency: bool = False, max_len: int = 178) -> typing.Gener
             low_latency = llc_pkts[count % 7]
         else:
             low_latency = False
-        logging.debug(f"TX: Generated payload of length {pkt_len*8} count={count}")
-        yield payload, low_latency
+        logging.debug(f"TX: Generated payload of length {pkt_len * 8} count={count}")
+        yield payload, ch7.PTDPDetails(low_latency, ch7.PTDPContent.ETHERNET_MAC)
 
 
 def get_pcm_frame(offset_ptfr: int = 0, some_low_latency: bool = False, max_len: int = 178):
