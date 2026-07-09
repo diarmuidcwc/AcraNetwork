@@ -16,6 +16,7 @@ __maintainer__ = "Diarmuid Collins"
 __email__ = "dcollins@curtisswright.com"
 __status__ = "Production"
 
+import re
 import struct
 import logging
 from AcraNetwork.IRIG106.Chapter7 import Golay
@@ -97,6 +98,11 @@ _CONTENT_BY_BITS = (
 )
 
 FILL_LEN2_PATTERN = b"\x00\x00\x00\x00)>\xff\xff"
+_FILL_LEN2_TOTAL = len(FILL_LEN2_PATTERN)  # 8: PTDP_HDR_LEN + 2-byte fill payload
+# perf: matches one-or-more consecutive repeats of the fixed 2-byte fill
+# packet in a single C-level regex call, so a long run of fill packets can
+# be measured in one shot instead of one Python call per packet.
+_FILL_RUN_RE = re.compile(b"(?:" + re.escape(FILL_LEN2_PATTERN) + b")+")
 
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
@@ -227,6 +233,16 @@ class PTDP(object):
         self.content: PTDPContent = PTDPContent.FILL
         self.fragment: int = PTDPFragment.COMPLETE
         self._payload: bytearray = bytearray()
+        # perf: lazy payload - unpack() stores a reference + offset into the
+        # source buffer instead of copying immediately. The bytearray copy
+        # only happens if/when .payload is actually accessed. _payload_buf
+        # is the source of truth whenever it's not None; _payload_cache
+        # memoizes the materialized copy so repeated .payload access doesn't
+        # re-copy. _payload stays the source of truth for the "set directly"
+        # path (payload.setter / ptdp_fill / datapkts_to_ptdp etc).
+        self._payload_buf: bytes | bytearray | None = None
+        self._payload_off: int = 0
+        self._payload_cache: bytearray | None = None
         self._golay: Golay.Golay = golay
         if _c_chapter7_available:
             self.unpack = self._unpack_c
@@ -235,6 +251,10 @@ class PTDP(object):
 
     @property
     def payload(self) -> bytearray:
+        if self._payload_buf is not None:
+            if self._payload_cache is None:
+                self._payload_cache = bytearray(self._payload_buf[self._payload_off : self._payload_off + self.length])
+            return self._payload_cache
         return self._payload
 
     @payload.setter
@@ -247,6 +267,8 @@ class PTDP(object):
             )
 
         self._payload = bytearray(val)
+        self._payload_buf = None
+        self._payload_cache = None
         self.length = len(val)
 
     def pack(self) -> bytes:
@@ -288,7 +310,9 @@ class PTDP(object):
         self.length = length
         self.fragment = _FRAGMENT_BY_BITS[fragment]
         self.content = _CONTENT_BY_BITS[content]
-        self._payload = bytearray(buffer[6 : 6 + length])
+        self._payload_buf = buffer
+        self._payload_off = 6
+        self._payload_cache = None
 
         if remainder_start > len(buffer):
             return None
@@ -326,7 +350,9 @@ class PTDP(object):
         _end = self.length + 6
         if _buf_len < _end:
             return None
-        self._payload = bytearray(buffer[6:_end])
+        self._payload_buf = buffer
+        self._payload_off = 6
+        self._payload_cache = None
 
         return buffer[_end:]
 
@@ -568,6 +594,45 @@ class PTFR(object):
         offset_check_count = 0
 
         while aligned:
+            # perf: detect a whole run of consecutive fixed-length fill
+            # packets in a single regex call instead of paying a full
+            # unpack() call (Golay decode or even just the pattern check)
+            # per packet. Only valid outside an LLP sequence, since LLP
+            # packets interleave with other data and change is_llp/buf
+            # mid-stream in ways this loop doesn't need to special-case.
+            if not is_llp:
+                run_match = _FILL_RUN_RE.match(buf)
+                if run_match is not None:
+                    run_bytes = run_match.end()
+                    run_count = run_bytes // _FILL_LEN2_TOTAL
+
+                    for _fill_i in range(run_count):
+                        # Same offset-bookkeeping state machine as below,
+                        # inlined so the run doesn't pay for a function call
+                        # per packet. Only the first packet of a run can
+                        # change do_offset_check/offset_check_count; after
+                        # that it's a flat byte_offset accumulation.
+                        if do_offset_check and byte_offset >= 0:
+                            do_offset_check = False
+                            offset_check_count += 1
+                        elif not do_offset_check and offset_check_count < 1:
+                            do_offset_check = True
+                            byte_offset += _FILL_LEN2_TOTAL
+                        else:
+                            byte_offset += _FILL_LEN2_TOTAL
+
+                        self._ptdp.length = 2
+                        self._ptdp.fragment = PTDPFragment.COMPLETE
+                        self._ptdp.content = PTDPContent.FILL
+                        self._ptdp.low_latency = False
+                        self._ptdp._payload_buf = buf
+                        self._ptdp._payload_off = _fill_i * _FILL_LEN2_TOTAL + 6
+                        self._ptdp._payload_cache = None
+                        yield (self._ptdp, bytes(), "")
+
+                    buf = buf[run_bytes:]
+                    continue
+
             # ch7_logger.debug(f"Starting to check buf of lenght={len(buf)}")
             prev_buf = buf
             try:
