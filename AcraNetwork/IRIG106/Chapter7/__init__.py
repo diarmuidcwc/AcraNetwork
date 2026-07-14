@@ -97,12 +97,31 @@ _CONTENT_BY_BITS = (
     PTDPContent.ILLEGAL,  # 15
 )
 
-FILL_LEN2_PATTERN = b"\x00\x00\x00\x00)>\xff\xff"
-_FILL_LEN2_TOTAL = len(FILL_LEN2_PATTERN)  # 8: PTDP_HDR_LEN + 2-byte fill payload
-# perf: matches one-or-more consecutive repeats of the fixed 2-byte fill
-# packet in a single C-level regex call, so a long run of fill packets can
-# be measured in one shot instead of one Python call per packet.
-_FILL_RUN_RE = re.compile(b"(?:" + re.escape(FILL_LEN2_PATTERN) + b")+")
+FILL_LEN2_PATTERN = b"\x00\x00\x00\x00)>\xaa\xaa"
+
+# perf: cache of (pattern, compiled run-regex, pattern length) keyed by
+# (id(golay), fill_word). re.compile() is not free (~1-2us), and PTFR
+# instances are typically constructed once per frame with an unchanged
+# fill_word (see _new_ptfr/datapkts_to_ptfr), so caching avoids recompiling
+# an identical regex on every PTFR construction. Keyed by id(golay) rather
+# than the golay object itself so this works regardless of whether the
+# Golay class is hashable.
+_fill_pattern_cache: dict[tuple[int, int], tuple[bytes, "re.Pattern[bytes]", int]] = {}
+
+
+def _build_fill_pattern(golay, fill_word: int) -> tuple[bytes, "re.Pattern[bytes]", int]:
+    if not (0 <= fill_word <= 0xFFFF):
+        raise ValueError(f"fill_word must be in range 0x0-0xFFFF, got {fill_word:#x}")
+    key = (id(golay), fill_word)
+    cached = _fill_pattern_cache.get(key)
+    if cached is not None:
+        return cached
+    pattern = golay.encode(0, as_string=True) + golay.encode(2, as_string=True) + struct.pack(">H", fill_word)
+    run_re = re.compile(b"(?:" + re.escape(pattern) + b")+")
+    result = (pattern, run_re, len(pattern))
+    _fill_pattern_cache[key] = result
+    return result
+
 
 PTDP_HDR_LEN = 0x6  # 24bits x2
 PTFR_HDR_LEN = 0x4  # 1 byte unprotected and 3 bytes protected
@@ -244,6 +263,12 @@ class PTDP(object):
         self._payload_off: int = 0
         self._payload_cache: bytearray | None = None
         self._golay: Golay.Golay = golay
+        # perf: fast-path fill pattern. Defaults to the module-level 0xFFFF
+        # pattern so standalone PTDP() use (not owned by a configured PTFR)
+        # keeps working as before. A PTFR overrides this on its owned
+        # _ptdp instance via its fill_word property, so the run-length
+        # detector and this single-packet fast path always agree.
+        self._fill_pattern: bytes = FILL_LEN2_PATTERN
         if _c_chapter7_available:
             self.unpack = self._unpack_c
         else:
@@ -288,7 +313,7 @@ class PTDP(object):
         Fast path — uses C extension for Golay decodes and header parsing.
         Bound directly at construction time; no availability check per call.
         """
-        if buffer.startswith(FILL_LEN2_PATTERN):
+        if buffer.startswith(self._fill_pattern):
             self.length = 2
             self.fragment = PTDPFragment.COMPLETE
             self.content = PTDPContent.FILL
@@ -326,7 +351,7 @@ class PTDP(object):
         :type buffer: bytes
         :rtype: bytes
         """
-        if buffer.startswith(FILL_LEN2_PATTERN):
+        if buffer.startswith(self._fill_pattern):
             self.length = 2
             self.fragment = PTDPFragment.COMPLETE
             self.content = PTDPContent.FILL
@@ -401,10 +426,36 @@ class PTFR(object):
         self._payload: bytes = bytearray()
         self._golay: Golay.Golay = golay
         self._ptdp = PTDP(self._golay)
+        # perf: when True, get_aligned_payload() still performs every bit of
+        # offset-tracking bookkeeping for FILL packets (later real packets
+        # depend on it being correct), but skips building/yielding the FILL
+        # PTDP objects themselves. Off by default so existing callers see no
+        # behavior change; opt in if you don't need to see FILL packets.
+        self.discard_fill: bool = False
+        # perf: configurable 2-byte fill payload (0x0-0xFFFF, always big
+        # endian). Setting this via the property below (including here at
+        # construction) derives and caches the matching Golay-encoded
+        # pattern/regex, and pushes the pattern onto self._ptdp so its own
+        # single-packet fast path stays consistent with the run-length
+        # detector in get_aligned_payload.
+        self.fill_word = 0xAAAA
         if _c_chapter7_available:
             self.unpack = self._unpack_c
         else:
             self.unpack = self._unpack_python
+
+    @property
+    def fill_word(self) -> int:
+        return self._fill_word
+
+    @fill_word.setter
+    def fill_word(self, value: int) -> None:
+        pattern, run_re, total = _build_fill_pattern(self._golay, value)
+        self._fill_word = value
+        self._fill_pattern = pattern
+        self._fill_run_re = run_re
+        self._fill_len2_total = total
+        self._ptdp._fill_pattern = pattern
 
     @property
     def payload(self):
@@ -601,34 +652,53 @@ class PTFR(object):
             # packets interleave with other data and change is_llp/buf
             # mid-stream in ways this loop doesn't need to special-case.
             if not is_llp:
-                run_match = _FILL_RUN_RE.match(buf)
+                run_match = self._fill_run_re.match(buf)
+                # ch7_logger.info(f"rematch={run_match}")
                 if run_match is not None:
                     run_bytes = run_match.end()
-                    run_count = run_bytes // _FILL_LEN2_TOTAL
+                    fill_len_total = self._fill_len2_total
+                    run_count = run_bytes // fill_len_total
 
-                    for _fill_i in range(run_count):
-                        # Same offset-bookkeeping state machine as below,
-                        # inlined so the run doesn't pay for a function call
-                        # per packet. Only the first packet of a run can
-                        # change do_offset_check/offset_check_count; after
-                        # that it's a flat byte_offset accumulation.
-                        if do_offset_check and byte_offset >= 0:
-                            do_offset_check = False
-                            offset_check_count += 1
-                        elif not do_offset_check and offset_check_count < 1:
-                            do_offset_check = True
-                            byte_offset += _FILL_LEN2_TOTAL
-                        else:
-                            byte_offset += _FILL_LEN2_TOTAL
+                    if self.discard_fill:
+                        # perf: caller doesn't want these packets at all.
+                        # Replay every bit of the offset-bookkeeping state
+                        # machine below (later real packets depend on it
+                        # being correct) but skip building a PTDP and
+                        # yielding entirely - no attribute writes, no
+                        # generator suspend/resume, per discarded packet.
+                        for _fill_i in range(run_count):
+                            if do_offset_check and byte_offset >= 0:
+                                do_offset_check = False
+                                offset_check_count += 1
+                            elif not do_offset_check and offset_check_count < 1:
+                                do_offset_check = True
+                                byte_offset += fill_len_total
+                            else:
+                                byte_offset += fill_len_total
+                    else:
+                        for _fill_i in range(run_count):
+                            # Same offset-bookkeeping state machine as below,
+                            # inlined so the run doesn't pay for a function call
+                            # per packet. Only the first packet of a run can
+                            # change do_offset_check/offset_check_count; after
+                            # that it's a flat byte_offset accumulation.
+                            if do_offset_check and byte_offset >= 0:
+                                do_offset_check = False
+                                offset_check_count += 1
+                            elif not do_offset_check and offset_check_count < 1:
+                                do_offset_check = True
+                                byte_offset += fill_len_total
+                            else:
+                                byte_offset += fill_len_total
 
-                        self._ptdp.length = 2
-                        self._ptdp.fragment = PTDPFragment.COMPLETE
-                        self._ptdp.content = PTDPContent.FILL
-                        self._ptdp.low_latency = False
-                        self._ptdp._payload_buf = buf
-                        self._ptdp._payload_off = _fill_i * _FILL_LEN2_TOTAL + 6
-                        self._ptdp._payload_cache = None
-                        yield (self._ptdp, bytes(), "")
+                            self._ptdp.length = 2
+                            self._ptdp.fragment = PTDPFragment.COMPLETE
+                            self._ptdp.content = PTDPContent.FILL
+                            self._ptdp.low_latency = False
+                            self._ptdp._payload_buf = buf
+                            self._ptdp._payload_off = _fill_i * fill_len_total + 6
+                            self._ptdp._payload_cache = None
+                            yield (self._ptdp, bytes(), "")
 
                     buf = buf[run_bytes:]
                     continue
@@ -701,7 +771,8 @@ class PTFR(object):
                                 do_offset_check = False
 
                 # ch7_logger.debug(f"Returning p={repr(p)} and no remainder")
-                yield (self._ptdp, bytes(), "")
+                if not (self.discard_fill and self._ptdp.content == PTDPContent.FILL):
+                    yield (self._ptdp, bytes(), "")
 
         # ch7_logger.debug("------PTFR expired-----")
 

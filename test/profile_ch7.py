@@ -5,15 +5,46 @@ from pstats import Stats
 import cProfile
 import typing
 import base64
+import AcraNetwork.Pcap as pcap
+import os.path
+import pickle
+
+logging.basicConfig(level=logging.INFO)
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[bytes, ch7.PTDPDetails], None, None]:
+class SD9Data:
+    def __init__(self) -> None:
+        self.frames: typing.List[bytes] = []
+
+    def unpack(self, buffer: bytes) -> None:
+        pkt_seq, frame_se, _d1, d2, syncword = struct.unpack_from(">4BI", buffer)
+        is_padded = bool((_d1 >> 6) & 0x1)
+        if syncword != 0xFE6B_2840:
+            raise Exception(f"Sync word not as expected. Act={syncword:#0X}")
+        tp_payload = buffer[8:10] + buffer[12:]
+        # logging.info(f"PTRF len={len(tp_payload) / 2}")
+
+        self.frames.append(tp_payload)
+        return
+
+    def from_pcap(self, fname: str):
+        pf = pcap.Pcap(fname)
+        for _i, rec in enumerate(pf):
+            self.unpack(rec.payload[0x2A:])
+            if _i == 3:
+                break
+
+        pf.close()
+
+
+def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[bytes, bool], None, None]:
 
     _fill = ch7.ptdp_fill(8).pack()
     count = 0
     while True:
         if fill:
-            yield _fill, ch7.PTDPDetails(False, ch7.PTDPContent.FILL)
+            yield _fill, False
         else:
             # pkt_len = random.randint(2, 180)
             pkt_len = (count % max_len) + 2
@@ -22,7 +53,7 @@ def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[b
             count += 1
 
             logging.debug(f"TX: Generated payload of length {pkt_len * 8} count={count}")
-            yield payload, ch7.PTDPDetails(False, ch7.PTDPContent.ETHERNET_MAC)
+            yield payload, False
 
 
 def get_pcm_frame(offset_ptfr: int = 0, fill: bool = False, max_len: int = 178):
@@ -106,8 +137,43 @@ def full_profile_fill(frames):
     print(f"Fill count={fill_count}")
 
 
+def profile_boris_data():
+    sd = SD9Data()
+    sd.from_pcap(f"{THIS_DIR}/sample.pcap")
+    dumpf = open(f"{THIS_DIR}/fill.pickle", "wb")
+    pickle.dump(sd.frames, dumpf)
+    dumpf.close()
+    _golay = ch7.Golay.Golay()
+    pr = cProfile.Profile()
+    pr.enable()
+    offset = 0
+    first_PTFR = True
+    fill_count = 0
+    other_cnt = 0
+    remainder = None
+    for idx, frame in enumerate(sd.frames):
+        # logging.info(f"Parsing frame {idx} of {len(frame)}")
+        ch7_pkt = ch7.PTFR(_golay)
+        ch7_buffer = frame[offset:]
+        ch7_pkt.length = len(ch7_buffer)
+        ch7_pkt.unpack(ch7_buffer)
+
+        for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+            first_PTFR = False
+            if p is not None:
+                if p.content == ch7.PTDPContent.FILL:
+                    fill_count += 1
+                else:
+                    other_cnt += 1
+    ps = Stats(pr)
+    ps.sort_stats("cumtime")
+    ps.print_stats()
+    print(f"Fill count={fill_count} others={other_cnt}")
+
+
 # full_profile_fill(get_fill_frames())
-full_profile(get_frames())
+# full_profile(get_frames())
 # fill = ch7.ptdp_fill(8)
 # print(fill.pack())
 # print(base64.b64encode(fill.pack()).)
+profile_boris_data()
