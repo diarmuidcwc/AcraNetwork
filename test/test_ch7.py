@@ -9,7 +9,7 @@ import logging
 from pstats import Stats
 import cProfile
 import typing
-import random
+import pickle
 
 _c_chapter7_available_original = ch7._c_chapter7_available
 
@@ -479,6 +479,49 @@ class TestProfile(unittest.TestCase):
         ps.sort_stats("cumtime")
         print("jellp")
         ps.print_stats()
+
+
+class TestFill(unittest.TestCase):
+    def test_fill_pkts(self):
+        with open(f"{THIS_DIR}/fill.pickle", "rb") as f:
+            frames = pickle.load(f)
+            _golay = ch7.Golay.Golay()
+            first_PTFR = True
+            eth_p = bytes()
+            remainder = None
+            fillcnt = 0
+            for frame in frames:
+                ch7_pkt = ch7.PTFR(_golay)
+                ch7_buffer = frame
+                ch7_pkt.length = len(ch7_buffer)
+                ch7_pkt.unpack(ch7_buffer)
+                for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                    first_PTFR = False
+                    if p is not None:
+                        if p.content == ch7.PTDPContent.FILL:
+                            fillcnt += 1
+            self.assertEqual(fillcnt, 244)
+
+    def test_fill_pkts_discard(self):
+        with open(f"{THIS_DIR}/fill.pickle", "rb") as f:
+            frames = pickle.load(f)
+            _golay = ch7.Golay.Golay()
+            first_PTFR = True
+            eth_p = bytes()
+            remainder = None
+            fillcnt = 0
+            for frame in frames:
+                ch7_pkt = ch7.PTFR(_golay)
+                ch7_pkt.discard_fill = True
+                ch7_buffer = frame
+                ch7_pkt.length = len(ch7_buffer)
+                ch7_pkt.unpack(ch7_buffer)
+                for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                    first_PTFR = False
+                    if p is not None:
+                        if p.content == ch7.PTDPContent.FILL:
+                            fillcnt += 1
+            self.assertEqual(fillcnt, 0)
 
 
 if __name__ == "__main__":

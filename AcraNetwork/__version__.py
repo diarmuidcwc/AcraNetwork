@@ -128,4 +128,6 @@
 # 1.3.8   - Bug fix on previous build
 # 1.3.9   - Made the payload of ch7 a bytearray so it can be modified inplace f
 # 1.3.10  - Optimised for long runs of FILL packets
-__version__ = "1.3.10"
+# 1.3.11  - Further optimisation for long FILL runs. Added class attribute to discard FILL packets at the low level to speed things up
+
+__version__ = "1.3.11"
