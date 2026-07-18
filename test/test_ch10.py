@@ -775,6 +775,40 @@ class CustomException(Exception):
         print(f"Exception : {message}")
 
 
+class Ch10ChecksumTest(unittest.TestCase):
+    """Test the Chapter11 checksum utility functions."""
+
+    def test_get_checksum_buf(self):
+        """Test get_checksum_buf with known values."""
+        # 16-bit aligned buffer: 0x0001, 0x0002 sum = 0x0003
+        buf = struct.pack("<HH", 0x0001, 0x0002)
+        self.assertEqual(3, ch10.get_checksum_buf(buf))
+
+        # 0xFFFF, 0x0001 sum = 0x10000 → 0x0000 (mod 65536)
+        buf = struct.pack("<HH", 0xFFFF, 0x0001)
+        self.assertEqual(0, ch10.get_checksum_buf(buf))
+
+        # Empty buffer (0 bytes) should return 0
+        self.assertEqual(0, ch10.get_checksum_buf(b""))
+
+        # Odd-length buffer should raise
+        with self.assertRaises(Exception):
+            ch10.get_checksum_buf(b"\x01")
+
+    def test_get_checksum_byte_buf(self):
+        """Test get_checksum_byte_buf with known values."""
+        # 0x01 + 0x02 = 0x03
+        buf = struct.pack("<BB", 0x01, 0x02)
+        self.assertEqual(3, ch10.get_checksum_byte_buf(buf))
+
+        # 0xFF + 0x01 = 0x100
+        buf = struct.pack("<BB", 0xFF, 0x01)
+        self.assertEqual(256, ch10.get_checksum_byte_buf(buf))
+
+        # Empty buffer
+        self.assertEqual(0, ch10.get_checksum_byte_buf(b""))
+
+
 class ExceptionOverride(unittest.TestCase):
 
     @unittest.skip("Not supported")

@@ -272,8 +272,8 @@ class IENAM(IENA):
 
         while len(remaining_payload) > 0:
             (_paramid, _delay, datasetlength) = struct.unpack(IENAM._FORMAT_, remaining_payload[: IENAM._FORMAT_LEN_])
-            # Check if we have enough payload
-            if len(self.payload[IENAM._FORMAT_LEN_ :]) < datasetlength:
+            # Check if we have enough payload in the remaining buffer
+            if len(remaining_payload) < IENAM._FORMAT_LEN_ + datasetlength:
                 raise Exception(
                     "M Param dataset length {} larger than payload{}".format(
                         datasetlength, len(remaining_payload[IENAM._FORMAT_LEN_ :])
@@ -402,8 +402,8 @@ class IENAQ(IENA):
 
         while len(remaining_payload) > 0:
             (_paramid, datasetlength) = struct.unpack(IENAQ._FORMAT_, remaining_payload[: IENAQ._FORMAT_LEN_])
-            # Check if we have enough payload
-            if len(self.payload[IENAQ._FORMAT_LEN_ :]) < datasetlength:
+            # Check if we have enough payload in the remaining buffer
+            if len(remaining_payload) < IENAQ._FORMAT_LEN_ + datasetlength:
                 raise Exception(
                     "Q Param dataset length {} larger than payload{}".format(
                         datasetlength, len(remaining_payload[IENAQ._FORMAT_LEN_ :])

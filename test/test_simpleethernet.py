@@ -168,7 +168,7 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(repr(e), "SRCMAC=00:18:F8:B8:44:54 DSTMAC=E0:F8:47:25:93:36 TYPE=0X800")
 
         # checksum test
-        (exp_checksum,) = struct.unpack_from("<H", e.payload, 10)
+        (exp_checksum,) = struct.unpack_from(">H", e.payload, 10)
         ip_hdr_checksum = SimpleEthernet.ip_calc_checksum(e.payload[:10] + e.payload[12:20])
         self.assertEqual(exp_checksum, ip_hdr_checksum)
         i = SimpleEthernet.IP()
@@ -302,6 +302,70 @@ class SimpleEthernetTest(unittest.TestCase):
     ######################
     # ARP
     ######################
+
+    def test_ip_checksum_correct_endianness(self):
+        """
+        Regression test: verify ip_calc_checksum uses big-endian (network byte order).
+        Known IP header: 45 00 00 3c 00 00 40 00 40 01 XX XX c0 a8 01 01 c0 a8 01 02
+        where XX XX is the checksum field (zeroed out for computation).
+        Expected checksum = 0xB76D (computed using big-endian RFC 1071 algorithm).
+        """
+        # Build a 20-byte IP header with checksum field zeroed
+        ip_header = bytes([
+            0x45, 0x00,  # Version/IHL, DSCP
+            0x00, 0x3c,  # Total Length = 60
+            0x00, 0x00,  # Identification
+            0x40, 0x00,  # Flags, Fragment Offset
+            0x40,        # TTL = 64
+            0x01,        # Protocol = ICMP
+            0x00, 0x00,  # Checksum = 0 (zeroed)
+            0xc0, 0xa8, 0x01, 0x01,  # Source IP = 192.168.1.1
+            0xc0, 0xa8, 0x01, 0x02,  # Dest IP = 192.168.1.2
+        ])
+        checksum = SimpleEthernet.ip_calc_checksum(ip_header)
+        # Expected: 0xB76D (computed using big-endian RFC 1071 algorithm)
+        self.assertEqual(0xB76D, checksum)
+
+    def test_ip_unpack_verify_checksum_flag(self):
+        """Test that IP.unpack(verify_checksum=False) works correctly."""
+        # Create a valid IP packet
+        i = SimpleEthernet.IP()
+        i.dstip = "235.0.0.1"
+        i.srcip = "192.168.1.1"
+        i.payload = struct.pack(">H", 0xA5)
+        buf = i.pack()
+
+        # Unpack with verify_checksum=True (default) - should work
+        i2 = SimpleEthernet.IP()
+        self.assertTrue(i2.unpack(buf))
+        self.assertEqual(i2.srcip, "192.168.1.1")
+
+        # Unpack with verify_checksum=False - should work
+        i3 = SimpleEthernet.IP()
+        self.assertTrue(i3.unpack(buf, verify_checksum=False))
+        self.assertEqual(i3.srcip, "192.168.1.1")
+
+        # Corrupt the packet's checksum field
+        corrupted = bytearray(buf)
+        # Zero out the checksum field (bytes 10-11), making it invalid
+        corrupted[10] = 0
+        corrupted[11] = 0
+
+        # Suppress the expected ERROR log from the corrupted checksum
+        ch_logger = logging.getLogger("AcraNetwork.SimpleEthernet")
+        old_level = ch_logger.level
+        ch_logger.setLevel(logging.CRITICAL)
+
+        # With verify_checksum=True, unpack should still succeed (just logs error)
+        i4 = SimpleEthernet.IP()
+        self.assertTrue(i4.unpack(bytes(corrupted)))
+
+        # Restore logger level
+        ch_logger.setLevel(old_level)
+
+        # With verify_checksum=False, also succeeds and skips the checksum check
+        i5 = SimpleEthernet.IP()
+        self.assertTrue(i5.unpack(bytes(corrupted), verify_checksum=False))
 
     def test_ARP(self):
         a = SimpleEthernet.ARP()

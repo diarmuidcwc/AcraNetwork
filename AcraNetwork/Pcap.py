@@ -219,7 +219,7 @@ class Pcap(object):
     def __init__(self, filename: str, **kwargs):
         self.filename: str = filename  #: The filename of the PCAP file
         self.mode: str = kwargs.get("mode", "r")  #: The file reading mode
-        self._bufferring: int = kwargs.get("buffering ", -1)  #: The file reading mode
+        self._buffering: int = kwargs.get("buffering", -1)  #: File buffer size. -1=default, 0=unbuffered, >0=buffer size.
         # Global header fields
         self.magic: int = 0xA1B2C3D4  #: The magic_number which defines the file format. Leave as is.
         self.versionmaj: int = 2  #: File format major version. Currently 2
@@ -239,7 +239,7 @@ class Pcap(object):
 
         self.fopen = None # make deterministic if the file open fails
         try:
-            self.fopen = open(filename, f"{self.mode}b", self._bufferring)
+            self.fopen = open(filename, f"{self.mode}b", self._buffering)
         except Exception as e:
             raise IOError(f"Failed to open {self.filename}. err={e}")
 

@@ -286,6 +286,70 @@ class IENATest(unittest.TestCase):
         self.assertEqual(len(i), 2)
         p.close()
 
+    def test_ienam_corrupt_second_param_length(self):
+        """
+        Regression test: verify that IENAM.unpack() checks the remaining_payload
+        (not the full payload) when validating dataset length.
+        """
+        # Build a valid IENA-M packet with 2 params, then corrupt the second
+        # param's dataset length to be larger than the remaining payload.
+        i = iena.IENAM()
+        i.key = 0xDC
+        i.sequence = 1
+        i.endfield = 0xDEAD
+        i.keystatus = 0
+        i.n2 = 0
+        # First param: 2 bytes dataset
+        i.parameters.append(iena.MParameter(paramid=1, delay=0, dataset=b"\x01\x02"))
+        # Second param: 2 bytes dataset
+        i.parameters.append(iena.MParameter(paramid=2, delay=0, dataset=b"\x03\x04"))
+        buf = bytearray(i.pack())
+
+        # Find the offset of the second M parameter's dataset length field.
+        # IENA header: 14 bytes
+        # First M param: 6 bytes header + 2 bytes dataset = 8 bytes
+        # Second M param dataset length at offset 14 + 8 + 4 = 26
+        second_m_len_offset = 14 + 8 + 4
+        # Set dataset length to 100 (0x0064)
+        buf[second_m_len_offset] = 0
+        buf[second_m_len_offset + 1] = 100
+
+        # Unpacking should raise an exception
+        b = iena.IENAM()
+        self.assertRaises(Exception, lambda: b.unpack(bytes(buf)))
+
+    def test_ienaq_corrupt_second_param_length(self):
+        """
+        Regression test: verify that IENAQ.unpack() checks the remaining_payload
+        (not the full payload) when validating dataset length.
+        """
+        # Build a valid IENA-Q packet with 2 params, then corrupt the second
+        # param's dataset length to be larger than the remaining payload.
+        i = iena.IENAQ()
+        i.key = 0xDC
+        i.sequence = 1
+        i.endfield = 0xDEAD
+        i.keystatus = 0
+        i.n2 = 0
+        # First param: 2 bytes dataset
+        i.parameters.append(iena.QParameter(paramid=1, dataset=b"\x01\x02"))
+        # Second param: 2 bytes dataset
+        i.parameters.append(iena.QParameter(paramid=2, dataset=b"\x03\x04"))
+        buf = bytearray(i.pack())
+
+        # Find the offset of the second Q parameter's dataset length field.
+        # IENA header: 14 bytes
+        # First Q param: 4 bytes header + 2 bytes dataset = 6 bytes
+        # Second Q param dataset length at offset 14 + 6 + 2 = 22
+        second_q_len_offset = 14 + 6 + 2
+        # Set dataset length to 100 (0x0064)
+        buf[second_q_len_offset] = 0
+        buf[second_q_len_offset + 1] = 100
+
+        # Unpacking should raise an exception
+        b = iena.IENAQ()
+        self.assertRaises(Exception, lambda: b.unpack(bytes(buf)))
+
 
 if __name__ == "__main__":
     unittest.main()

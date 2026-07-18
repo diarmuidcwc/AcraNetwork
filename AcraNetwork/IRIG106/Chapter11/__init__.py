@@ -1,5 +1,4 @@
 import struct
-from functools import reduce
 import logging
 from datetime import datetime, timezone
 from enum import IntEnum
@@ -170,9 +169,9 @@ def get_checksum_buf(buf: bytes) -> int:
         raise Exception("buffer needs to be 16-bit aligned")
 
     words = struct.unpack("<{}H".format(len(buf) // 2), buf)
-    sum = reduce(lambda x, y: x + y, words)
+    s = sum(words)
 
-    return sum % 65536
+    return s % 65536
 
 
 def get_checksum_byte_buf(buf: bytes) -> int:
@@ -184,9 +183,9 @@ def get_checksum_byte_buf(buf: bytes) -> int:
     """
 
     checksumbytes = struct.unpack(f"<{len(buf)}B", buf)
-    sum = reduce(lambda x, y: x + y, checksumbytes)
+    s = sum(checksumbytes)
 
-    return sum % 65536
+    return s % 65536
 
 
 class Chapter11(object):

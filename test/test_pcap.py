@@ -8,9 +8,11 @@ import unittest
 import AcraNetwork.Pcap as pcap
 import AcraNetwork.SimpleEthernet as SimpleEthernet
 import struct
+import tempfile
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+TMP_DIR = tempfile.gettempdir()
 
 
 def getEthernetPacket(data=0xA):
@@ -163,7 +165,28 @@ class PcapBasicTest(unittest.TestCase):
                 # created
                 self.assertIsNot(exception_msg, None)
         os.remove(test_filename)
-        
+
+    def test_buffering_param(self):
+        """Test that the buffering parameter is correctly passed to open()"""
+        fname = os.path.join(TMP_DIR, "_buffering_test.pcap")
+        # Default buffering should be -1 (system default)
+        p = pcap.Pcap(fname, mode="w")
+        self.assertEqual(p._buffering, -1)
+        p.close()
+        os.unlink(fname)
+
+        # Test with explicit buffering value 0 (unbuffered)
+        p = pcap.Pcap(fname, mode="w", buffering=0)
+        self.assertEqual(p._buffering, 0)
+        p.close()
+        os.unlink(fname)
+
+        # Test with explicit buffering value 8192
+        p = pcap.Pcap(fname, mode="w", buffering=8192)
+        self.assertEqual(p._buffering, 8192)
+        p.close()
+        os.unlink(fname)
+
 
 if __name__ == "__main__":
     unittest.main()

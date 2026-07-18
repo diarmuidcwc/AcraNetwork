@@ -73,7 +73,7 @@ def ip_calc_checksum(pkt: bytes) -> int:
 
     if len(pkt) % 2 == 1:
         pkt += b"\0"
-    s = sum(struct.unpack("<{}H".format(len(pkt) // 2), pkt))
+    s = sum(struct.unpack(">{}H".format(len(pkt) // 2), pkt))
     s = (s >> 16) + (s & 0xFFFF)
     s += s >> 16
     s = ~s
@@ -284,12 +284,16 @@ class IP(object):
         if buf is not None:
             self.unpack(buf)
 
-    def unpack(self, buf: bytes) -> bool:
+    def unpack(self, buf: bytes, verify_checksum: bool = True) -> bool:
         """
         Unpack a raw byte stream to an IP object
 
         :param buf: The string buffer to unpack
         :type buf: bytes
+        :param verify_checksum: If True, validate the IP header checksum.
+            Set to False for performance when the checksum is already verified
+            by the network stack (e.g. in high-throughput FTI scenarios).
+        :type verify_checksum: bool
         :rtype: bool
         """
         if len(buf) < IP.IP_HEADER_SIZE:
@@ -316,11 +320,12 @@ class IP(object):
         # Fill IP payload with number of bytes declared in header's length field, leaving any trailer behind (e.g. typically padding to reach 64bytes)
         self.payload = buf[IP.IP_HEADER_SIZE : self.len]
 
-        computed_ip_checksum = ip_calc_checksum(buf[: IP.IP_HEADER_SIZE])
-        if computed_ip_checksum != 0:
-            logger.error(
-                f"Invalid IP Header Checksum. Computed Checksum = 0x{computed_ip_checksum:04X} (should be 0x0000). Raw received Checksum = 0x{checksum:04X}."
-            )
+        if verify_checksum:
+            computed_ip_checksum = ip_calc_checksum(buf[: IP.IP_HEADER_SIZE])
+            if computed_ip_checksum != 0:
+                logger.error(
+                    f"Invalid IP Header Checksum. Computed Checksum = 0x{computed_ip_checksum:04X} (should be 0x0000). Raw received Checksum = 0x{checksum:04X}."
+                )
 
         return True
 
@@ -355,7 +360,7 @@ class IP(object):
             dstip_as_int,
         )
         checksum = ip_calc_checksum(header)
-        header = header[:10] + struct.pack("H", checksum) + header[12:]
+        header = header[:10] + struct.pack(">H", checksum) + header[12:]
         return header + self.payload
 
     def __repr__(self):
@@ -628,7 +633,7 @@ class ICMP(object):
 
         _hdr_no_checksum = struct.pack(">BBHHH", self.type, self.code, 0, self.request_id, self.request_sequence)
         _icmp_checksum = ip_calc_checksum(_hdr_no_checksum + self.payload)
-        _hdr = _hdr_no_checksum[:2] + struct.pack("H", _icmp_checksum) + _hdr_no_checksum[4:]
+        _hdr = _hdr_no_checksum[:2] + struct.pack(">H", _icmp_checksum) + _hdr_no_checksum[4:]
         return _hdr + self.payload
 
     def unpack(self, buffer: bytes):
