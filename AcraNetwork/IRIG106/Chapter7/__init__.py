@@ -600,32 +600,35 @@ class PTFR(object):
         :param remainder: Optional partial payload from previous frame
         :rtype: Tuple[PTDP, bytes, str]
         """
+        # perf: cache self.payload locally to avoid repeated property access
+        local_payload = self.payload
+
         aligned = True
         # The PTFR decides what is low latency initially
         is_llp = self.llp
 
         if is_llp:
             # ch7_logger.debug("LLP flag set. First packet should be LLP")
-            buf = self.payload
+            buf = local_payload
         elif remainder is None and self.ptdp_offset > 0 and self.ptdp_offset < 0x7FF:
-            buf = self.payload[self.ptdp_offset :]
+            buf = local_payload[self.ptdp_offset :]
             # ch7_logger.debug(
             #    "Start of analysis. Could be in the middle of a packet offset={} buffer length={}".format(
             #        self.ptdp_offset, len(buf)
             #    )
             # )
         elif remainder == bytes() and self.ptdp_offset > 0 and self.ptdp_offset < 0x7FF:
-            buf = self.payload[self.ptdp_offset :]
+            buf = local_payload[self.ptdp_offset :]
             # ch7_logger.debug(
             #    "No remainder from previous packet, offset={} buffer length={}".format(self.ptdp_offset, len(buf))
             # )
         elif remainder is None:
-            buf = self.payload
+            buf = local_payload
             # ch7_logger.debug(
             #    "Buffer length={}. Ignoring offset={} Remainder undefined".format(len(buf), self.ptdp_offset)
             # )
         else:
-            buf = remainder + self.payload
+            buf = remainder + local_payload
             # ch7_logger.debug(
             #    "Buffer length={}. Ignoring offset={} Remainder length={}".format(
             #        len(buf), self.ptdp_offset, len(remainder)
@@ -676,6 +679,11 @@ class PTFR(object):
                             else:
                                 byte_offset += fill_len_total
                     else:
+                        # perf: cache _ptdp locally and hoist _payload_buf out
+                        # of the fill loop to reduce attribute lookups
+                        _ptdp = self._ptdp
+                        _ptdp._payload_buf = buf
+                        _ptdp._payload_off = 6
                         for _fill_i in range(run_count):
                             # Same offset-bookkeeping state machine as below,
                             # inlined so the run doesn't pay for a function call
@@ -691,14 +699,13 @@ class PTFR(object):
                             else:
                                 byte_offset += fill_len_total
 
-                            self._ptdp.length = 2
-                            self._ptdp.fragment = PTDPFragment.COMPLETE
-                            self._ptdp.content = PTDPContent.FILL
-                            self._ptdp.low_latency = False
-                            self._ptdp._payload_buf = buf
-                            self._ptdp._payload_off = _fill_i * fill_len_total + 6
-                            self._ptdp._payload_cache = None
-                            yield (self._ptdp, bytes(), "")
+                            _ptdp.length = 2
+                            _ptdp.fragment = PTDPFragment.COMPLETE
+                            _ptdp.content = PTDPContent.FILL
+                            _ptdp.low_latency = False
+                            _ptdp._payload_cache = None
+                            yield (_ptdp, bytes(), "")
+                            _ptdp._payload_off += fill_len_total
 
                     buf = buf[run_bytes:]
                     continue
@@ -755,7 +762,7 @@ class PTFR(object):
                         # if ((remainder == bytes()) or first_PTFR)  and self.ptdp_offset > 0:
                         if ((remainder == bytes()) and self.ptdp_offset > 0) or first_PTFR:
                             # ch7_logger.debug("LLP Packets extracted, jumping to offset")
-                            buf = self.payload[self.ptdp_offset :]
+                            buf = local_payload[self.ptdp_offset :]
                             do_offset_check = False
                             byte_offset = self.ptdp_offset
                             offset_check_count = 1
