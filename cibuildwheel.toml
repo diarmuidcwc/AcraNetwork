@@ -1,5 +1,0 @@
-# cibuildwheel.toml
-[tool.cibuildwheel]
-skip = "pp*"
-archs = ["x86_64"]
-test-command = "pytest {project}/tests"
