@@ -129,5 +129,6 @@
 # 1.3.9   - Made the payload of ch7 a bytearray so it can be modified inplace f
 # 1.3.10  - Optimised for long runs of FILL packets
 # 1.3.11  - Further optimisation for long FILL runs. Added class attribute to discard FILL packets at the low level to speed things up
+# 1.3.12  - Bugfix in ip calc checksum. Pcap[ bufferring fix. minor perf improvements
 
-__version__ = "1.3.11"
+__version__ = "1.3.12"
