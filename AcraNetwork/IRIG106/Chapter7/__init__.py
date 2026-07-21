@@ -550,7 +550,7 @@ class PTFR(object):
         self.streamid = streamid
         self.llp = bool(llp)
         self.ptdp_offset = ptdp_offset
-        self.payload = buffer[4:]
+        self._payload = bytearray(buffer[4:])  # direct replace, not the accumulating setter
 
         return True
 
@@ -568,7 +568,7 @@ class PTFR(object):
         protected_field = self._golay.decode(buffer[1:4])
         self.llp = bool((protected_field >> 11) & 0x1)
         self.ptdp_offset = protected_field & 0x7FF
-        self.payload = buffer[4:]
+        self._payload = bytearray(buffer[4:])  # direct replace, not the accumulating setter
 
         return True
 
