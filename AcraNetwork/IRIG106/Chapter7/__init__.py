@@ -263,12 +263,7 @@ class PTDP(object):
         self._payload_off: int = 0
         self._payload_cache: bytearray | None = None
         self._golay: Golay.Golay = golay
-        # perf: fast-path fill pattern. Defaults to the module-level 0xFFFF
-        # pattern so standalone PTDP() use (not owned by a configured PTFR)
-        # keeps working as before. A PTFR overrides this on its owned
-        # _ptdp instance via its fill_word property, so the run-length
-        # detector and this single-packet fast path always agree.
-        self._fill_pattern: bytes = FILL_LEN2_PATTERN
+
         if _c_chapter7_available:
             self.unpack = self._unpack_c
         else:
@@ -313,14 +308,6 @@ class PTDP(object):
         Fast path — uses C extension for Golay decodes and header parsing.
         Bound directly at construction time; no availability check per call.
         """
-        if buffer.startswith(self._fill_pattern):
-            self.length = 2
-            self.fragment = PTDPFragment.COMPLETE
-            self.content = PTDPContent.FILL
-            self._payload_buf = buffer
-            self._payload_off = 6
-            self._payload_cache = None
-            return buffer[8:]
         # ch7_logger.debug("PTDP unpack in C")
         result = _golay_c.ptdp_unpack(buffer)
 
@@ -351,14 +338,7 @@ class PTDP(object):
         :type buffer: bytes
         :rtype: bytes
         """
-        if buffer.startswith(self._fill_pattern):
-            self.length = 2
-            self.fragment = PTDPFragment.COMPLETE
-            self.content = PTDPContent.FILL
-            self._payload_buf = buffer
-            self._payload_off = 6
-            self._payload_cache = None
-            return buffer[8:]
+
         # ch7_logger.info("PTDP unpack in Python")
         _buf_len = len(buffer)
         if _buf_len < 6:
@@ -407,7 +387,7 @@ def ptdp_fill(total_len_min: int) -> PTDP:
         payload_len = 1
     else:
         payload_len = total_len_min - PTDP_HDR_LEN
-    _p.payload = bytearray(b"\xff" * payload_len)
+    _p.payload = bytearray(b"\xaa" * payload_len)
     return _p
 
 
@@ -455,7 +435,6 @@ class PTFR(object):
         self._fill_pattern = pattern
         self._fill_run_re = run_re
         self._fill_len2_total = total
-        self._ptdp._fill_pattern = pattern
 
     @property
     def payload(self):

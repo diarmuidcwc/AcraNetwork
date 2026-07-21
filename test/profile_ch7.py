@@ -8,6 +8,7 @@ import base64
 import AcraNetwork.Pcap as pcap
 import os.path
 import pickle
+import random
 
 logging.basicConfig(level=logging.INFO)
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,13 +39,16 @@ class SD9Data:
         pf.close()
 
 
-def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[bytes, bool], None, None]:
+def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[bytes, ch7.PTDPDetails], None, None]:
 
     _fill = ch7.ptdp_fill(8).pack()
     count = 0
+
     while True:
-        if fill:
-            yield _fill, False
+        is_fill = random.choice([True, False, False, False, False])
+        if is_fill:
+            for _i in range(20):
+                yield _fill, ch7.PTDPDetails(False, ch7.PTDPContent.FILL)
         else:
             # pkt_len = random.randint(2, 180)
             pkt_len = (count % max_len) + 2
@@ -53,7 +57,7 @@ def get_pkts(max_len: int = 178, fill: bool = False) -> typing.Generator[tuple[b
             count += 1
 
             logging.debug(f"TX: Generated payload of length {pkt_len * 8} count={count}")
-            yield payload, False
+            yield payload, ch7.PTDPDetails(False, ch7.PTDPContent.ETHERNET_MAC)
 
 
 def get_pcm_frame(offset_ptfr: int = 0, fill: bool = False, max_len: int = 178):
@@ -70,7 +74,7 @@ def get_frames() -> list:
     frames = []
     for _i, frame in enumerate(get_pcm_frame(0)):
         frames.append(frame)
-        if _i == 1000:
+        if _i == 5000:
             return frames
     return frames
 
@@ -86,6 +90,8 @@ def get_fill_frames() -> list:
 
 def full_profile(frames):
     _golay = ch7.Golay.Golay()
+    ch7_pkt = ch7.PTFR(_golay)
+    ch7_pkt.discard_fill = True
     pr = cProfile.Profile()
     pr.enable()
     offset = 0
@@ -93,7 +99,7 @@ def full_profile(frames):
     eth_p = bytes()
     remainder = None
     for frame in frames:
-        ch7_pkt = ch7.PTFR(_golay)
+        ch7_pkt._payload = bytearray()
         ch7_buffer = frame[offset:]
         ch7_pkt.length = len(ch7_buffer)
         ch7_pkt.unpack(ch7_buffer)
@@ -172,8 +178,8 @@ def profile_boris_data():
 
 
 # full_profile_fill(get_fill_frames())
-# full_profile(get_frames())
+full_profile(get_frames())
 # fill = ch7.ptdp_fill(8)
 # print(fill.pack())
 # print(base64.b64encode(fill.pack()).)
-profile_boris_data()
+# profile_boris_data()
