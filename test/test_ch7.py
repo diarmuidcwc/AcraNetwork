@@ -528,14 +528,6 @@ class TestFill(unittest.TestCase):
 
 class TestLLP(unittest.TestCase):
 
-    def setUp(self):
-        # Force Python path regardless of C extension availability
-        ch7._c_chapter7_available = True
-
-    def tearDown(self):
-        # Restore — don't pollute other test classes
-        ch7._c_chapter7_available = _c_chapter7_available_original
-
     def test_llp_missing_packet(self):
         f = open(f"{THIS_DIR}/corruptllm.bin", "rb")
         FRM_LEN = 994
@@ -543,7 +535,8 @@ class TestLLP(unittest.TestCase):
         for _i in range(3):
             frames.append(f.read(FRM_LEN))
         f.close()
-        ch7_pkt = ch7.PTFR()
+        g = ch7.Golay.Golay()
+        ch7_pkt = ch7.PTFR(g)
         ch7_pkt.discard_fill = True
         first_PTFR = True
         remainder = None
