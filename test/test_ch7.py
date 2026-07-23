@@ -2,6 +2,7 @@ import unittest
 import AcraNetwork.IRIG106.Chapter7 as ch7
 import AcraNetwork.SimpleEthernet as eth
 import AcraNetwork.Pcap as pcap
+import AcraNetwork.iNetX as inetx
 import os
 import copy
 import struct
@@ -15,7 +16,8 @@ _c_chapter7_available_original = ch7._c_chapter7_available
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
+logger = logging.getLogger(__name__)
 
 
 def buf_generator(count, llp_count=0):
@@ -522,6 +524,58 @@ class TestFill(unittest.TestCase):
                         if p.content == ch7.PTDPContent.FILL:
                             fillcnt += 1
             self.assertEqual(fillcnt, 0)
+
+
+class TestLLP(unittest.TestCase):
+
+    def setUp(self):
+        # Force Python path regardless of C extension availability
+        ch7._c_chapter7_available = True
+
+    def tearDown(self):
+        # Restore — don't pollute other test classes
+        ch7._c_chapter7_available = _c_chapter7_available_original
+
+    def test_llp_missing_packet(self):
+        f = open(f"{THIS_DIR}/corruptllm.bin", "rb")
+        FRM_LEN = 994
+        frames = []
+        for _i in range(3):
+            frames.append(f.read(FRM_LEN))
+        f.close()
+        ch7_pkt = ch7.PTFR()
+        ch7_pkt.discard_fill = True
+        first_PTFR = True
+        remainder = None
+        prev_seq = {}
+        count = 0
+        for frame_idx, frame in enumerate(frames):
+            ch7_pkt.length = len(frame)
+            ch7_pkt.unpack(frame)
+            for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                first_PTFR = False
+                logger.info(f"Frameidx={frame_idx} ptdp={repr(p)} remainder={len(remainder)}")
+                if p is not None:
+
+                    if p.content == ch7.PTDPContent.ETHERNET_MAC and p.length != 0:
+
+                        _pay = bytes(p.payload[0x2A:])
+                        inetxp = inetx.iNetX()
+                        try:
+                            inetxp.unpack(p.payload[0x2A:-4])
+                        except Exception as e:
+                            logger.error(f"Failed to unpack err={e}")
+                            self.assertTrue(False)
+                        else:
+                            logger.info(repr(inetxp))
+                            if inetxp.streamid in prev_seq:
+                                self.assertEqual(
+                                    prev_seq[inetxp.streamid] + 1,
+                                    inetxp.sequence,
+                                )
+                        prev_seq[inetxp.streamid] = inetxp.sequence
+                        count += 1
+        self.assertEqual(count, 4)
 
 
 if __name__ == "__main__":

@@ -738,9 +738,12 @@ class PTFR(object):
                         byte_offset += len_p + 1
                     else:
                         is_llp = False
+                        # ch7_logger.debug(
+                        #    f"Next packet is not LLP remainder={type(remainder)} offset={self.ptdp_offset} first_PTFR={first_PTFR}"
+                        # )
                         # if ((remainder == bytes()) or first_PTFR)  and self.ptdp_offset > 0:
                         if ((remainder == bytes()) and self.ptdp_offset > 0) or first_PTFR:
-                            # ch7_logger.debug("LLP Packets extracted, jumping to offset")
+                            # ch7_logger.debug(f"LLP Packets extracted, jumping to offset {self.ptdp_offset}")
                             buf = local_payload[self.ptdp_offset :]
                             do_offset_check = False
                             byte_offset = self.ptdp_offset
