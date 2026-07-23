@@ -11,13 +11,16 @@ from pstats import Stats
 import cProfile
 import typing
 import pickle
+import random
 
 _c_chapter7_available_original = ch7._c_chapter7_available
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(funcName)s:%(lineno)s:%(message)s")
 logger = logging.getLogger(__name__)
+
+random.seed(1)
 
 
 def buf_generator(count, llp_count=0):
@@ -339,28 +342,36 @@ class TestRealEthernet(unittest.TestCase):
 
 
 def get_pkts(
-    some_low_latency: bool = False, max_len: int = 178
+    some_low_latency: bool = False,
+    max_len: int = 178,
 ) -> typing.Generator[tuple[bytes, ch7.PTDPDetails], None, None]:
 
     count = 0
     while True:
-        # pkt_len = random.randint(2, 180)
-        pkt_len = (count % max_len) + 2
-        paylaod_int = [pkt_len] + [count] * (pkt_len - 1)
-        payload = struct.pack(f">{pkt_len}Q", *paylaod_int)
-        count += 1
+        is_fill = random.choice([True, False, False, False])
         llc_pkts = [True, False, False, False, False, False, False]
-        # llc_pkts = [True, True, True, True, True, True, True]
         if some_low_latency:
             low_latency = llc_pkts[count % 7]
+            pkt_len = random.randint(3, 5)
         else:
             low_latency = False
-        logging.debug(f"TX: Generated payload of length {pkt_len * 8} count={count}")
-        yield payload, ch7.PTDPDetails(low_latency, ch7.PTDPContent.ETHERNET_MAC)
+            pkt_len = (count % max_len) + 2
+
+        # pkt_len = random.randint(2, 180)
+
+        paylaod_int = [pkt_len] + [count] * (pkt_len - 1)
+        payload = struct.pack(f">{pkt_len}Q", *paylaod_int)
+        if not is_fill:
+            count += 1
+
+        logging.debug(f"TX: Generated payload of length {pkt_len * 8} count={count} is_fill={is_fill}")
+        if is_fill:  # some fill
+            yield struct.pack(">H", *[0xAA]), ch7.PTDPDetails(False, ch7.PTDPContent.FILL)
+        else:
+            yield payload, ch7.PTDPDetails(low_latency, ch7.PTDPContent.ETHERNET_MAC)
 
 
-def get_pcm_frame(offset_ptfr: int = 0, some_low_latency: bool = False, max_len: int = 178):
-    pcm_frame_len = 1024
+def get_pcm_frame(offset_ptfr: int = 0, some_low_latency: bool = False, max_len: int = 178, pcm_frame_len=1024):
     ptfr_len = pcm_frame_len - offset_ptfr - 4
     zero_buf = struct.pack(">B", 0) * offset_ptfr
     for ptfr in ch7.datapkts_to_ptfr(get_pkts(some_low_latency, max_len), ptfr_len=ptfr_len):
@@ -388,7 +399,7 @@ class TestRandomSizedDecom(unittest.TestCase):
             ch7_buffer = frame[offset:]
             ch7_pkt.length = len(ch7_buffer)
             ch7_pkt.unpack(ch7_buffer)
-            count += 1
+
             if count > 10000:
                 break
 
@@ -396,8 +407,11 @@ class TestRandomSizedDecom(unittest.TestCase):
                 first_PTFR = False
                 if p is not None:
                     if p.length != 0:
-                        if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
+                        if (
+                            p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST
+                        ) and p.content != ch7.PTDPContent.FILL:
                             eth_p += p.payload
+
                             logging.debug(repr(p))
                             self.assertGreaterEqual(len(eth_p), 16)
                             expected_len, count = struct.unpack_from(">QQ", eth_p, 0x0)
@@ -408,6 +422,7 @@ class TestRandomSizedDecom(unittest.TestCase):
                                 self.assertEqual(expected_len * 8, len(eth_p))
 
                             prev_eth_count = count
+                            count += 1
                             eth_p = bytes()
 
     def test_some_llc(self):
@@ -569,6 +584,74 @@ class TestLLP(unittest.TestCase):
                         prev_seq[inetxp.streamid] = inetxp.sequence
                         count += 1
         self.assertEqual(count, 4)
+
+
+class TestVaryingSizePTFR(unittest.TestCase):
+
+    def _assert_no_loss(self, pcm_frame_len, max_len, some_low_latency, max_frames=100):
+        """Round-trip a generated packet stream through PTFR framing and verify
+        that every non-fill packet is recovered.
+
+        Asserts completeness, not sequence: LLP packets are packed ahead of the
+        regular region (before ptdp_offset) and parsed first on decompression, so
+        they jump the queue. With small PTFRs regular and LLP data share frames and
+        decompression order does not follow insertion order.
+
+        random.seed(1) is reset here so each (pcm_frame_len, max_len) combo runs
+        on the identical packet stream — framing is the only variable, and the
+        result is reproducible regardless of call order.
+        """
+        random.seed(1)
+        offset = 0
+        first_PTFR = True
+        eth_p = bytes()
+        remainder = None
+        numbers_found = []
+        frame_count = 0
+        for frame in get_pcm_frame(offset, some_low_latency, max_len, pcm_frame_len):
+            ch7_pkt = ch7.PTFR()
+            ch7_buffer = frame[offset:]
+            ch7_pkt.length = len(ch7_buffer)
+            ch7_pkt.unpack(ch7_buffer)
+            frame_count += 1
+            if frame_count > max_frames:
+                break
+
+            for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
+                first_PTFR = False
+                if p is not None:
+                    if p.content != ch7.PTDPContent.FILL:
+                        if p.fragment == ch7.PTDPFragment.COMPLETE or p.fragment == ch7.PTDPFragment.LAST:
+                            eth_p += p.payload
+                            self.assertGreaterEqual(len(eth_p), 16)
+                            expected_len, seq = struct.unpack_from(">QQ", eth_p, 0x0)
+                            self.assertEqual(expected_len * 8, len(eth_p))
+                            numbers_found.append(seq)
+                            eth_p = bytes()
+                        else:
+                            eth_p += p.payload
+
+        numbers_found.sort()
+        self.assertEqual(missing_elements(numbers_found), [])
+
+    def test_small(self):
+        # The original single-config case, kept as a fast debuggable entry point.
+        self._assert_no_loss(pcm_frame_len=80, max_len=1200, some_low_latency=True)
+
+    def test_frame_sizes_llp(self):
+        # LLP on: vary only the PTFR frame size. (max_len has no effect when
+        # some_low_latency=True — packet sizes are always 24-40 bytes.)
+        for pcm_frame_len in (64, 80, 128, 256, 1024, 4096, 10240):
+            with self.subTest(pcm_frame_len=pcm_frame_len):
+                self._assert_no_loss(pcm_frame_len, max_len=1400, some_low_latency=True)
+
+    def test_frame_and_pktlen(self):
+        # Non-LLP: both pcm_frame_len and max_len are real variables here, since
+        # pkt_len = (count % max_len) + 2 only in the non-LLP branch of get_pkts.
+        for pcm_frame_len in (64, 80, 256, 1024):
+            for max_len in (10, 50, 178, 1200):
+                with self.subTest(pcm_frame_len=pcm_frame_len, max_len=max_len):
+                    self._assert_no_loss(pcm_frame_len, max_len, some_low_latency=False)
 
 
 if __name__ == "__main__":
