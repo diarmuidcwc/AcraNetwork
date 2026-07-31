@@ -207,7 +207,8 @@ static PyObject *py_golay_errors(PyObject *self, PyObject *args)
 //    None                      — buffer too short (< 6 bytes)        //
 //    -1  (PyLong)              — PTDPLengthError (corrupt length)     //
 //    (length, fragment,        — success                              //
-//     content, remainder_start)                                       //
+//     content, remainder_start,                             //
+//     crc)                             — CRC is bit 11 of decoded LSW //
 //                                                                     //
 //  The Python wrapper still does:                                     //
 //    self._payload = buffer[6 : 6+length]   (already C-speed)        //
@@ -247,11 +248,12 @@ static PyObject *py_ptdp_unpack(PyObject *self, PyObject *args)
     if (buf_len < remainder_start)
         Py_RETURN_NONE;
 
-    // Extract fragment (bits 5:4 of lsw) and content (bits 9:6 of lsw)
-    int fragment = ((int)lsw >> 4) & 0x3;
-    int content  = ((int)lsw >> 6) & 0xF;
+    // Extract CRC (bit 11 of lsw), fragment (bits 5:4 of lsw) and content (bits 10:5 of lsw)
+    int crc       = (int)((lsw >> 11) & 0x1);
+    int fragment  = ((int)lsw >> 4) & 0x3;
+    int content   = ((int)lsw >> 5) & 0xF;
 
-    return Py_BuildValue("(iiii)", length, fragment, content, remainder_start);
+    return Py_BuildValue("(iiiii)", length, fragment, content, remainder_start, crc);
 }
 
 // ------------------------------------------------------------------ //
@@ -311,7 +313,7 @@ static PyMethodDef GolayMethods[] = {
     {"golay_errors",      py_golay_errors,
         METH_VARARGS, "Get the number of bit errors in a 24-bit Golay codeword."},
     {"ptdp_unpack",       py_ptdp_unpack,
-        METH_VARARGS, "Unpack a PTDP header from a buffer. Returns (length, fragment, content, remainder_start) or None or -1."},
+        METH_VARARGS, "Unpack a PTDP header from a buffer. Returns (length, fragment, content, remainder_start, crc) or None or -1."},
     {"ptfr_unpack",       py_ptfr_unpack,
         METH_VARARGS, "Unpack a PTFR header from a buffer. Returns (version, streamid, llp, ptdp_offset) or None."},
     {NULL, NULL, 0, NULL}

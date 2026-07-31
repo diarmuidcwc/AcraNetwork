@@ -24,6 +24,7 @@ import math
 import typing
 from enum import IntEnum
 from collections import namedtuple
+from crcmod.predefined import mkPredefinedCrcFun
 
 ch7_logger = logging.getLogger(__name__)
 try:
@@ -38,6 +39,9 @@ if _c_chapter7_available:
     ch7_logger.info("Chapter7 unpack in C")
 else:
     ch7_logger.info("Chapter7 unpack in Python")
+
+
+crc16 = mkPredefinedCrcFun("crc-16")
 
 
 class PTDPContent(IntEnum):
@@ -297,11 +301,23 @@ class PTDP(object):
 
         :rtype: bytes
         """
-        self.length = len(self.payload)
-        msw = self.length & 0xFFF
-        lsw = (self.length >> 12) + (self.fragment << 4) + (self.content << 6)
+        # Handle both old and new PTDP objects
+        crc = getattr(self, 'crc', False)
+        fragment = getattr(self, 'fragment', 0)
+        content = getattr(self, 'content', 0)
 
-        return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload
+        if crc:
+            crc_len = 2
+            crc_data = struct.pack(">H", crc16(self.payload))
+        else:
+            crc_len = 0
+            crc_data = b""
+        self.length = len(self.payload) + crc_len
+        msw = self.length & 0xFFF
+        # New format: bit 11 is CRC, content at [10:5], fragment at [5:4]
+        lsw = (self.length >> 12) + ((fragment << 4) | (crc << 11)) + (content << 5)
+
+        return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload + crc_data
 
     def _unpack_c(self, buffer: bytes | bytearray) -> "bytes | None":
         """
@@ -317,9 +333,10 @@ class PTDP(object):
         if result == -1:  # corrupt Golay length field
             raise PTDPLengthError("GolayHdr=len corrupt. Must be corrupted")
 
-        length, fragment, content, remainder_start = result
+        length, fragment, content, remainder_start, crc = result
 
         self.length = length
+        self.crc = bool(crc)
         self.fragment = _FRAGMENT_BY_BITS[fragment]
         self.content = _CONTENT_BY_BITS[content]
         self._payload_buf = buffer
@@ -348,8 +365,10 @@ class PTDP(object):
         msw = self._golay.decode(mv[3:6])
 
         self.length = msw + ((lsw & 0xF) << 12)
+        self.crc = bool((lsw >> 11) & 0x1)
+        # New format: content at [10:5], fragment at [5:4]
         self.fragment = _FRAGMENT_BY_BITS[(lsw >> 4) & 0x3]
-        self.content = _CONTENT_BY_BITS[(lsw >> 6) & 0xF]
+        self.content = _CONTENT_BY_BITS[(lsw >> 5) & 0xF]
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
         _end = self.length + 6
@@ -367,8 +386,14 @@ class PTDP(object):
     def __eq__(self, other: object):
         if not isinstance(other, PTDP):
             return False
-        for attr in ["payload", "length", "fragment", "content"]:
-            if getattr(self, attr) != getattr(other, attr):
+        # Compare all known attributes; handle missing ones gracefully
+        for attr in ["payload", "length", "crc", "fragment", "content"]:
+            self_val = getattr(self, attr, None)
+            other_val = getattr(other, attr, None)
+            # Handle both "no attribute" and attribute==None
+            if (self_val is None and other_val is not None) or (self_val is not None and other_val is None):
+                return False
+            if self_val != other_val:
                 return False
 
         return True
