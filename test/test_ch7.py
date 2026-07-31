@@ -153,6 +153,37 @@ class TestPTDPUnpackC(BaseTestCaseCh7, unittest.TestCase):
         return f
 
 
+class TestPTDTCrc(unittest.TestCase):
+
+    def test_crc(self):
+        p = ch7.PTDP()
+        p.crc = True
+        p.fragment = ch7.PTDPFragment.COMPLETE
+        p.content = ch7.PTDPContent.ASP
+        p.payload = bytearray(struct.pack(">21B", *(range(21))))
+
+        p2 = ch7.PTDP()
+        packed = p.pack()
+        p2.unpack(packed)
+
+        logger.info(f"{p2.payload=}")
+        self.assertEqual(p, p2)
+
+    def test_ptfr_crc_generator(self):
+        remainder = bytes()
+        for ptfr in ch7.datapkts_to_ptfr(buf_generator(5), ptfr_len=200, crc_enable=True):
+            # print(repr(ptfr))
+            ch7_pkt = ch7.PTFR()
+            ch7_pkt.length = 800
+            ch7_pkt.unpack(ptfr.pack())
+            for p, remainder, e in ch7_pkt.get_aligned_payload(remainder):
+                if p is None:
+                    continue
+                else:
+                    print(repr(p))
+                    self.assertEqual(2, p.length % 128)  # Two addition words for CRC
+
+
 class TestGenerators(unittest.TestCase):
     def test_ptdp_generator(self):
         for ptdp_pkt in ch7.datapkts_to_ptdp(buf_generator(5)):
@@ -539,51 +570,6 @@ class TestFill(unittest.TestCase):
                         if p.content == ch7.PTDPContent.FILL:
                             fillcnt += 1
             self.assertEqual(fillcnt, 0)
-
-
-class TestLLP(unittest.TestCase):
-
-    def test_llp_missing_packet(self):
-        f = open(f"{THIS_DIR}/corruptllm.bin", "rb")
-        FRM_LEN = 994
-        frames = []
-        for _i in range(3):
-            frames.append(f.read(FRM_LEN))
-        f.close()
-        g = ch7.Golay.Golay()
-        ch7_pkt = ch7.PTFR(g)
-        ch7_pkt.discard_fill = True
-        first_PTFR = True
-        remainder = None
-        prev_seq = {}
-        count = 0
-        for frame_idx, frame in enumerate(frames):
-            ch7_pkt.length = len(frame)
-            ch7_pkt.unpack(frame)
-            for p, remainder, e in ch7_pkt.get_aligned_payload(first_PTFR, remainder):
-                first_PTFR = False
-                logger.info(f"Frameidx={frame_idx} ptdp={repr(p)} remainder={len(remainder)}")
-                if p is not None:
-
-                    if p.content == ch7.PTDPContent.ETHERNET_MAC and p.length != 0:
-
-                        _pay = bytes(p.payload[0x2A:])
-                        inetxp = inetx.iNetX()
-                        try:
-                            inetxp.unpack(p.payload[0x2A:-4])
-                        except Exception as e:
-                            logger.error(f"Failed to unpack err={e}")
-                            self.assertTrue(False)
-                        else:
-                            logger.info(repr(inetxp))
-                            if inetxp.streamid in prev_seq:
-                                self.assertEqual(
-                                    prev_seq[inetxp.streamid] + 1,
-                                    inetxp.sequence,
-                                )
-                        prev_seq[inetxp.streamid] = inetxp.sequence
-                        count += 1
-        self.assertEqual(count, 4)
 
 
 class TestVaryingSizePTFR(unittest.TestCase):

@@ -251,7 +251,7 @@ static PyObject *py_ptdp_unpack(PyObject *self, PyObject *args)
     // Extract CRC (bit 11 of lsw), fragment (bits 5:4 of lsw) and content (bits 10:5 of lsw)
     int crc       = (int)((lsw >> 11) & 0x1);
     int fragment  = ((int)lsw >> 4) & 0x3;
-    int content   = ((int)lsw >> 5) & 0xF;
+    int content   = ((int)lsw >> 6) & 0xF;
 
     return Py_BuildValue("(iiiii)", length, fragment, content, remainder_start, crc);
 }

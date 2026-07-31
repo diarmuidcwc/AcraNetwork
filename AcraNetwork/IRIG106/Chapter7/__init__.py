@@ -24,11 +24,11 @@ import math
 import typing
 from enum import IntEnum
 from collections import namedtuple
-from crcmod.predefined import mkPredefinedCrcFun
+from crcmod.predefined import mkPredefinedCrcFun  # type: ignore
 
 ch7_logger = logging.getLogger(__name__)
 try:
-    from AcraNetwork.IRIG106.Chapter7 import golay_c as _golay_c
+    from AcraNetwork.IRIG106.Chapter7 import golay_c as _golay_c  # type: ignore
 
     _c_chapter7_available = hasattr(_golay_c, "ptdp_unpack") and hasattr(_golay_c, "ptfr_unpack")
 except ImportError:
@@ -153,6 +153,7 @@ def datapkts_to_ptfr(
     ptfr_len: int = 500,
     streamid: int = 0x1,
     golay=Golay.Golay(),
+    crc_enable: bool = False,
 ) -> typing.Generator[PTFR, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
@@ -161,7 +162,7 @@ def datapkts_to_ptfr(
     """
     # Create a new frame
     ptfr = _new_ptfr(ptfr_len, streamid, golay)
-    for ptdp in datapkts_to_ptdp(eth_ch10_packets):
+    for ptdp in datapkts_to_ptdp(eth_ch10_packets, crc_enable):
 
         remaining_space = ptfr.remaining_space()
         # logging.debug(f"Adding ptdp {ptdp} with remaining space {remaining_space}")
@@ -201,7 +202,7 @@ def datapkts_to_ptfr(
 
 
 def datapkts_to_ptdp(
-    eth_ch10_packets: typing.Iterable[tuple[bytes, PTDPDetails]],
+    eth_ch10_packets: typing.Iterable[tuple[bytes, PTDPDetails]], crc_enable: bool = False
 ) -> typing.Generator[PTDP, None, None]:
     """
     Generator that will take a generator for ethernet packet aligned payloads
@@ -221,6 +222,7 @@ def datapkts_to_ptdp(
         # The packet fits in one PTDP
         if len(buffer) <= PTDP_MAX_LEN:
             ptdp_pkt = PTDP()
+            ptdp_pkt.crc = crc_enable
             ptdp_pkt.low_latency = details.is_llp
             ptdp_pkt.fragment = PTDPFragment.COMPLETE
             ptdp_pkt.content = details.content
@@ -232,6 +234,7 @@ def datapkts_to_ptdp(
             number_of_packets = int(math.ceil(float(len(buffer)) / PTDP_MAX_LEN))
             for i in range(number_of_packets):
                 ptdp_pkt = PTDP()
+                ptdp_pkt.crc = crc_enable
                 ptdp_pkt.low_latency = details.is_llp
                 ptdp_pkt.content = details.content
                 # Label the fragments
@@ -253,6 +256,7 @@ class PTDP(object):
     def __init__(self, golay=Golay.Golay()) -> None:
         self.low_latency: bool = False
         self.length: int = 0
+        self.crc: bool = False
         self.content: PTDPContent = PTDPContent.FILL
         self.fragment: int = PTDPFragment.COMPLETE
         self._payload: bytearray = bytearray()
@@ -275,9 +279,14 @@ class PTDP(object):
 
     @property
     def payload(self) -> bytearray:
+        crc_len = 0
+        if self.crc:
+            crc_len = 2
         if self._payload_buf is not None:
             if self._payload_cache is None:
-                self._payload_cache = bytearray(self._payload_buf[self._payload_off : self._payload_off + self.length])
+                self._payload_cache = bytearray(
+                    self._payload_buf[self._payload_off : self._payload_off + self.length - crc_len]
+                )
             return self._payload_cache
         return self._payload
 
@@ -301,12 +310,7 @@ class PTDP(object):
 
         :rtype: bytes
         """
-        # Handle both old and new PTDP objects
-        crc = getattr(self, 'crc', False)
-        fragment = getattr(self, 'fragment', 0)
-        content = getattr(self, 'content', 0)
-
-        if crc:
+        if self.crc:
             crc_len = 2
             crc_data = struct.pack(">H", crc16(self.payload))
         else:
@@ -315,9 +319,11 @@ class PTDP(object):
         self.length = len(self.payload) + crc_len
         msw = self.length & 0xFFF
         # New format: bit 11 is CRC, content at [10:5], fragment at [5:4]
-        lsw = (self.length >> 12) + ((fragment << 4) | (crc << 11)) + (content << 5)
+        lsw = (self.length >> 12) + ((self.fragment << 4) + (int(self.crc) << 11)) + (self.content << 6)
 
-        return self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload + crc_data
+        return (
+            self._golay.encode(lsw, as_string=True) + self._golay.encode(msw, as_string=True) + self.payload + crc_data
+        )
 
     def _unpack_c(self, buffer: bytes | bytearray) -> "bytes | None":
         """
@@ -339,6 +345,11 @@ class PTDP(object):
         self.crc = bool(crc)
         self.fragment = _FRAGMENT_BY_BITS[fragment]
         self.content = _CONTENT_BY_BITS[content]
+        # if self.crc and self.validate_crc:
+        #    (exp_crc,) = struct.unpack(">H", buffer[(remainder_start - 2) : remainder_start])
+        #    calc_crc = crc16(buffer[6 : remainder_start - 2])
+        #    if exp_crc != calc_crc:
+        #        raise Exception(f"fCRC does not match ={calc_crc=} {exp_crc=}")
         self._payload_buf = buffer
         self._payload_off = 6
         self._payload_cache = None
@@ -368,12 +379,17 @@ class PTDP(object):
         self.crc = bool((lsw >> 11) & 0x1)
         # New format: content at [10:5], fragment at [5:4]
         self.fragment = _FRAGMENT_BY_BITS[(lsw >> 4) & 0x3]
-        self.content = _CONTENT_BY_BITS[(lsw >> 5) & 0xF]
+        self.content = _CONTENT_BY_BITS[(lsw >> 6) & 0xF]
         if self.length > PTDP_MAX_LEN:
             raise PTDPLengthError("GolayHdr=len={}. Must be corrupted".format(self.length))
         _end = self.length + 6
         if _buf_len < _end:
             return None
+        # if self.crc:
+        #    exp_crc = buffer[(_end - 2) : _end]
+        #    act_crc = crc16(buffer[6 : _end - 2])
+        #    if exp_crc != act_crc:
+        #        raise Exception("CRC does not match")
         self._payload_buf = buffer
         self._payload_off = 6
         self._payload_cache = None
@@ -394,6 +410,9 @@ class PTDP(object):
             if (self_val is None and other_val is not None) or (self_val is not None and other_val is None):
                 return False
             if self_val != other_val:
+                logging.error(
+                    f"attribute {attr} fails to match {getattr(self, attr, None)} {getattr(other, attr, None)}"
+                )
                 return False
 
         return True
@@ -402,7 +421,7 @@ class PTDP(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return f"PTDP: Len={self.length} Content={repr(self.content)} Fragment={repr(self.fragment)} LowLatency={self.low_latency}"
+        return f"PTDP: Len={self.length} Content={repr(self.content)} Fragment={repr(self.fragment)} LowLatency={self.low_latency} CRC={self.crc}"
 
 
 def ptdp_fill(total_len_min: int) -> PTDP:
