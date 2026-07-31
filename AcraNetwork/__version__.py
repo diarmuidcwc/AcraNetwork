@@ -131,4 +131,5 @@
 # 1.3.11  - Further optimisation for long FILL runs. Added class attribute to discard FILL packets at the low level to speed things up
 # 1.3.12  - Bugfix in ip calc checksum. Pcap[ bufferring fix. minor perf improvements
 # 1.3.13  - Minor ch7 optimisations
-__version__ = "1.3.13"
+# 1.3.14  - Added support for CRC in ch7 PTDP packets. On unpackign it will handle the CRC but not verify
+__version__ = "1.3.14"
