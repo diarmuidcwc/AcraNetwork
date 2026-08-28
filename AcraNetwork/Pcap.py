@@ -236,6 +236,7 @@ class Pcap(object):
         # starting at 1, so after the first record is read or written, rec_no 
         # will be 1
         self.rec_no = 0
+        self._rec_positions = [Pcap.GLOBAL_HEADER_SIZE]
 
         self.fopen = None # make deterministic if the file open fails
         try:
@@ -331,24 +332,33 @@ class Pcap(object):
         return self
 
     def next(self):
-        # read the pcap header to a new object
         pcaprecord = PcapRecord()
-        try:
-            pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
-        except Exception:
+        header = self.fopen.read(Pcap.RECORD_HEADER_SIZE)
+        if len(header) < Pcap.RECORD_HEADER_SIZE:
             raise StopIteration
+        (pcaprecord.sec, pcaprecord.usec, pcaprecord.incl_len, pcaprecord.orig_len) = struct.unpack(
+            Pcap.RECORD_HEADER_FORMAT, header
+        )
 
-        try:
-            pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
-        except Exception:
+        pcaprecord._payload = self.fopen.read(pcaprecord.incl_len)
+        if len(pcaprecord._payload) < pcaprecord.incl_len:
             raise StopIteration
-        else:
-            self.rec_no += 1
-            return pcaprecord
+        self._rec_positions.append(self.fopen.tell())
+        self.rec_no += 1
+        return pcaprecord
 
     __next__ = next
 
     def __getitem__(self, item):
+        if item < len(self._rec_positions) - 1:
+            self.fopen.seek(self._rec_positions[item])
+            pcaprecord = PcapRecord()
+            header = self.fopen.read(Pcap.RECORD_HEADER_SIZE)
+            (pcaprecord.sec, pcaprecord.usec, pcaprecord.incl_len, pcaprecord.orig_len) = struct.unpack(
+                Pcap.RECORD_HEADER_FORMAT, header
+            )
+            pcaprecord._payload = self.fopen.read(pcaprecord.incl_len)
+            return pcaprecord
         self.fopen.seek(Pcap.GLOBAL_HEADER_SIZE)
         for idx, rec in enumerate(self):
             if idx == item:
