@@ -22,6 +22,8 @@ class FileParser(object):
         self.insync = False
         self._offset = 0
         self._fd = None
+        self._buf = b""
+        self._buf_offset = 0
 
     def write(self, ch10packet: typing.Union[Chapter11, bytes]) -> None:
         """
@@ -56,48 +58,47 @@ class FileParser(object):
         return self
 
     def next(self) -> bytes:
-        in_sync = False
-        pkt_len = 0
-        # perf: use a larger buffer for sync scanning to avoid many small read()
-        # calls. buf.find() is 11.6x faster than byte-by-byte scanning.
-        _scan_buf = b""
-        _scan_buf_offset = 0
         SYNC_BYTES = struct.pack("<H", Chapter11.SYNC_WORD)
-        while not in_sync:
-            try:
-                self._fd.seek(self._offset)
-                # Read a larger chunk and search for the sync word in memory
-                _scan_buf = self._fd.read(65536)
-            except:
-                raise StopIteration
-            if not _scan_buf:
-                raise StopIteration
-            _sync_pos = _scan_buf.find(SYNC_BYTES)
-            if _sync_pos == -1:
-                self._offset += len(_scan_buf)
+
+        while True:
+            sync_pos = self._buf.find(SYNC_BYTES, self._buf_offset)
+
+            if sync_pos == -1:
+                self._offset += len(self._buf)
+                self._buf = self._fd.read(65536)
+                self._buf_offset = 0
+                if not self._buf:
+                    raise StopIteration
                 continue
-            # Check if we have enough data for the full header
-            if _sync_pos + 8 > len(_scan_buf):
-                self._offset += _sync_pos
+
+            if sync_pos + 8 > len(self._buf):
+                self._offset += sync_pos
+                self._buf = self._buf[sync_pos:]
+                self._buf_offset = 0
+                more = self._fd.read(65536)
+                if not more:
+                    raise StopIteration
+                self._buf += more
                 continue
+
             try:
-                (sync, chid, pkt_len) = struct.unpack("<HHI", _scan_buf[_sync_pos : _sync_pos + 8])
+                (sync, chid, pkt_len) = struct.unpack("<HHI", self._buf[sync_pos : sync_pos + 8])
             except Exception as e:
                 logger.debug("Exiting loop err={}".format(e))
                 raise StopIteration
-            # Update offset to point to the start of the packet
-            self._offset += _sync_pos
-            in_sync = True
 
-        # perf: avoid redundant seek() - read the full packet in one call.
-        # After reading the 8-byte header above, the file position is already
-        # at self._offset + 8, so we only need to read the remaining bytes.
-        self._fd.seek(self._offset)
-        pkt_payload = self._fd.read(pkt_len)
-        self._offset += pkt_len
-        if len(pkt_payload) != pkt_len:
-            raise StopIteration
+            pkt_end = sync_pos + pkt_len
+            if pkt_end > len(self._buf):
+                needed = pkt_end - len(self._buf)
+                more = self._fd.read(needed)
+                if len(more) < needed:
+                    raise StopIteration
+                self._buf += more
 
-        return pkt_payload
+            pkt_payload = self._buf[sync_pos:pkt_end]
+            self._buf = self._buf[pkt_end:]
+            self._buf_offset = 0
+            self._offset += pkt_end
+            return pkt_payload
 
     __next__ = next
