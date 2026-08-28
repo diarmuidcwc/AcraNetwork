@@ -335,12 +335,12 @@ class Pcap(object):
         pcaprecord = PcapRecord()
         try:
             pcaprecord.unpack(self.fopen.read(Pcap.RECORD_HEADER_SIZE))
-        except:
+        except Exception:
             raise StopIteration
 
         try:
             pcaprecord.packet = self.fopen.read(pcaprecord.incl_len)
-        except:
+        except Exception:
             raise StopIteration
         else:
             self.rec_no += 1

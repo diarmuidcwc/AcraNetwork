@@ -477,8 +477,8 @@ class ARINC429(object):
         if len(buf) != ARINC429.MESSAGE_LEN:
             raise ValueError("Buffer is not the correct length for an ARINC429 message")
         (byte1, byte2, byte3, byte4) = struct.unpack("BBBB", buf)
-        self.parity = byte1 / 128
-        self.ssm = (byte1 / 32) % 4
-        self.data = ((byte1 % 32) * 256 + byte2) * 64 + (byte3 / 4)
+        self.parity = byte1 // 128
+        self.ssm = (byte1 // 32) % 4
+        self.data = ((byte1 % 32) * 256 + byte2) * 64 + (byte3 // 4)
         self.sdi = byte3 % 4
         self.label = ARINC429.LABEL_REVERSE[byte4]

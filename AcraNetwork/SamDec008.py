@@ -125,7 +125,7 @@ class SamDec008(object):
                 self._payload_offset = PCM_HDR_LEN  # The SAM DEC inserts some header
                 if inetx_pkt.streamid == self.streamid:
                     if self._sequence is not None:
-                        if self._sequence + 1 % pow(2, 64) == inetx_pkt.sequence:
+                        if (self._sequence + 1) % pow(2, 64) == inetx_pkt.sequence:
                             logger.warning(
                                 "Missing Sequence number at {}. Is SAM/DEC dropping?".format(inetx_pkt.sequence)
                             )
