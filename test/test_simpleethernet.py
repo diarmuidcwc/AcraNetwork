@@ -105,6 +105,8 @@ class SimpleEthernetTest(unittest.TestCase):
         i.dstip = "235.0.0.1"
         i.srcip = "192.168.1.1"
         i.payload = struct.pack(">H", 0xA5)
+        self.assertEqual(i.ihl, 5)
+        self.assertEqual(i.opt_fields, [])
         ippayload = i.pack()
 
         i2 = SimpleEthernet.IP()
@@ -112,6 +114,72 @@ class SimpleEthernetTest(unittest.TestCase):
         self.assertEqual(i2.srcip, "192.168.1.1")
         self.assertEqual(i2.dstip, "235.0.0.1")
         self.assertEqual(i2.payload, struct.pack(">H", 0xA5))
+        self.assertEqual(i2.ihl, 5)
+        self.assertEqual(i2.len, i2.ihl * 4 + len(i2.payload))
+        self.assertEqual(i2.opt_fields, [])
+
+    def test_basicIP_with_opts(self):
+        """
+        Check the code that handles IP Header Option fields.
+        """
+
+        # Here are values that can be used for options
+        opts = (0x01020304,  # NOP; unknown-3byte
+                0x05040302,  # unknown-4byte
+                0x09020A02,  # unknown-2byte; ZSU-2byte
+                0x0B044567,  # MTUP-4byte
+                0x0C04DEAD,  # MTUR-4byte
+                0x0F032101,  # ENCODE-3byte; NOP
+                0x19081122, 0x33445566,  # QS-8byte
+                0x8804DEAD,  # SID 4-byte
+                0x00000000,  # EOOP = padding
+               )
+
+        # Make an IP frame with options (i). Pack it into a bytes
+        # object. Unpack it into an IP frame (i2). Check that the
+        # options are correct and related changes such as the position
+        # of the payload.
+        i = SimpleEthernet.IP(option_fields=opts)
+        self.assertEqual(i.opt_fields, opts)
+        # check fields have the correct adjustment for the opts
+        self.assertEqual(i.ihl, 5+len(opts))
+        # do not assert len; it is not defined until pack() or unpack()
+        i.dstip = "235.1.2.3"
+        i.srcip = "192.168.4.5"
+        i.payload = struct.pack(">H", 0xBEEF)
+        ippayload = i.pack()
+        # Are the opts correct in the payload?
+        for ix, o in enumerate(opts):
+            ofs = SimpleEthernet.IP.IP_HEADER_SIZE + 4*ix
+            v = struct.unpack(">I", ippayload[ofs:ofs+4])[0]
+            self.assertEqual(v, o)
+
+        i2 = SimpleEthernet.IP()
+        i2.unpack(ippayload)
+        self.assertEqual(i2.srcip, "192.168.4.5")
+        self.assertEqual(i2.dstip, "235.1.2.3")
+        self.assertEqual(i2.payload, struct.pack(">H", 0xBEEF))
+        self.assertEqual(i2.ihl, 5+len(opts))
+        self.assertEqual(i2.len, i2.ihl * 4 + len(i2.payload))
+        self.assertEqual(i.opt_fields, opts)
+
+        # Opts can also be set with set_opt_fields() so set a different
+        # number of opts and check it is packed/unpacked properly.
+        o2 = opts[3:8]
+        i.set_opt_fields(o2)
+        self.assertEqual(i.ihl, 5+len(o2))
+        self.assertEqual(i.opt_fields, o2)
+        ippayload = i.pack()
+        for ix, o in enumerate(o2):
+            ofs = SimpleEthernet.IP.IP_HEADER_SIZE + 4*ix
+            v = struct.unpack(">I", ippayload[ofs:ofs+4])[0]
+            self.assertEqual(v, o)
+
+        i2.unpack(ippayload)
+        self.assertEqual(i2.payload, struct.pack(">H", 0xBEEF))
+        self.assertEqual(i2.ihl, 5+len(o2))
+        self.assertEqual(i2.len, i2.ihl * 4 + len(i2.payload))
+        self.assertEqual(i.opt_fields, o2)
 
     def test_unpackIPShort(self):
         i = SimpleEthernet.IP()

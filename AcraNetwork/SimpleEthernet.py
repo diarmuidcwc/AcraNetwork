@@ -260,17 +260,25 @@ class IP(object):
     IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
     ADDR_LENGTH = 4
 
-    def __init__(self, buf: typing.Optional[bytes] = None):
+    def __init__(self, buf: typing.Optional[bytes] = None,
+                 option_fields=[]):
         """
         Create an IP packet object. Currently supports only IPv4
 
-        :param buf: If a buffer is passed in to the init method, it will be unpacked as a IP packet
-        :type buf: bytes
+        :type  buf: bytes
+        :param buf:
+            If a buffer is passed in to the init method, it will be
+            unpacked as an IP packet
 
+        :type  option_fields: list of int
+        :param option_fields:
+            optional 32-bit words to be added to the end of the IP
+            header
         """
         self.srcip: str = ""  #: Source IP Address
         self.dstip: str = ""  #: Destination IP Address
-        self.len: int = 0  #: Total Length. This is calculated when packing the packet
+        self.len: int = 0
+            #: Total Length. This is calculated when packing the packet
         self.flags: int = 0x0  #: Three bit field identifying a flag
         self.fragment_offset: int = 0  #: Fragment offset
         self.protocol: int = IP.PROTOCOL_UDP  #: The type of the payload
@@ -281,8 +289,34 @@ class IP(object):
         self.id: int = 0  #: Identification Field
         self.ttl: int = 20  #: Time to Live. In practice the hop count.
 
+        self.set_opt_fields(option_fields)
+
         if buf is not None:
             self.unpack(buf)
+
+    def set_opt_fields(self, opts):
+        """
+        Add option fields to the IP header.
+
+        IP option fields are rarely used but are in the spec. They are
+        mainly supported here to allow headers of different sizes for
+        test purposes. There is no attempt to interpret the options.
+
+        The IP header length is specified by the IHL field (self.ihl)
+        in units of 32 bits. Therefore any option fields must be a
+        multiple of 32 bits; they are stored in self.opt_fields[] as a
+        list of 32-bit integers.
+
+        :type  opts: list of int, 0-0xFFFFFFFF
+        :param opts: Contents of option fields
+        """
+        n_options = len(opts)
+        if n_options > 10:
+            raise ValueError(f"IP header options length {n_options}"
+                             f" is not valid; must be 0..10")
+        self.opt_fields = opts[:]
+        self.ihl = 5+n_options
+
 
     def unpack(self, buf: bytes, verify_checksum: bool = True) -> bool:
         """
@@ -317,14 +351,31 @@ class IP(object):
         self.ihl = na1 & 0xF
         self.srcip = socket.inet_ntoa(struct.pack("!I", self.srcip))
         self.dstip = socket.inet_ntoa(struct.pack("!I", self.dstip))
-        # Fill IP payload with number of bytes declared in header's length field, leaving any trailer behind (e.g. typically padding to reach 64bytes)
-        self.payload = buf[IP.IP_HEADER_SIZE : self.len]
+
+        # The actual header size is IP.IP_HEADER_SIZE PLUS options.
+        # Since IHL specifies the length in units of 32 bits, each
+        # opt_fields[] element is a 32-bit integer
+        n_options = (self.ihl - 5)
+        self.opt_fields = []
+        for i in range(n_options):
+            x = IP.IP_HEADER_SIZE + i*4
+            self.opt_fields.append(
+                struct.unpack_from(">I", buf[x:x+4])[0])
+
+        hdr_size = self.ihl*4
+
+        # Fill IP payload with number of bytes declared in header's
+        # length field, leaving any trailer behind (e.g. typically
+        # padding to reach 64bytes)
+        self.payload = buf[hdr_size : self.len]
 
         if verify_checksum:
-            computed_ip_checksum = ip_calc_checksum(buf[: IP.IP_HEADER_SIZE])
+            computed_ip_checksum = ip_calc_checksum(buf[:hdr_size])
             if computed_ip_checksum != 0:
                 logger.error(
-                    f"Invalid IP Header Checksum. Computed Checksum = 0x{computed_ip_checksum:04X} (should be 0x0000). Raw received Checksum = 0x{checksum:04X}."
+                    f"Invalid IP Header Checksum. Computed Checksum ="
+                    f" 0x{computed_ip_checksum:04X} (should be 0x0000)."
+                    f" Raw received Checksum = 0x{checksum:04X}."
                 )
 
         return True
@@ -342,14 +393,22 @@ class IP(object):
 
         (srcip_as_int,) = struct.unpack("!I", socket.inet_aton(self.srcip))
         (dstip_as_int,) = struct.unpack("!I", socket.inet_aton(self.dstip))
-        self.len = IP.IP_HEADER_SIZE + len(self.payload)
+        opt_ihl = 5+len(self.opt_fields)
+        if opt_ihl != self.ihl:
+            logger.warning(f"IP IHL field {self.ihl} is not consistent"
+                           f" with options of length"
+                           f" {len(self.opt_fields)}. The ihl value"
+                           f" will be adjusted ot {opt_ihl}.")
+            self.ihl = opt_ihl
+        self.len = self.ihl*4 + len(self.payload)
         if self.len > 65536:
-            logger.warning("IP Payload longer than 65536. Truncating the length field")
+            logger.warning("IP Payload longer than 65536."
+                           " Truncating the length field")
         header = struct.pack(
             IP.IP_HEADER_FORMAT,
-            0x45,
+            0x40 | self.ihl,
             self.dscp,
-            self.len % 65536,
+            min(self.len, 65536),
             self.id,
             self.flags,
             0,
@@ -359,6 +418,8 @@ class IP(object):
             srcip_as_int,
             dstip_as_int,
         )
+        for o in self.opt_fields:
+            header += struct.pack(">I", o)
         checksum = ip_calc_checksum(header)
         header = header[:10] + struct.pack(">H", checksum) + header[12:]
         return header + self.payload
@@ -368,8 +429,12 @@ class IP(object):
         for p, v in IP.PROTOCOLS.items():
             if v == self.protocol:
                 protocol = p
-        return "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(self.srcip, self.dstip, protocol, self.len)
-
+        result = "SRCIP={} DSTIP={} PROTOCOL={} LEN={}".format(
+                     self.srcip, self.dstip, protocol, self.len)
+        n_opt = len(self.opt_fields)
+        if n_opt > 0:
+            result += " OPTS:{} bytes".format(n_opt*4)
+        return result
 
 class IPv4(IP):
     pass
