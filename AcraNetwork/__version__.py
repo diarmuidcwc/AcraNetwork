@@ -132,4 +132,5 @@
 # 1.3.12  - Bugfix in ip calc checksum. Pcap[ bufferring fix. minor perf improvements
 # 1.3.13  - Minor ch7 optimisations
 # 1.3.14  - Added support for CRC in ch7 PTDP packets. On unpackign it will handle the CRC but not verify
-__version__ = "1.3.14"
+# 1.3.15  - Optional IP header support
+__version__ = "1.3.15"
